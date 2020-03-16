@@ -36,21 +36,27 @@ else()
 
     set(SOURCE_FILES src/LoopConvert.cpp)
 
-    set(EXE ub-tester)
+    set(UB_EXE ub-tester)
+    set(UB_INCLUDE include)
+    set(UB_SRC src)
 
-    add_executable(${EXE} ${SOURCE_FILES})
-    set_target_properties(${EXE} PROPERTIES COMPILE_FLAGS "-fno-rtti")
+    include_directories(${UB_INCLUDE})
+    set(SOURCE_FILES ${UB_SRC}/LoopConvert.cpp)
+
+    add_executable(${UB_EXE} ${SOURCE_FILES})
+
+    set_target_properties(${UB_EXE} PROPERTIES COMPILE_FLAGS "-fno-rtti")
 
     add_definitions(${LLVM_CXXFLAGS})
-    target_compile_options(${EXE} PUBLIC "-fPIC")
+    target_compile_options(${UB_EXE} PUBLIC "-fPIC")
 
-    target_link_libraries(${EXE}
+    target_link_libraries(${UB_EXE}
         LLVMSupport
         clangTooling
         clangBasic
         clangASTMatchers
     )
 
-  target_link_libraries(${EXE} pthread z dl)
+  target_link_libraries(${UB_EXE} pthread z dl)
 
 endif()
