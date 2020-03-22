@@ -41,7 +41,7 @@ else()
     set(UB_SRC src)
 
     include_directories(${UB_INCLUDE})
-    set(SOURCE_FILES ${UB_SRC}/LoopConvert.cpp)
+    set(SOURCE_FILES ${UB_SRC}/main.cpp)
 
     add_executable(${UB_EXE} ${SOURCE_FILES})
 
