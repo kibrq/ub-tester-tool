@@ -9,6 +9,8 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
+#include <stdio.h>
+
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
@@ -21,6 +23,27 @@ class FindNamedClassVisitor
     : public RecursiveASTVisitor<FindNamedClassVisitor> {
 public:
   explicit FindNamedClassVisitor(ASTContext* Context) : Context(Context) {}
+
+  bool VisitArraySubscriptExpr(ArraySubscriptExpr* ase) {
+    if (Context->getSourceManager().isInMainFile(ase->getBeginLoc())) {
+      auto arr_name = ase->getBase();
+      StringRef sf_arr_name = Lexer::getSourceText(
+          CharSourceRange::getTokenRange(arr_name->getSourceRange()),
+          Context->getSourceManager(), Context->getLangOpts());
+      auto index_name = ase->getIdx();
+      StringRef sf_index_name = Lexer::getSourceText(
+          CharSourceRange::getTokenRange(index_name->getSourceRange()),
+          Context->getSourceManager(), Context->getLangOpts());
+      printf(
+          "ASSERT(%s, sizeof(%s)/sizeof(%s[0]))\n", sf_index_name.str().c_str(),
+          sf_arr_name.str().c_str(), sf_arr_name.str().c_str());
+      printf(
+          "Begins at %u\n", Context->getSourceManager().getSpellingColumnNumber(
+                                index_name->getBeginLoc()));
+    }
+
+    return true;
+  }
 
 private:
   ASTContext* Context;
