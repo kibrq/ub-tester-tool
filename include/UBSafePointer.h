@@ -14,7 +14,6 @@ public:
 
   UBSafePointer& operator=(const T*&) noexcept;
   UBSafePointer& operator=(T*&&) noexcept;
-  UBSafePointer& operator=(std::initializer_list<T> args) noexcept;
 
   T& operator*() noexcept;
   T* operator->() noexcept;
