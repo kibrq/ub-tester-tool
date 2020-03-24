@@ -19,10 +19,60 @@ static llvm::cl::OptionCategory MyToolCategory("my-tool options");
 static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static cl::extrahelp MoreHelp("\nMore help text...\n");
 
+class PointerAndArrSubstituter
+    : public RecursiveASTVisitor<PointerAndArrSubstituter> {
+public:
+  explicit PointerAndArrSubstituter(ASTContext* Context) : Context(Context) {}
+
+  bool VisitFunctionDecl(FunctionDecl* fd) {
+    if (Context->getSourceManager().isInMainFile(fd->getBeginLoc())) {
+      for (const auto& param : fd->parameters()) {
+        auto type = param->getOriginalType().getTypePtrOrNull();
+        if (type && type->isPointerType() && !type->isFunctionPointerType()) {
+          printf("Pointer in fd\n");
+        }
+      }
+    }
+    return true;
+  }
+
+  bool VisitVarDecl(VarDecl* vd) {
+    if (Context->getSourceManager().isInMainFile(vd->getBeginLoc())) {
+      auto type = vd->getType().getTypePtrOrNull();
+      if (type && ((type->isPointerType() && !type->isFunctionPointerType()) ||
+                   type->isArrayType())) {
+        printf("Pointer or array in ds\n");
+      }
+    }
+    return true;
+  }
+
+private:
+  ASTContext* Context;
+};
+
 class FindNamedClassVisitor
     : public RecursiveASTVisitor<FindNamedClassVisitor> {
 public:
   explicit FindNamedClassVisitor(ASTContext* Context) : Context(Context) {}
+
+  bool TraverseDeclStmt(DeclStmt* ds) {
+    printf("Hello\n");
+    RecursiveASTVisitor<FindNamedClassVisitor>::TraverseDeclStmt(ds);
+    if (malloced) {
+      printf("Malloced\n");
+    }
+    malloced = false;
+    return true;
+  }
+
+  bool VisitCallExpr(CallExpr* ce) {
+    if (Context->getSourceManager().isInMainFile(ce->getBeginLoc())) {
+      auto func_name = ce->getDirectCallee()->getNameInfo().getAsString();
+      malloced = true;
+    }
+    return true;
+  }
 
   bool VisitArraySubscriptExpr(ArraySubscriptExpr* ase) {
     if (Context->getSourceManager().isInMainFile(ase->getBeginLoc())) {
@@ -46,18 +96,22 @@ public:
   }
 
 private:
+  bool malloced = false;
   ASTContext* Context;
 };
 
 class FindNamedClassConsumer : public clang::ASTConsumer {
 public:
-  explicit FindNamedClassConsumer(ASTContext* Context) : Visitor(Context) {}
+  explicit FindNamedClassConsumer(ASTContext* Context)
+      : Substituter(Context), Visitor(Context) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext& Context) {
-    Visitor.TraverseDecl(Context.getTranslationUnitDecl());
+    Substituter.TraverseDecl(Context.getTranslationUnitDecl());
+    // Visitor.TraverseDecl(Context.getTranslationUnitDecl());
   }
 
 private:
+  PointerAndArrSubstituter Substituter;
   FindNamedClassVisitor Visitor;
 };
 
