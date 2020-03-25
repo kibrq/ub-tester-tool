@@ -5,6 +5,7 @@ if ( NOT DEFINED ENV{LLVM_HOME})
     message(FATAL_ERROR "$LLVM_HOME is not defined")
 else()
     message(STATUS "$LLVM_HOME found: $ENV{LLVM_HOME}")
+    set(PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
     set(LLVM_HOME $ENV{LLVM_HOME} CACHE PATH "Root of LLVM installation")
     set(LLVM_INC ${LLVM_HOME}/include)
     set(LLVM_LIB ${LLVM_HOME}/lib)
@@ -34,29 +35,11 @@ else()
 
     link_directories(${LLVM_LIBRARY_DIRS})
 
-    set(SOURCE_FILES src/LoopConvert.cpp)
-
     set(UB_EXE ub-tester)
     set(UB_INCLUDE include)
     set(UB_SRC src)
 
-    include_directories(${UB_INCLUDE})
-    set(SOURCE_FILES ${UB_SRC}/main.cpp)
+    add_subdirectory(${UB_SRC})
 
-    add_executable(${UB_EXE} ${SOURCE_FILES})
-
-    set_target_properties(${UB_EXE} PROPERTIES COMPILE_FLAGS "-fno-rtti -std=c++17")
-
-    add_definitions(${LLVM_CXXFLAGS})
-    target_compile_options(${UB_EXE} PUBLIC "-fPIC")
-
-    target_link_libraries(${UB_EXE}
-        LLVMSupport
-        clangTooling
-        clangBasic
-        clangASTMatchers
-    )
-
-  target_link_libraries(${UB_EXE} pthread z dl)
-
+    
 endif()
