@@ -9,6 +9,9 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
+#include <cassert>
+#include <sstream>
+
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
