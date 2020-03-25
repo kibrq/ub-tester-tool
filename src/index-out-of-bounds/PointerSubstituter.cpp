@@ -7,7 +7,7 @@ using namespace clang;
 
 namespace {
 std::unordered_set<std::string> allocation_functions_names_ = {
-    "malloc", "calloc", "realloc", "std::aligned_alloc"};
+    "malloc", "calloc", "realloc", "aligned_alloc"};
 }
 
 namespace ub_tester {
@@ -44,7 +44,9 @@ bool PointerSubstituter::VisitPointerType(PointerType* pt) {
 
 bool PointerSubstituter::VisitCallExpr(CallExpr* ce) {
   if (pointer_.should_visit_nodes_) {
-    printf("%s", ce->getDirectCallee()->getNameInfo().getAsString().c_str());
+    if (!Context->getSourceManager().isInMainFile(
+            ce->getDirectCallee()->getBeginLoc()))
+      printf("%s", ce->getDirectCallee()->getNameInfo().getAsString().c_str());
   }
   return true;
 }
