@@ -1,0 +1,6 @@
+Language: Cpp
+PointerAlignment: true
+AlignAfterOpenBracket: AlwaysBreak
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AlwaysBreakTemplateDeclarations: true
+BreakBeforeTernaryOperators: true
