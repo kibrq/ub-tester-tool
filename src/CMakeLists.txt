@@ -4,6 +4,8 @@ include_directories("${PROJECT_DIR}/${UB_INCLUDE}")
 
 #add_subdirectory("index-out-of-bounds")
 #set(indexOutOfBounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
+add_subdirectory("index-out-of-bounds")
+set(indexOutOfBounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
 
 
 # Insert your subdirectories here 
@@ -13,7 +15,7 @@ file(GLOB Sources "*.cpp")
 
 # Add your target here
 
-add_library(GET_TOGETHER OBJECT ${Sources})
+add_library(GET_TOGETHER OBJECT ${Sources} ${indexOutOfBounds})
 
 
 set_target_properties(GET_TOGETHER PROPERTIES COMPILE_FLAGS "-fno-rtti -std=c++17")
