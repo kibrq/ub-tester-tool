@@ -20,7 +20,6 @@ target_link_libraries(${UB_EXE}
   LLVMSupport
   clangTooling
   clangBasic
-  clangASTMatchers
   )
 
 target_link_libraries(${UB_EXE} pthread z dl)
