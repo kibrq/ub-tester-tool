@@ -9,7 +9,7 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
-#include <stdio.h>
+#include "index-out-of-bounds/SafeSubstituterConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
