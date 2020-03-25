@@ -12,11 +12,14 @@ bool CArraySubstituter::VisitFunctionDecl(FunctionDecl* fd) {
   if (Context->getSourceManager().isInMainFile(fd->getBeginLoc())) {
     for (const auto& param : fd->parameters()) {
       auto type = param->getOriginalType().getTypePtrOrNull();
-      if (type && type->isPointerType() && !type->isFunctionPointerType()) {
-        printf("Pointer in fd\n");
+      if (type && type->isArrayType()) {
+        printf("Array in function declaration\n");
       }
     }
     auto return_type = fd->getReturnType().getTypePtrOrNull();
+    if (return_type && return_type->isArrayType()) {
+      printf("Array in return stmt\n");
+    }
   }
   return true;
 }
