@@ -45,7 +45,7 @@ else()
 
     add_executable(${UB_EXE} ${SOURCE_FILES})
 
-    set_target_properties(${UB_EXE} PROPERTIES COMPILE_FLAGS "-fno-rtti")
+    set_target_properties(${UB_EXE} PROPERTIES COMPILE_FLAGS "-fno-rtti -std=c++17")
 
     add_definitions(${LLVM_CXXFLAGS})
     target_compile_options(${UB_EXE} PUBLIC "-fPIC")
