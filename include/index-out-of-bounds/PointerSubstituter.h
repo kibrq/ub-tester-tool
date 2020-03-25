@@ -8,8 +8,15 @@ class PointerSubstituter
     : public clang::RecursiveASTVisitor<PointerSubstituter> {
 public:
   explicit PointerSubstituter(clang::ASTContext* Context);
+
   bool VisitFunctionDecl(clang::FunctionDecl* fd);
-  bool VisitVarDecl(clang::VarDecl* vd);
+
+  bool VisitPointerType(clang::PointerType* pt);
+
+  bool VisitCallExpr(clang::CallExpr* ce);
+
+  bool TraverseVarDecl(clang::VarDecl* vd);
+
   bool VisitBinaryOperator(clang::BinaryOperator* bo);
 
 private:
