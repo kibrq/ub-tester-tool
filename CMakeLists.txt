@@ -41,5 +41,14 @@ else()
 
     add_subdirectory(${UB_SRC})
 
+    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER>)
+
+    target_link_libraries(${UB_EXE}
+        LLVMSupport
+        clangTooling
+        clangBasic
+        )
+
+    target_link_libraries(${UB_EXE} pthread z dl)
     
 endif()
