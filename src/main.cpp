@@ -9,6 +9,8 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
+#include <stdio.h>
+
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
