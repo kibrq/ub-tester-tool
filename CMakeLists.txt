@@ -40,8 +40,9 @@ else()
     set(UB_SRC src)
 
     add_subdirectory(${UB_SRC})
+    set(indexOutOfBounds, $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
 
-    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER>)
+    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${indexOutOfBounds})
 
     target_link_libraries(${UB_EXE}
         LLVMSupport
