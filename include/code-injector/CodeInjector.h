@@ -51,7 +51,7 @@ private:
   void increaseColumnOffsets(size_t LineNum, size_t InitPos, size_t Val = 1);
 
 private:
-  bool Closed_ = true;
+  bool Closed_;
   const clang::SourceManager* SM_;
   std::vector<std::string> FileBuffer_;
   std::vector<size_t> LineOffsets_;

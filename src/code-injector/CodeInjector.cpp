@@ -14,15 +14,20 @@ CodeInjector& CodeInjector::getInstance() {
   return Instance_;
 }
 
-CodeInjector::CodeInjector() {}
+CodeInjector::CodeInjector() : Closed_{true} {}
 CodeInjector::~CodeInjector() { closeFile(); }
 
-std::string generateOutputFilename() { return "a.out"; }
+std::string generateOutputFilename() {
+  static int cnt = 0;
+  cnt++;
+  return "a.out" + std::to_string(cnt);
+}
 
 void CodeInjector::closeFile() {
   if (Closed_)
     return;
 
+  llvm::outs() << "Close!\n";
   std::ofstream ofs(generateOutputFilename(), std::ofstream::out);
   for (const auto& line : FileBuffer_) {
     ofs << line << '\n';
