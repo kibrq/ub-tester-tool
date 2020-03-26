@@ -40,8 +40,9 @@ else()
     set(UB_SRC src)
 
     add_subdirectory(${UB_SRC})
+    set(code-injector $<TARGET_OBJECTS:CODE_INJECTOR>)
 
-    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER>)
+    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${code-injector})
 
     target_link_libraries(${UB_EXE}
         LLVMSupport
