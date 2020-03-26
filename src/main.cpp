@@ -25,7 +25,7 @@ public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
     std::unique_ptr<ASTConsumer> consumer1 =
-        std::make_unique<SubstituterConsumer>(Compiler.getASTContext());
+        std::make_unique<SubstituterConsumer>(&Compiler.getASTContext());
     // Create your consumers here
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
