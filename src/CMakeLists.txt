@@ -1,9 +1,8 @@
-
 add_definitions(${LLVM_CXXFLAGS})
 include_directories("${PROJECT_DIR}/${UB_INCLUDE}")
 
-#add_subdirectory("index-out-of-bounds")
-#set(indexOutOfBounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
+add_subdirectory("arithmetic-overflow")
+set(arithmetic-overflow $<TARGET_OBJECTS:ARITHMETIC_OVERFLOW>)
 
 
 # Insert your subdirectories here 

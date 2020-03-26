@@ -12,4 +12,14 @@ std::string getExprAsString(const Expr* ex, const ASTContext* Context) {
       .str();
 }
 
+std::string getExprLineNCol(const Expr* Expression, const ASTContext* Context) {
+  FullSourceLoc FullLocation = Context->getFullLoc(Expression->getBeginLoc());
+  std::stringstream res;
+  res << FullLocation.getSpellingLineNumber() << ":"
+      << FullLocation.getSpellingColumnNumber();
+  if (FullLocation.isValid())
+    return res.str();
+  return "invalid location";
+}
+
 } // namespace ub_tester
