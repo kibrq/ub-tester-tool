@@ -1,8 +1,7 @@
 #pragma once
 
-#include "clang/Basic/SourceManager.h"
-
 #include <cstddef>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -10,52 +9,56 @@ namespace ub_tester {
 
 class CodeInjector {
 public:
-  static CodeInjector& getInstance();
+  explicit CodeInjector() = default;
+
+  explicit CodeInjector(const std::string& Filename);
 
   CodeInjector(const CodeInjector& other) = delete;
+
   CodeInjector& operator=(const CodeInjector& other) = delete;
+
   CodeInjector(CodeInjector&& other) = delete;
+
   CodeInjector& operator=(CodeInjector&& other) = delete;
+
   ~CodeInjector();
 
-  void openFile(const clang::SourceManager* SM);
   void openFile(const std::string& Filename);
 
-  void closeFile();
+  void closeFile(const std::string& Filename);
 
-  CodeInjector& substituteInOneLine(
-      size_t LineNum, size_t Begin, size_t End,
-      const std::string& Substitution);
+  CodeInjector& eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length);
 
-  CodeInjector& substitute(
-      size_t LineBegin, size_t ColumnBegin, size_t LineEnd, size_t ColumnEnd,
-      const std::string& Substitution);
+  CodeInjector& insertSubstringAfter(
+      size_t LineNum, size_t BeginPos, const std::string& Substring);
 
-  CodeInjector& substitute(
-      const clang::SourceLocation& Begin, const clang::SourceLocation& End,
-      const std::string& Substitution);
+  CodeInjector& insertSubstringBefore(
+      size_t LineNum, size_t BeginPos, const std::string& Substring);
 
   CodeInjector& insertLineAfter(size_t LineNum, const std::string& Line);
 
   CodeInjector& insertLineBefore(size_t LineNum, const std::string& Line);
 
-  CodeInjector&
-  insertLineAfter(const clang::SourceLocation& Loc, const std::string& Line);
+  CodeInjector& substituteSubline(
+      size_t LineNum, size_t BeginPos, size_t Length,
+      const std::string& Substr);
 
-  CodeInjector&
-  insertLineBefore(const clang::SourceLocation& Loc, const std::string& Line);
+  CodeInjector& substitute(
+      size_t BeginLine, size_t BeginPos, const std::string& SourceFormat,
+      const std::string& OutputFormat, const std::vector<std::string>& Args);
 
 private:
-  explicit CodeInjector();
-  void increaseLineOffsets(size_t InitPos, size_t Val = 1);
-  void increaseColumnOffsets(size_t LineNum, size_t InitPos, size_t Val = 1);
+  char get(size_t LineNum, size_t ColumnNum);
+  size_t transformLineNum(size_t LineNum);
+  size_t transformColumnNum(size_t LineNum, size_t ColumnNum);
+  void changeLineOffsets(size_t InitPos, int Val = 1);
+  void changeColumnOffsets(size_t LineNum, size_t InitPos, int Val = 1);
 
 private:
   bool Closed_;
-  const clang::SourceManager* SM_;
   std::vector<std::string> FileBuffer_;
-  std::vector<size_t> LineOffsets_;
-  std::vector<std::vector<size_t>> ColumnOffsets_;
+  std::vector<int> LineOffsets_;
+  std::vector<std::vector<int>> ColumnOffsets_;
 };
 
 } // namespace ub_tester

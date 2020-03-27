@@ -1,34 +1,22 @@
 #include "code-injector/CodeInjector.h"
-#include "clang/Basic/SourceManager.h"
 
 #include <cassert>
 #include <fstream>
 #include <sstream>
 
-using namespace clang;
-
 namespace ub_tester {
 
-CodeInjector& CodeInjector::getInstance() {
-  static CodeInjector Instance_;
-  return Instance_;
+CodeInjector::CodeInjector(const std::string& Filename) : CodeInjector() {
+  openFile(Filename);
 }
 
-CodeInjector::CodeInjector() : Closed_{true} {}
-CodeInjector::~CodeInjector() { closeFile(); }
+CodeInjector::~CodeInjector() { closeFile("b.out"); }
 
-std::string generateOutputFilename() {
-  static int cnt = 0;
-  cnt++;
-  return "a.out" + std::to_string(cnt);
-}
-
-void CodeInjector::closeFile() {
+void CodeInjector::closeFile(const std::string& Filename) {
   if (Closed_)
     return;
 
-  llvm::outs() << "Close!\n";
-  std::ofstream ofs(generateOutputFilename(), std::ofstream::out);
+  std::ofstream ofs(Filename, std::ofstream::out);
   for (const auto& line : FileBuffer_) {
     ofs << line << '\n';
   }
@@ -41,7 +29,7 @@ void CodeInjector::closeFile() {
 
 void CodeInjector::openFile(const std::string& Filename) {
   if (!Closed_) {
-    closeFile();
+    closeFile("b.out");
   }
   std::ifstream ins(Filename, std::ifstream::in);
   if (!ins.good()) {
@@ -57,31 +45,46 @@ void CodeInjector::openFile(const std::string& Filename) {
   Closed_ = false;
 }
 
-void CodeInjector::openFile(const SourceManager* SM) {
-  SM_ = SM;
-  std::string filename =
-      SM_->getFilename(SM_->getLocForStartOfFile(SM_->getMainFileID())).str();
-  openFile(filename);
+char CodeInjector::get(size_t LineNum, size_t ColumnNum) {
+  return FileBuffer_[transformLineNum(LineNum)]
+                    [transformColumnNum(LineNum, ColumnNum)];
 }
 
-void CodeInjector::increaseLineOffsets(size_t InitPos, size_t Val) {
+size_t CodeInjector::transformLineNum(size_t LineNum) {
+  return LineNum + LineOffsets_[LineNum];
+}
+
+size_t CodeInjector::transformColumnNum(size_t LineNum, size_t ColumnNum) {
+  return ColumnNum + ColumnOffsets_[LineNum][ColumnNum];
+}
+
+void CodeInjector::changeLineOffsets(size_t InitPos, int Val) {
   for (size_t Pos = InitPos; Pos < LineOffsets_.size(); Pos++) {
     LineOffsets_[Pos] += Val;
   }
 }
 
-void CodeInjector::increaseColumnOffsets(
-    size_t LineNum, size_t InitPos, size_t Val) {
+void CodeInjector::changeColumnOffsets(
+    size_t LineNum, size_t InitPos, int Val) {
   for (size_t Pos = InitPos; Pos < ColumnOffsets_[LineNum].size(); Pos++) {
     ColumnOffsets_[LineNum][Pos] += Val;
   }
 }
 
 CodeInjector&
+CodeInjector::eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length) {
+
+  FileBuffer_[transformLineNum(LineNum)].erase(
+      transformColumnNum(LineNum, BeginPos), Length);
+
+  changeColumnOffsets(LineNum, BeginPos + Length, -Length);
+  return *this;
+}
+
+CodeInjector&
 CodeInjector::insertLineBefore(size_t LineNum, const std::string& Line) {
-  size_t NewLineNum = LineNum + LineOffsets_[LineNum];
-  FileBuffer_.insert(FileBuffer_.begin() + NewLineNum, Line);
-  increaseLineOffsets(LineNum);
+  FileBuffer_.insert(FileBuffer_.begin() + transformLineNum(LineNum), Line);
+  changeLineOffsets(LineNum, 1);
   return *this;
 }
 
@@ -90,65 +93,72 @@ CodeInjector::insertLineAfter(size_t LineNum, const std::string& Line) {
   return insertLineBefore(LineNum + 1, Line);
 }
 
-CodeInjector& CodeInjector::insertLineBefore(
-    const SourceLocation& Loc, const std::string& Line) {
-  return insertLineBefore(SM_->getSpellingLineNumber(Loc), Line);
-}
+CodeInjector& CodeInjector::insertSubstringBefore(
+    size_t LineNum, size_t BeginPos, const std::string& Substring) {
 
-CodeInjector& CodeInjector::insertLineAfter(
-    const SourceLocation& Loc, const std::string& Line) {
-  return insertLineAfter(SM_->getSpellingLineNumber(Loc), Line);
-}
+  FileBuffer_[transformLineNum(LineNum)].insert(
+      transformColumnNum(LineNum, BeginPos), Substring);
 
-CodeInjector& CodeInjector::substituteInOneLine(
-    size_t LineNum, size_t Begin, size_t End, const std::string& Substitution) {
-  size_t NewLineNum = LineNum + LineOffsets_[LineNum];
-  size_t NewBegin = Begin + ColumnOffsets_[LineNum][Begin];
-  size_t NewEnd = End + ColumnOffsets_[LineNum][End];
-  FileBuffer_[NewLineNum].erase(NewBegin, End - Begin);
-  FileBuffer_[NewLineNum].insert(NewBegin, Substitution);
-  increaseColumnOffsets(LineNum, Begin, Substitution.length() - (End - Begin));
+  changeColumnOffsets(LineNum, BeginPos, Substring.length());
   return *this;
 }
 
+CodeInjector& CodeInjector::insertSubstringAfter(
+    size_t LineNum, size_t BeginPos, const std::string& Substring) {
+  return insertSubstringBefore(LineNum, BeginPos + 1, Substring);
+}
+
+CodeInjector& CodeInjector::substituteSubline(
+    size_t LineNum, size_t BeginPos, size_t Length,
+    const std::string& Substring) {
+  return eraseSubstring(LineNum, BeginPos, Length)
+      .insertSubstringBefore(LineNum, BeginPos, Substring);
+}
+
 CodeInjector& CodeInjector::substitute(
-    size_t LineBegin, size_t ColumnBegin, size_t LineEnd, size_t ColumnEnd,
-    const std::string& Substitution) {
+    size_t BeginLine, size_t BeginPos, const std::string& SourceFormat,
+    const std::string& OutputFormat, const std::vector<std::string>& Args) {
 
-  assert(LineBegin <= LineEnd);
+  size_t CurArg = 0;
+  size_t CurFormatPos = 0;
+  size_t CurSourcePos = BeginPos, CurSourceBegin = BeginPos;
+  size_t CurOutputPos = 0, CurOutputBegin = 0;
 
-  if (LineBegin == LineEnd) {
-    return substituteInOneLine(LineBegin, ColumnBegin, ColumnEnd, Substitution);
-  }
+  for (const char& FormatChar : SourceFormat) {
 
-  std::stringstream SS(Substitution);
+    if (FormatChar == get(BeginLine, CurSourcePos)) {
+      CurSourcePos++;
+      continue;
+    }
 
-  for (size_t LineNum = LineBegin; LineNum <= LineEnd; LineNum++) {
-    std::string Line;
-    assert(!SS.eof());
-    std::getline(SS, Line);
-    if (LineNum != LineBegin && LineNum != LineEnd) {
-      substituteInOneLine(LineNum, 0, FileBuffer_[LineNum].length(), Line);
-    } else if (LineNum == LineBegin) {
-      substituteInOneLine(
-          LineNum, ColumnBegin, FileBuffer_[LineNum].length(), Line);
-    } else {
-      substituteInOneLine(LineNum, 0, ColumnEnd, Line);
+    if (FormatChar == '%') {
+      while (OutputFormat[CurOutputPos] != '%') {
+        CurOutputPos++;
+      }
+      substituteSubline(
+          BeginLine, CurSourceBegin, CurSourcePos - CurSourceBegin,
+          OutputFormat.substr(CurOutputBegin, CurOutputPos - CurOutputBegin));
+      CurOutputPos++;
+      CurOutputBegin = CurOutputPos;
+
+      size_t LastOffset = 0;
+      for (const char& Ch : Args[CurArg++]) {
+        if (Ch == '\n') {
+          CurSourcePos = LastOffset = 0;
+          BeginLine++;
+        } else {
+          LastOffset++;
+        }
+      }
+      CurSourcePos += LastOffset;
+      CurSourceBegin = CurSourcePos++;
     }
   }
-  return *this;
-}
 
-CodeInjector& CodeInjector::substitute(
-    const SourceLocation& Begin, const SourceLocation& End,
-    const std::string& Substitution) {
-
-  size_t LineBegin = SM_->getSpellingLineNumber(Begin);
-  size_t LineEnd = SM_->getSpellingLineNumber(End) + 1;
-  size_t ColumnBegin = SM_->getSpellingColumnNumber(Begin);
-  size_t ColumnEnd = SM_->getSpellingColumnNumber(End) + 1;
-
-  return substitute(LineBegin, ColumnBegin, LineEnd, ColumnEnd, Substitution);
+  return substituteSubline(
+      BeginLine, CurSourceBegin,
+      SourceFormat.back() == '%' ? 0 : CurSourcePos - CurSourceBegin,
+      OutputFormat.substr(CurOutputBegin));
 }
 
 } // namespace ub_tester

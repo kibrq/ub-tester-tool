@@ -22,6 +22,7 @@ class UBTesterAction : public clang::ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+
     // std::unique_ptr<ASTConsumer> consumer1 =
     //    std::make_unique<SomeConsumer>(Compiler.getASTContext());
     // Create your consumers here
