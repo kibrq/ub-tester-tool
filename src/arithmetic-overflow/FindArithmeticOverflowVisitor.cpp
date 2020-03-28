@@ -20,11 +20,18 @@ bool FindArithmeticOverflowVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
     OperationName = "Diff";
   else if (BinopName == "*")
     OperationName = "Mul";
-  else
+  else if (BinopName == "/")
+    OperationName = "Div";
+  else if (BinopName == "<<")
+    OperationName = "BitShiftLeft";
+  else // % and >> is not supported yet
     return true;
 
   QualType BinopType = Binop->getType();
   assert(BinopType.isTrivialType(*Context)); // is FundamentalType?
+  if (BinopType.getTypePtr()
+          ->isFloatingType()) // we don't support floating types yet
+    return true;
 
   Expr* Lhs = Binop->getLHS();
   Expr* Rhs = Binop->getRHS();
