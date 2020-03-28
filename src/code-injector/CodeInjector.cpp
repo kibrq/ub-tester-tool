@@ -10,15 +10,20 @@ CodeInjector::CodeInjector(const std::string& Filename) : CodeInjector() {
   openFile(Filename);
 }
 
-CodeInjector::~CodeInjector() { closeFile("b.out"); }
+void CodeInjector::setOutputFilename(std::string OutputFilename) {
+  OutputFilename_ = OutputFilename;
+}
 
-void CodeInjector::closeFile(const std::string& Filename) {
+CodeInjector::~CodeInjector() { closeFile(); }
+
+void CodeInjector::closeFile() {
   if (Closed_)
     return;
 
-  std::ofstream ofs(Filename, std::ofstream::out);
+  std::ofstream ofs(OutputFilename_, std::ofstream::out);
+
   for (const auto& line : FileBuffer_) {
-    ofs << line << '\n';
+    ofs << line << std::endl;
   }
 
   FileBuffer_.clear();
@@ -29,7 +34,7 @@ void CodeInjector::closeFile(const std::string& Filename) {
 
 void CodeInjector::openFile(const std::string& Filename) {
   if (!Closed_) {
-    closeFile("b.out");
+    closeFile();
   }
   std::ifstream ins(Filename, std::ifstream::in);
   if (!ins.good()) {

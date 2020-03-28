@@ -13,6 +13,8 @@ public:
 
   explicit CodeInjector(const std::string& Filename);
 
+  void setOutputFilename(std::string OutputFilename);
+
   CodeInjector(const CodeInjector& other) = delete;
 
   CodeInjector& operator=(const CodeInjector& other) = delete;
@@ -25,9 +27,7 @@ public:
 
   void openFile(const std::string& Filename);
 
-  void closeFile(const std::string& Filename);
-
-  CodeInjector& eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length);
+  void closeFile();
 
   CodeInjector& insertSubstringAfter(
       size_t LineNum, size_t BeginPos, const std::string& Substring);
@@ -50,6 +50,7 @@ public:
       std::string OutputFormat, const std::vector<std::string>& Args);
 
 private:
+  CodeInjector& eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length);
   char get(size_t LineNum, size_t ColumnNum);
   size_t transformLineNum(size_t LineNum);
   size_t transformColumnNum(size_t LineNum, size_t ColumnNum);
@@ -59,6 +60,7 @@ private:
 
 private:
   bool Closed_;
+  std::string OutputFilename_;
   std::vector<std::string> FileBuffer_;
   std::vector<int> LineOffsets_;
   std::vector<std::vector<int>> ColumnOffsets_;
