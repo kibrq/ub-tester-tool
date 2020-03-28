@@ -9,6 +9,8 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
+#include "ASTFrontendInjector.h"
+
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
@@ -22,6 +24,9 @@ class UBTesterAction : public clang::ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+
+    ASTFrontendInjector::getInstance().addFile(
+        Compiler.getASTContext().getSourceManager());
 
     // std::unique_ptr<ASTConsumer> consumer1 =
     //    std::make_unique<SomeConsumer>(Compiler.getASTContext());

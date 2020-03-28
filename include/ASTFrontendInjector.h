@@ -9,23 +9,37 @@
 
 namespace ub_tester {
 
+using SubArgs = std::vector<std::string>;
+
 class ASTFrontendInjector {
 public:
-  void addFile(const clang::SourceManager* SM);
+  static ASTFrontendInjector& getInstance();
 
-  void
-  insertLineBefore(const clang::SourceLocation& Loc, const std::string& Line);
-  void
-  insertLineAfter(const clang::SourceLocation& Loc, const std::string& Line);
+  ASTFrontendInjector(const ASTFrontendInjector& other) = delete;
+  ASTFrontendInjector(ASTFrontendInjector&& other) = delete;
+  ASTFrontendInjector& operator=(const ASTFrontendInjector& other) = delete;
+  ASTFrontendInjector& operator=(ASTFrontendInjector&& other) = delete;
+
+  void addFile(const clang::SourceManager& SM);
+
+  void insertLineBefore(
+      const clang::SourceManager& SM, const clang::SourceLocation& Loc,
+      const std::string& Line);
+  void insertLineAfter(
+      const clang::SourceManager& SM, const clang::SourceLocation& Loc,
+      const std::string& Line);
 
   // Formats must have equal count of %.
-  // substitute(Loc, "%s+%s", "AssertSum(%s,%s)");
+  // substitute(Loc, "%+%", "AssertSum(%, %)");
   void substitute(
-      const clang::SourceLocation& BeginLoc, const std::string& SourceFormat,
-      const std::string& SubstitutedFormat, std::vector<std::string> Args);
+      const clang::SourceManager& SM, const clang::SourceLocation& BeginLoc,
+      const std::string& SourceFormat, const std::string& SubstitutionFormat,
+      const SubArgs& Args);
 
 private:
-  const clang::SourceManager* SM_;
+  explicit ASTFrontendInjector() = default;
+
+private:
   std::unordered_map<std::string, CodeInjector> Files_;
 };
 

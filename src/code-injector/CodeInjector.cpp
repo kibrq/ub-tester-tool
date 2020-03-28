@@ -108,57 +108,66 @@ CodeInjector& CodeInjector::insertSubstringAfter(
   return insertSubstringBefore(LineNum, BeginPos + 1, Substring);
 }
 
-CodeInjector& CodeInjector::substituteSubline(
+CodeInjector& CodeInjector::substituteSubstring(
     size_t LineNum, size_t BeginPos, size_t Length,
     const std::string& Substring) {
   return eraseSubstring(LineNum, BeginPos, Length)
       .insertSubstringBefore(LineNum, BeginPos, Substring);
 }
 
-CodeInjector& CodeInjector::substitute(
-    size_t BeginLine, size_t BeginPos, const std::string& SourceFormat,
-    const std::string& OutputFormat, const std::vector<std::string>& Args) {
-
-  size_t CurArg = 0;
-  size_t CurFormatPos = 0;
-  size_t CurSourcePos = BeginPos, CurSourceBegin = BeginPos;
-  size_t CurOutputPos = 0, CurOutputBegin = 0;
-
-  for (const char& FormatChar : SourceFormat) {
-
-    if (FormatChar == get(BeginLine, CurSourcePos)) {
-      CurSourcePos++;
-      continue;
+void CodeInjector::findFirstEntry(size_t& LineNum, size_t& CurPos, char Char) {
+  while (get(LineNum, CurPos) != Char) {
+    CurPos++;
+    if (CurPos >= ColumnOffsets_[LineNum].size()) {
+      CurPos = 0, LineNum++;
     }
+  }
+}
 
-    if (FormatChar == '%') {
-      while (OutputFormat[CurOutputPos] != '%') {
-        CurOutputPos++;
-      }
-      substituteSubline(
-          BeginLine, CurSourceBegin, CurSourcePos - CurSourceBegin,
-          OutputFormat.substr(CurOutputBegin, CurOutputPos - CurOutputBegin));
+CodeInjector& CodeInjector::substitute(
+    size_t BeginLine, size_t BeginPos, std::string SourceFormat,
+    std::string OutputFormat, const std::vector<std::string>& Args) {
+  SourceFormat += '%';
+  OutputFormat += '%';
+  size_t CurArg = 0;
+  size_t CurSourceBegin = BeginPos, CurSourcePos = BeginPos;
+  size_t CurOutputBegin = 0, CurOutputPos = 0;
+  size_t CurFormatPos = 0;
+
+  while (1) {
+    while (get(BeginLine, CurSourcePos) == SourceFormat[CurFormatPos]) {
+      CurSourcePos++, CurFormatPos++;
+    }
+    assert(SourceFormat[CurFormatPos] == '%');
+    while (OutputFormat[CurOutputPos] != '%') {
       CurOutputPos++;
-      CurOutputBegin = CurOutputPos;
+    }
+    substituteSubstring(
+        BeginLine, CurSourceBegin, CurSourcePos - CurSourceBegin,
+        OutputFormat.substr(CurOutputBegin, CurOutputPos - CurOutputBegin));
+    CurOutputBegin = ++CurOutputPos;
 
-      size_t LastOffset = 0;
-      for (const char& Ch : Args[CurArg++]) {
-        if (Ch == '\n') {
-          CurSourcePos = LastOffset = 0;
-          BeginLine++;
+    if (CurArg < Args.size()) {
+      findFirstEntry(BeginLine, CurSourcePos, Args[CurArg][0]);
+      for (const char& ArgChar : Args[CurArg]) {
+        if (ArgChar == '\n') {
+          CurSourcePos = 0, BeginLine++;
         } else {
-          LastOffset++;
+          assert(get(BeginLine, CurSourcePos) == ArgChar);
+          CurSourcePos++;
         }
       }
-      CurSourcePos += LastOffset;
-      CurSourceBegin = CurSourcePos++;
+      CurFormatPos++;
+      if (SourceFormat[CurFormatPos] != '%') {
+        findFirstEntry(BeginLine, CurSourcePos, SourceFormat[CurFormatPos]);
+      }
+      CurSourceBegin = CurSourcePos;
+      CurArg++;
+    } else {
+      break;
     }
   }
 
-  return substituteSubline(
-      BeginLine, CurSourceBegin,
-      SourceFormat.back() == '%' ? 0 : CurSourcePos - CurSourceBegin,
-      OutputFormat.substr(CurOutputBegin));
+  return *this;
 }
-
 } // namespace ub_tester
