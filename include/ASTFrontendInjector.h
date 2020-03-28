@@ -25,6 +25,7 @@ public:
   void insertLineBefore(
       const clang::SourceManager& SM, const clang::SourceLocation& Loc,
       const std::string& Line);
+
   void insertLineAfter(
       const clang::SourceManager& SM, const clang::SourceLocation& Loc,
       const std::string& Line);

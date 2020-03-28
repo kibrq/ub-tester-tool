@@ -9,12 +9,25 @@ ASTFrontendInjector& ASTFrontendInjector::getInstance() {
   return Injector;
 }
 
+namespace {
+std::string generateOutputFilename(std::string Filename) {
+  for (size_t i = Filename.length(); i > 0; i--) {
+    if (Filename[i - 1] == '/') {
+      Filename.insert(i, "IMPROVED_");
+      break;
+    }
+  }
+  return Filename;
+}
+} // namespace
+
 void ASTFrontendInjector::addFile(const SourceManager& SM) {
   std::string Filename =
       SM.getFilename(SM.getLocForStartOfFile(SM.getMainFileID())).str();
-  CodeInjector Injector(Filename);
   Files_.emplace(
       Filename, Filename); // Constructs CodeInjectr from Filename in-place
+  Files_[Filename].setOutputFilename(generateOutputFilename(Filename));
+  llvm::outs() << generateOutputFilename(Filename) << '\n';
 }
 
 void ASTFrontendInjector::insertLineBefore(
@@ -36,7 +49,7 @@ void ASTFrontendInjector::insertLineAfter(
 void ASTFrontendInjector::substitute(
     const SourceManager& SM, const SourceLocation& Loc,
     const std::string& SourceFormat, const std::string& OutputFormat,
-    const std::vector<std::string>& Args) {
+    const SubArgs& Args) {
   std::string Filename = SM.getFilename(Loc).str();
   CodeInjector& Injector = Files_[Filename];
   size_t LineNum = SM.getSpellingLineNumber(Loc);
