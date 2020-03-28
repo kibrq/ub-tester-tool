@@ -37,6 +37,21 @@ public:
       const std::string& SourceFormat, const std::string& SubstitutionFormat,
       const SubArgs& Args);
 
+  // These functions suppose that this range contains on one Line and you won't
+  // handle this range anymore
+
+  void substituteSubstring(
+      const clang::SourceManager& SM, const clang::SourceLocation& Begin,
+      const clang::SourceLocation& End, const std::string& Substitution);
+
+  void substituteSubstring(
+      const clang::SourceManager& SM, const clang::CharSourceRange& Range,
+      const std::string& Substitution);
+
+  void substituteSubstring(
+      const clang::SourceManager& SM, const clang::SourceRange& Range,
+      const std::string& Substitution);
+
 private:
   explicit ASTFrontendInjector() = default;
 

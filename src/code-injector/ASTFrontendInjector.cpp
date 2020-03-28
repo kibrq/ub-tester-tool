@@ -19,6 +19,14 @@ std::string generateOutputFilename(std::string Filename) {
   }
   return Filename;
 }
+
+size_t getLine(const SourceManager& SM, const SourceLocation& Loc) {
+  return SM.getSpellingLineNumber(Loc) - 1;
+}
+
+size_t getCol(const SourceManager& SM, const SourceLocation& Loc) {
+  return SM.getSpellingColumnNumber(Loc) - 1;
+}
 } // namespace
 
 void ASTFrontendInjector::addFile(const SourceManager& SM) {
@@ -34,7 +42,7 @@ void ASTFrontendInjector::insertLineBefore(
     const SourceManager& SM, const SourceLocation& Loc,
     const std::string& Line) {
   std::string Filename = SM.getFilename(Loc).str();
-  size_t LineNum = SM.getSpellingLineNumber(Loc);
+  size_t LineNum = getLine(SM, Loc);
   Files_[Filename].insertLineBefore(LineNum, Line);
 }
 
@@ -42,7 +50,7 @@ void ASTFrontendInjector::insertLineAfter(
     const SourceManager& SM, const SourceLocation& Loc,
     const std::string& Line) {
   std::string Filename = SM.getFilename(Loc).str();
-  size_t LineNum = SM.getSpellingLineNumber(Loc);
+  size_t LineNum = getLine(SM, Loc);
   Files_[Filename].insertLineAfter(LineNum, Line);
 }
 
@@ -52,10 +60,35 @@ void ASTFrontendInjector::substitute(
     const SubArgs& Args) {
   std::string Filename = SM.getFilename(Loc).str();
   CodeInjector& Injector = Files_[Filename];
-  size_t LineNum = SM.getSpellingLineNumber(Loc);
-  size_t BeginPos = SM.getSpellingColumnNumber(Loc);
+  size_t LineNum = getLine(SM, Loc);
+  size_t BeginPos = getCol(SM, Loc);
   Files_[Filename].substitute(
       LineNum, BeginPos, SourceFormat, OutputFormat, Args);
+}
+
+void ASTFrontendInjector::substituteSubstring(
+    const SourceManager& SM, const SourceLocation& Begin,
+    const SourceLocation& End, const std::string& Substitution) {
+  std::string Filename = SM.getFilename(Begin).str();
+  size_t LineNumBegin = getLine(SM, Begin);
+  size_t LineNumEnd = getLine(SM, End);
+  assert(LineNumEnd == LineNumBegin);
+  size_t ColBegin = getCol(SM, Begin);
+  size_t ColEnd = getCol(SM, End);
+  Files_[Filename].substituteSubstring(
+      LineNumBegin, ColBegin, ColEnd - ColBegin + 1, Substitution);
+}
+
+void ASTFrontendInjector::substituteSubstring(
+    const SourceManager& SM, const SourceRange& Range,
+    const std::string& Substitution) {
+  substituteSubstring(SM, Range.getBegin(), Range.getEnd(), Substitution);
+}
+
+void ASTFrontendInjector::substituteSubstring(
+    const SourceManager& SM, const CharSourceRange& Range,
+    const std::string& Substitution) {
+  substituteSubstring(SM, Range.getBegin(), Range.getEnd(), Substitution);
 }
 
 } // namespace ub_tester
