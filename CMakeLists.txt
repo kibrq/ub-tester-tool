@@ -40,8 +40,9 @@ else()
     set(UB_SRC src)
 
     add_subdirectory(${UB_SRC})
+    set(uninit-variables $<TARGET_OBJECTS:UNINIT_VARIABLES>)
 
-    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER>)
+    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${uninit-variables})
 
     target_link_libraries(${UB_EXE}
         LLVMSupport
