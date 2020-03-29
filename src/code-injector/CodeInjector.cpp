@@ -10,10 +10,6 @@ CodeInjector::CodeInjector(const std::string& Filename) : CodeInjector() {
   openFile(Filename);
 }
 
-void CodeInjector::setOutputFilename(std::string OutputFilename) {
-  OutputFilename_ = OutputFilename;
-}
-
 CodeInjector::~CodeInjector() { closeFile(); }
 
 void CodeInjector::closeFile() {
@@ -21,15 +17,18 @@ void CodeInjector::closeFile() {
     return;
 
   std::ofstream ofs(OutputFilename_, std::ofstream::out);
-
   for (const auto& line : FileBuffer_) {
-    ofs << line << std::endl;
+    ofs << line << '\n';
   }
 
   FileBuffer_.clear();
   LineOffsets_.clear();
   ColumnOffsets_.clear();
   Closed_ = true;
+}
+
+void CodeInjector::setOutputFilename(const std::string& OutputFilename){
+  OutputFilename_ = OutputFilename;
 }
 
 void CodeInjector::openFile(const std::string& Filename) {
@@ -79,10 +78,17 @@ void CodeInjector::changeColumnOffsets(
 CodeInjector&
 CodeInjector::eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length) {
 
-  FileBuffer_[transformLineNum(LineNum)].erase(
-      transformColumnNum(LineNum, BeginPos), Length);
+  size_t i = 0;
+  for (; BeginPos + i < ColumnOffsets_[LineNum].size(); i++) {
+    if (get(LineNum, BeginPos + i) != ' ') {
+      break;
+    }
+  }
 
-  changeColumnOffsets(LineNum, BeginPos + Length, -Length);
+  FileBuffer_[transformLineNum(LineNum)].erase(
+      transformColumnNum(LineNum, BeginPos + i), Length - i);
+
+  changeColumnOffsets(LineNum, BeginPos + Length, -Length + i);
   return *this;
 }
 
@@ -113,11 +119,26 @@ CodeInjector& CodeInjector::insertSubstringAfter(
   return insertSubstringBefore(LineNum, BeginPos + 1, Substring);
 }
 
+CodeInjector& CodeInjector::eraseLine(size_t LineNum) {
+  FileBuffer_.erase(FileBuffer_.begin() + transformLineNum(LineNum));
+  changeLineOffsets(LineNum, -1);
+  return *this;
+}
+
 CodeInjector& CodeInjector::substituteSubstring(
-    size_t LineNum, size_t BeginPos, size_t Length,
+    size_t BeginLine, size_t BeginPos, size_t EndLine, size_t EndPos,
     const std::string& Substring) {
-  return eraseSubstring(LineNum, BeginPos, Length)
-      .insertSubstringBefore(LineNum, BeginPos, Substring);
+  eraseSubstring(
+      BeginLine, BeginPos,
+      BeginLine == EndLine ? EndPos - BeginPos
+                           : ColumnOffsets_[BeginLine].size() - BeginPos);
+  insertSubstringBefore(BeginLine, BeginPos, Substring);
+  BeginLine++;
+  for (; BeginLine < EndLine; BeginLine++) {
+    eraseLine(BeginLine);
+  }
+
+  return eraseSubstring(EndLine, 0, EndPos);
 }
 
 void CodeInjector::findFirstEntry(size_t& LineNum, size_t& CurPos, char Char) {
@@ -148,7 +169,7 @@ CodeInjector& CodeInjector::substitute(
       CurOutputPos++;
     }
     substituteSubstring(
-        BeginLine, CurSourceBegin, CurSourcePos - CurSourceBegin,
+        BeginLine, CurSourceBegin, BeginLine, CurSourcePos - CurSourceBegin,
         OutputFormat.substr(CurOutputBegin, CurOutputPos - CurOutputBegin));
     CurOutputBegin = ++CurOutputPos;
 

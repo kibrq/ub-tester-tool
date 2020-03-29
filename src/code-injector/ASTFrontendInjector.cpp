@@ -72,11 +72,10 @@ void ASTFrontendInjector::substituteSubstring(
   std::string Filename = SM.getFilename(Begin).str();
   size_t LineNumBegin = getLine(SM, Begin);
   size_t LineNumEnd = getLine(SM, End);
-  assert(LineNumEnd == LineNumBegin);
   size_t ColBegin = getCol(SM, Begin);
   size_t ColEnd = getCol(SM, End);
   Files_[Filename].substituteSubstring(
-      LineNumBegin, ColBegin, ColEnd - ColBegin + 1, Substitution);
+      LineNumBegin, ColBegin, LineNumEnd, ColEnd, Substitution);
 }
 
 void ASTFrontendInjector::substituteSubstring(
