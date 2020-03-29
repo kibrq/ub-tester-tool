@@ -1,11 +1,18 @@
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include <limits>
 
 // lhs and rhs can be put in Assert-functions as strings to improve error-log
 #define ASSERT_OVERFLOW(operation, lhs, rhs, type)                             \
   Assert##operation<type>((lhs), (rhs), #type, __FILE__, __LINE__)
+
+#define OVERFLOW_ASSERT_FAILED                                                 \
+  if (!std::numeric_limits<T>::is_signed)                                      \
+    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING_CODE);                              \
+  else                                                                         \
+    ASSERT_FAILED(OVERFLOW_EXIT_CODE)
 
 #define ASSERT_FAILED(exitCode) /*exit(exitCode)*/ return 0 // for testing
 #define PUSH_WARNING(warningCode) std::cerr << "Warning has been generated.\n"
@@ -18,7 +25,9 @@ namespace ub_tester {
 constexpr int OVERFLOW_EXIT_CODE = -1;
 constexpr int DIVISION_BY_ZERO_EXIT_CODE = -2;
 constexpr int INVALID_BIT_SHIFT_RHS_EXIT_CODE = -3;
-constexpr int UNDERFLOW_WARNING_CODE = -4; // isn't supported for now
+
+constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -4;
+constexpr int UNDERFLOW_WARNING_CODE = -5; // isn't supported for now
 
 template <typename T>
 T AssertSum(
@@ -28,13 +37,13 @@ T AssertSum(
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
               << "\nlog: " << +lhs << " + " << +rhs << " > "
               << +std::numeric_limits<T>::max() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+    OVERFLOW_ASSERT_FAILED;
   }
   if (rhs < 0 && lhs < std::numeric_limits<T>::lowest() - rhs) {
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
               << "\nlog: " << +lhs << " + " << +rhs << " < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+    OVERFLOW_ASSERT_FAILED;
   }
   return lhs + rhs;
 }
@@ -47,35 +56,15 @@ T AssertDiff(
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
               << "\nlog: " << +lhs << " - " << +rhs << " < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+    OVERFLOW_ASSERT_FAILED;
   }
   if (rhs < 0 && lhs > std::numeric_limits<T>::max() + rhs) {
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
               << "\nlog: " << +lhs << " - " << +rhs << " > "
               << +std::numeric_limits<T>::max() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+    OVERFLOW_ASSERT_FAILED;
   }
   return lhs - rhs;
-}
-
-template <typename T>
-bool CheckIntegerDivisibility(T arg1, T arg2) {
-  return arg1 % arg2 == 0;
-}
-// this method is used only for integer types
-// for floating-point types: it returns false and doesn't raise
-// -Wunused-parameter
-template <>
-bool CheckIntegerDivisibility<float>(float arg1, float arg2) {
-  return false && (arg1 == arg2);
-}
-template <>
-bool CheckIntegerDivisibility<double>(double arg1, double arg2) {
-  return false && (arg1 == arg2);
-}
-template <>
-bool CheckIntegerDivisibility<long double>(long double arg1, long double arg2) {
-  return false && (arg1 == arg2);
 }
 
 template <typename T>
@@ -85,45 +74,46 @@ T AssertMul(
   if (lhs == 0 || rhs == 0)
     return lhs * rhs;
   T maxLim = std::numeric_limits<T>::max();
-  T minLim = std::numeric_limits<T>::min();
+  T minLim = std::numeric_limits<T>::lowest();
   bool isIntegerType = std::numeric_limits<T>::is_integer;
-  if ((lhs > 0 && rhs > 0) &&
-      (lhs > maxLim / rhs ||
-       (lhs == maxLim / rhs &&
-        ((!isIntegerType) || CheckIntegerDivisibility(maxLim, rhs))))) {
+  // special case of rhs = -1 (then division lim / rhs can overflow)
+  if (std::numeric_limits<T>::is_signed && rhs == static_cast<T>(-1)) {
+    T tmp = minLim + lhs;
+    if (lhs > 0 && tmp > 0) {
+      std::cerr << typeName << " overflow in " << fileName << " line: " << line
+                << "\nlog: " << +lhs << " * " << +rhs << " < " << +minLim
+                << "\n";
+      OVERFLOW_ASSERT_FAILED;
+    }
+    if (lhs < 0 && maxLim + lhs < 0) {
+      std::cerr << typeName << " overflow in " << fileName << " line: " << line
+                << "\nlog: " << +lhs << " * " << +rhs << " > " << +maxLim
+                << "\n";
+      OVERFLOW_ASSERT_FAILED;
+    }
+    return lhs * rhs;
+  }
+  if ((lhs > 0 && rhs > 0) && lhs > maxLim / rhs) {
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
-              << "\nlog: " << +lhs << " * " << +rhs << " > "
-              << +std::numeric_limits<T>::max() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+              << "\nlog: " << +lhs << " * " << +rhs << " > " << +maxLim << "\n";
+    OVERFLOW_ASSERT_FAILED;
   }
   if (!std::numeric_limits<T>::is_signed)
     return lhs * rhs;
-  if ((lhs < 0 && rhs > 0) &&
-      (lhs < minLim / rhs ||
-       (lhs == minLim / rhs &&
-        ((!isIntegerType) || CheckIntegerDivisibility(minLim, rhs))))) {
+  if ((lhs < 0 && rhs > 0) && lhs < minLim / rhs) {
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
-              << "\nlog: " << +lhs << " * " << +rhs << " < "
-              << +std::numeric_limits<T>::min() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+              << "\nlog: " << +lhs << " * " << +rhs << " < " << +minLim << "\n";
+    OVERFLOW_ASSERT_FAILED;
   }
-  if ((lhs > 0 && rhs < 0) &&
-      (lhs > minLim / rhs ||
-       (lhs == minLim / rhs &&
-        ((!isIntegerType) || CheckIntegerDivisibility(minLim, rhs))))) {
+  if ((lhs > 0 && rhs < 0) && lhs > minLim / rhs) {
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
-              << "\nlog: " << +lhs << " * " << +rhs << " < "
-              << +std::numeric_limits<T>::min() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+              << "\nlog: " << +lhs << " * " << +rhs << " < " << +minLim << "\n";
+    OVERFLOW_ASSERT_FAILED;
   }
-  if ((lhs < 0 && rhs < 0) &&
-      (lhs < maxLim / rhs ||
-       (lhs == maxLim / rhs &&
-        ((!isIntegerType) || CheckIntegerDivisibility(maxLim, rhs))))) {
+  if ((lhs < 0 && rhs < 0) && lhs < maxLim / rhs) {
     std::cerr << typeName << " overflow in " << fileName << " line: " << line
-              << "\nlog: " << +lhs << " * " << +rhs << " > "
-              << +std::numeric_limits<T>::max() << "\n";
-    ASSERT_FAILED(OVERFLOW_EXIT_CODE);
+              << "\nlog: " << +lhs << " * " << +rhs << " > " << +maxLim << "\n";
+    OVERFLOW_ASSERT_FAILED;
   }
   // this check doesn't work for now because flt-point types are not supported
   if ((!isIntegerType) && lhs * rhs == 0 && lhs != 0 && rhs != 0) {
@@ -144,8 +134,9 @@ T AssertDiv(
               << " line: " << line << "\n";
     ASSERT_FAILED(DIVISION_BY_ZERO_EXIT_CODE);
   }
-  if (std::numeric_limits<T>::is_integer)
+  if (std::numeric_limits<T>::is_integer) { // support -1 in future
     return lhs / rhs;
+  }
   // in future it's need to be check minLim <= lhs / small rhs <= maxLim
   return lhs / rhs;
 }
