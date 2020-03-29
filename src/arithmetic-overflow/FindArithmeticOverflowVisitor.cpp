@@ -22,9 +22,11 @@ bool FindArithmeticOverflowVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
     OperationName = "Mul";
   else if (BinopName == "/")
     OperationName = "Div";
+  else if (BinopName == "%")
+    OperationName = "Mod";
   else if (BinopName == "<<")
     OperationName = "BitShiftLeft";
-  else // % and >> is not supported yet
+  else // >> is not supported yet
     return true;
 
   QualType BinopType = Binop->getType();

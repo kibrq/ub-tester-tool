@@ -78,8 +78,7 @@ T AssertMul(
   bool isIntegerType = std::numeric_limits<T>::is_integer;
   // special case of rhs = -1 (then division lim / rhs can overflow)
   if (std::numeric_limits<T>::is_signed && rhs == static_cast<T>(-1)) {
-    T tmp = minLim + lhs;
-    if (lhs > 0 && tmp > 0) {
+    if (lhs > 0 && minLim + lhs > 0) {
       std::cerr << typeName << " overflow in " << fileName << " line: " << line
                 << "\nlog: " << +lhs << " * " << +rhs << " < " << +minLim
                 << "\n";
@@ -134,11 +133,53 @@ T AssertDiv(
               << " line: " << line << "\n";
     ASSERT_FAILED(DIVISION_BY_ZERO_EXIT_CODE);
   }
-  if (std::numeric_limits<T>::is_integer) { // support -1 in future
+  if (std::numeric_limits<T>::is_integer) {
+    // only case when integer div can overflow
+    if (std::numeric_limits<T>::is_signed && rhs == static_cast<T>(-1)) {
+      if (lhs > 0 && std::numeric_limits<T>::lowest() + lhs > 0) {
+        std::cerr << typeName << " overflow in " << fileName
+                  << " line: " << line << "\nlog: " << +lhs << " / " << +rhs
+                  << " < " << +std::numeric_limits<T>::lowest() << "\n";
+        OVERFLOW_ASSERT_FAILED;
+      }
+      if (lhs < 0 && std::numeric_limits<T>::max() + lhs < 0) {
+        std::cerr << typeName << " overflow in " << fileName
+                  << " line: " << line << "\nlog: " << +lhs << " / " << +rhs
+                  << " > " << +std::numeric_limits<T>::max() << "\n";
+        OVERFLOW_ASSERT_FAILED;
+      }
+    }
     return lhs / rhs;
   }
-  // in future it's need to be check minLim <= lhs / small rhs <= maxLim
+  // in future it's need to be check minLim <= lhs / 0-approx rhs <= maxLim
   return lhs / rhs;
+}
+
+template <typename T>
+T AssertMod(
+    T lhs, T rhs, const char* typeName, const char* fileName, int line) {
+  assert(std::numeric_limits<T>::is_integer);
+  if (rhs == 0) {
+    std::cerr << typeName << " mod (binary operator %) by 0 in " << fileName
+              << " line: " << line << "\n";
+    ASSERT_FAILED(DIVISION_BY_ZERO_EXIT_CODE);
+  }
+  // only case when % is undefined (because div is undefined)
+  if (std::numeric_limits<T>::is_signed && rhs == static_cast<T>(-1)) {
+    if (lhs > 0 && std::numeric_limits<T>::lowest() + lhs > 0) {
+      std::cerr << typeName << " overflow in " << fileName << " line: " << line
+                << "\nlog: " << +lhs << " / " << +rhs << " < "
+                << +std::numeric_limits<T>::lowest() << "\n";
+      OVERFLOW_ASSERT_FAILED;
+    }
+    if (lhs < 0 && std::numeric_limits<T>::max() + lhs < 0) {
+      std::cerr << typeName << " overflow in " << fileName << " line: " << line
+                << "\nlog: " << +lhs << " / " << +rhs << " > "
+                << +std::numeric_limits<T>::max() << "\n";
+      OVERFLOW_ASSERT_FAILED;
+    }
+  }
+  return lhs % rhs;
 }
 
 template <typename T>
