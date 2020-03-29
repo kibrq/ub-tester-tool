@@ -8,9 +8,9 @@
 
 namespace ub_tester {
 
-class CArraySubstituter : public clang::RecursiveASTVisitor<CArraySubstituter> {
+class CArrayHandler : public clang::RecursiveASTVisitor<CArrayHandler> {
 public:
-  explicit CArraySubstituter(clang::ASTContext*);
+  explicit CArrayHandler(clang::ASTContext*);
 
   bool VisitFunctionDecl(clang::FunctionDecl*);
 
@@ -36,7 +36,8 @@ private:
     void reset();
     std::string Name_, Type_;
     std::vector<std::string> Sizes_;
-    bool isIncompleteType_, shouldVisitNodes_;
+    std::string InitList_;
+    bool isIncompleteType_, shouldVisitNodes_, hasInitList_;
   };
 
 private:

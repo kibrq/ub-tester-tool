@@ -1,19 +1,19 @@
 #include "clang/AST/ASTConsumer.h"
 
-#include "index-out-of-bounds/CArraySubstituter.h"
+#include "index-out-of-bounds/CArrayHandler.h"
 #include "index-out-of-bounds/PointerSubstituter.h"
 
 #include <string>
 
 namespace ub_tester {
 
-class SubstituterConsumer : public clang::ASTConsumer {
+class IndexOutOfBoundsConsumer : public clang::ASTConsumer {
 public:
-  explicit SubstituterConsumer(clang::ASTContext* Context);
+  explicit IndexOutOfBoundsConsumer(clang::ASTContext* Context);
   virtual void HandleTranslationUnit(clang::ASTContext& Context);
 
 private:
-  CArraySubstituter array_sub_;
+  CArrayHandler ArrayHandler_;
   PointerSubstituter pointer_sub_;
 };
 

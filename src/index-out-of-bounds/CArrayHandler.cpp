@@ -1,22 +1,23 @@
-#include "index-out-of-bounds/CArraySubstituter.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
-#include <sstream>
 
+#include "index-out-of-bounds/CArrayHandler.h"
+
+#include <sstream>
 #include <stdio.h>
 
 using namespace clang;
 
 namespace ub_tester {
 
-void CArraySubstituter::ArrayInfo_t::reset() {
-  shouldVisitNodes_ = isIncompleteType_ = false;
+void CArrayHandler::ArrayInfo_t::reset() {
+  hasInitList_ = shouldVisitNodes_ = isIncompleteType_ = false;
   Sizes_.clear();
 }
 
-CArraySubstituter::CArraySubstituter(ASTContext* Context) : Context(Context) {}
+CArrayHandler::CArrayHandler(ASTContext* Context) : Context(Context) {}
 
-bool CArraySubstituter::VisitFunctionDecl(FunctionDecl* fd) {
+bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
   if (Context->getSourceManager().isInMainFile(fd->getBeginLoc())) {
     for (const auto& param : fd->parameters()) {
       auto type = param->getOriginalType().getTypePtrOrNull();
@@ -32,14 +33,14 @@ bool CArraySubstituter::VisitFunctionDecl(FunctionDecl* fd) {
   return true;
 }
 
-bool CArraySubstituter::VisitArrayType(ArrayType* Type) {
+bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
-    Array_.Type_ = Type->getElementType().getAsString();
+    Array_.Type_ = Type->getElementType().getUnqualifiedType().getAsString();
   }
   return true;
 }
 
-bool CArraySubstituter::VisitConstantArrayType(ConstantArrayType* Type) {
+bool CArrayHandler::VisitConstantArrayType(ConstantArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     int StdBase = 10;
     Array_.Sizes_.push_back(Type->getSize().toString(StdBase, false));
@@ -47,36 +48,41 @@ bool CArraySubstituter::VisitConstantArrayType(ConstantArrayType* Type) {
   return true;
 }
 
-bool CArraySubstituter::VisitVariableArrayType(VariableArrayType* Type) {
+bool CArrayHandler::VisitVariableArrayType(VariableArrayType* Type) {
   if (Array_.shouldVisitNodes_)
     Array_.Sizes_.push_back(getExprAsString(Type->getSizeExpr(), Context));
   return true;
 }
 
-bool CArraySubstituter::VisitIncompleteArrayType(IncompleteArrayType* Type) {
+bool CArrayHandler::VisitIncompleteArrayType(IncompleteArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     Array_.isIncompleteType_ = true;
   }
   return true;
 }
 
-bool CArraySubstituter::VisitInitListExpr(InitListExpr* List) {
+bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
   if (Array_.shouldVisitNodes_ && Array_.isIncompleteType_) {
     Array_.Sizes_.insert(
         Array_.Sizes_.begin(), std::to_string(List->getNumInits()));
     Array_.shouldVisitNodes_ = false;
+    Array_.hasInitList_ = true;
+    Array_.InitList_ = getExprAsString(List, Context);
   }
   return true;
 }
 
-bool CArraySubstituter::VisitStringLiteral(StringLiteral* Literal) {
+bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
   if (Array_.shouldVisitNodes_ && Array_.isIncompleteType_) {
     Array_.Sizes_.insert(
         Array_.Sizes_.begin(), std::to_string(Literal->getLength() + 1));
+    Array_.hasInitList_ = true;
+    Array_.InitList_ = getExprAsString(Literal, Context);
   }
   return true;
 }
 
+namespace {
 SourceLocation findLocAfterRSquare(
     VarDecl* VDecl, ASTContext* Context, bool isIncompleteType) {
 
@@ -101,38 +107,58 @@ SourceLocation findLocAfterRSquare(
 }
 
 void generateTemplateType(
-    std::stringstream& Stream, const std::vector<std::string>& Sizes,
-    const std::string& Type, int CurDepth) {
+    std::stringstream& Stream, const std::string& Type, int MaxDepth,
+    int CurDepth = 0) {
   Stream << "UBSafeCArray<";
-  if (CurDepth == Sizes.size() - 1) {
+  if (CurDepth == MaxDepth) {
     Stream << Type;
   } else {
-    generateTemplateType(Stream, Sizes, Type, CurDepth + 1);
+    generateTemplateType(Stream, Type, MaxDepth, CurDepth + 1);
   }
-  Stream << ", " << Sizes[CurDepth] << ">";
+  Stream << ">";
 }
 
-std::string CArraySubstituter::generateSafeType(VarDecl* VDecl) {
+std::string getSizes(const std::vector<std::string>& Sizes) {
+  std::stringstream VectorSizes;
+  VectorSizes << "{";
+  for (size_t i = 0; i < Sizes.size(); i++) {
+    VectorSizes << Sizes[i];
+    if (i != Sizes.size() - 1) {
+      VectorSizes << ", ";
+    }
+  }
+  VectorSizes << "}";
+  return VectorSizes.str();
+}
+} // namespace
+
+std::string CArrayHandler::generateSafeType(VarDecl* VDecl) {
   std::stringstream NewDecl;
   if (VDecl->isStaticLocal()) {
     NewDecl << "static ";
   }
-  generateTemplateType(NewDecl, Array_.Sizes_, Array_.Type_, 0);
-  NewDecl << " " << Array_.Name_;
+  generateTemplateType(NewDecl, Array_.Type_, Array_.Sizes_.size() - 1);
   return NewDecl.str();
 }
 
-bool CArraySubstituter::TraverseVarDecl(VarDecl* VDecl) {
+bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
   if (Context->getSourceManager().isInMainFile(VDecl->getBeginLoc())) {
     auto Type = VDecl->getType().getTypePtrOrNull();
     Array_.shouldVisitNodes_ = Type->isArrayType();
     if (Type && Array_.shouldVisitNodes_) {
-      RecursiveASTVisitor<CArraySubstituter>::TraverseVarDecl(VDecl);
+      RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
       SourceLocation EndLoc =
           findLocAfterRSquare(VDecl, Context, Array_.isIncompleteType_);
       EndLoc.dump(Context->getSourceManager());
       Array_.Name_ = VDecl->getName().str();
-      llvm::outs() << generateSafeType(VDecl) << '\n';
+      llvm::outs() << generateSafeType(VDecl) << ' ' << Array_.Name_ << "("
+                   << getSizes(Array_.Sizes_);
+      if (Array_.hasInitList_) {
+        llvm::outs() << ", " << Array_.InitList_;
+      }
+      llvm::outs() << ")\n";
+      // "% %" -> UBSafeCArray<%> %(Size)
+      // "% %=%" -> UBSafeCArray<%> %(Size, %)
     }
     Array_.reset();
   }
