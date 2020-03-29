@@ -27,7 +27,7 @@ void CodeInjector::closeFile() {
   Closed_ = true;
 }
 
-void CodeInjector::setOutputFilename(const std::string& OutputFilename){
+void CodeInjector::setOutputFilename(const std::string& OutputFilename) {
   OutputFilename_ = OutputFilename;
 }
 
@@ -78,17 +78,10 @@ void CodeInjector::changeColumnOffsets(
 CodeInjector&
 CodeInjector::eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length) {
 
-  size_t i = 0;
-  for (; BeginPos + i < ColumnOffsets_[LineNum].size(); i++) {
-    if (get(LineNum, BeginPos + i) != ' ') {
-      break;
-    }
-  }
-
   FileBuffer_[transformLineNum(LineNum)].erase(
-      transformColumnNum(LineNum, BeginPos + i), Length - i);
+      transformColumnNum(LineNum, BeginPos), Length);
 
-  changeColumnOffsets(LineNum, BeginPos + Length, -Length + i);
+  changeColumnOffsets(LineNum, BeginPos + Length, -Length);
   return *this;
 }
 
@@ -133,6 +126,11 @@ CodeInjector& CodeInjector::substituteSubstring(
       BeginLine == EndLine ? EndPos - BeginPos
                            : ColumnOffsets_[BeginLine].size() - BeginPos);
   insertSubstringBefore(BeginLine, BeginPos, Substring);
+
+  if (EndLine - BeginLine <= 1) {
+    return *this;
+  }
+
   BeginLine++;
   for (; BeginLine < EndLine; BeginLine++) {
     eraseLine(BeginLine);
