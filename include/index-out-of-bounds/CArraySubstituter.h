@@ -1,32 +1,46 @@
 #pragma once
+#include "clang/AST/RecursiveASTVisitor.h"
+
+#include <string>
+#include <vector>
 
 #include "UBUtility.h"
-#include "clang/AST/RecursiveASTVisitor.h"
 
 namespace ub_tester {
 
 class CArraySubstituter : public clang::RecursiveASTVisitor<CArraySubstituter> {
 public:
-  explicit CArraySubstituter(clang::ASTContext* Context);
+  explicit CArraySubstituter(clang::ASTContext*);
 
-  bool VisitFunctionDecl(clang::FunctionDecl* fd);
+  bool VisitFunctionDecl(clang::FunctionDecl*);
 
-  bool VisitArrayType(clang::ArrayType* type);
+  bool VisitArrayType(clang::ArrayType*);
 
-  bool VisitConstantArrayType(clang::ConstantArrayType* type);
+  bool VisitConstantArrayType(clang::ConstantArrayType*);
 
-  bool VisitVariableArrayType(clang::VariableArrayType* type);
+  bool VisitVariableArrayType(clang::VariableArrayType*);
 
-  bool VisitInitListExpr(clang::InitListExpr* initlist);
+  bool VisitIncompleteArrayType(clang::IncompleteArrayType*);
 
-  bool VisitStringLiteral(clang::StringLiteral* sl);
+  bool VisitInitListExpr(clang::InitListExpr*);
 
-  bool TraverseVarDecl(clang::VarDecl* vd);
+  bool VisitStringLiteral(clang::StringLiteral*);
 
-  void HandleArrayDecl();
+  bool TraverseVarDecl(clang::VarDecl*);
 
 private:
-  var_info_ array_;
+  std::string generateSafeType(clang::VarDecl* ArrayVarDecl);
+
+private:
+  struct ArrayInfo_t {
+    void reset();
+    std::string Name_, Type_;
+    std::vector<std::string> Sizes_;
+    bool isIncompleteType_, shouldVisitNodes_;
+  };
+
+private:
+  ArrayInfo_t Array_;
   clang::ASTContext* Context;
 };
 
