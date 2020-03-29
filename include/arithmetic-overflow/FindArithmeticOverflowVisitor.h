@@ -9,6 +9,7 @@ public:
   explicit FindArithmeticOverflowVisitor(clang::ASTContext* Context);
 
   bool VisitBinaryOperator(clang::BinaryOperator* Binop);
+  bool VisitUnaryOperator(clang::UnaryOperator* Unop);
 
 private:
   clang::ASTContext* Context;
