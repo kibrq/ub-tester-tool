@@ -2,64 +2,56 @@
 
 namespace ub_tester {
 
-template <typename T, size_t N>
-T& UBSafeCArray<T, N>::operator[](int index) noexcept {
-  if (index < 0 || index >= N) {
+template <typename T>
+void UBSafeCArray<T>::setSize(size_t Size) {
+  Data_.resize(Size);
+}
+
+template <typename T>
+T& UBSafeCArray<T>::operator[](int index) noexcept {
+  if (index < 0 || index >= Data_.size()) {
     // exit(0);
   }
-  return data_[index];
+  return Data_[index];
 }
 
-template <typename T, size_t N>
-const T& UBSafeCArray<T, N>::operator[](int index) const noexcept {
-  if (index < 0 || index >= N) {
+template <typename T>
+const T& UBSafeCArray<T>::operator[](int index) const noexcept {
+  if (index < 0 || index >= Data_.size()) {
     // exit(0);
   }
-  return data_[index];
+  return Data_[index];
 }
 
-template <typename T, size_t N>
-UBSafeCArray<T, N>::UBSafeCArray(const std::initializer_list<T>& args) {
-  size_t i = 0;
-  for (const auto& el : args) {
-    if (i == N)
-      break;
-    data_[i++] = el;
-  }
+template <typename T>
+UBSafeCArray<T>::UBSafeCArray(const std::initializer_list<T>& args) {
+  Data_ = args;
 }
 
-template <size_t N>
-char& UBSafeCArray<char, N>::operator[](int index) noexcept {
-  if (index < 0 || index >= N) {
+char& UBSafeCArray<char>::operator[](int index) noexcept {
+  if (index < 0 || index >= Data_.size()) {
     // exit(0);
   }
-  return data_[index];
+  return Data_[index];
 }
 
-template <size_t N>
-const char& UBSafeCArray<char, N>::operator[](int index) const noexcept {
-  if (index < 0 || index >= N) {
+const char& UBSafeCArray<char>::operator[](int index) const noexcept {
+  if (index < 0 || index >= Data_.size()) {
     // exit(0);
   }
-  return data_[index];
+  return Data_[index];
 }
 
-template <std::size_t N>
-UBSafeCArray<char, N>::UBSafeCArray(const std::initializer_list<char>& args) {
-  size_t i = 0;
-  for (const auto& el : args) {
-    if (i == N)
-      break;
-    data_[i++] = el;
-  }
+void UBSafeCArray<char>::setSize(size_t Size) { Data_.resize(Size); }
+
+UBSafeCArray<char>::UBSafeCArray(const std::initializer_list<char>& args) {
+  Data_ = args;
 }
 
-template <std::size_t N>
-UBSafeCArray<char, N>::UBSafeCArray(const char* str) {
-  for (size_t i = 0; i < N; i++) {
-    data_[i] = str[i];
-  }
-  data_[N - 1] = '\0';
+UBSafeCArray<char>::UBSafeCArray(const char* str) {
+  do {
+    Data_.push_back(*str);
+  } while (*str != '\0');
 }
 
 } // namespace ub_tester
