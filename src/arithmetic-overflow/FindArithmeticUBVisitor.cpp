@@ -33,7 +33,9 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
     OperationName = "Mod";
   else if (BinopName == "<<")
     OperationName = "BitShiftLeft";
-  else // >> is not supported yet
+  else if (BinopName == ">>")
+    OperationName = "BitShiftRight";
+  else
     return true;
 
   // check BinopType assumption
@@ -52,15 +54,15 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
                  // though lhs or rhs are pointer type
 
   assert(LhsType.getAsString() == BinopType.getAsString());
-  // rhs of bitshift operators can have different integer type from lhs
+  // lhs and rhs of bitshift operators can have different integer types
   assert(
       BinopName == "<<" || BinopName == ">>" ||
       LhsType.getAsString() == RhsType.getAsString());
 
   llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT_BINOP("
                << OperationName << ", " << getExprAsString(Lhs, Context) << ", "
-               << getExprAsString(Rhs, Context) << ", "
-               << BinopType.getAsString() << ");\n";
+               << getExprAsString(Rhs, Context) << ", " << LhsType.getAsString()
+               << ", " << RhsType.getAsString() << ");\n";
   return true;
 }
 

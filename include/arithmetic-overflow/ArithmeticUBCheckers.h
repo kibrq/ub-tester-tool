@@ -3,7 +3,8 @@
 #include <cassert>
 #include <limits>
 
-#define FLT_POINT_NOT_SUPPORTED assert(std::numeric_limits<T>::is_integer)
+#define FLT_POINT_NOT_SUPPORTED(type)                                          \
+  assert(std::numeric_limits<type>::is_integer)
 
 namespace ub_tester {
 
@@ -22,7 +23,7 @@ enum class UBCheckRes {
 
 template <typename T>
 UBCheckRes UBCheckSum(T lhs, T rhs) {
-  FLT_POINT_NOT_SUPPORTED;
+  FLT_POINT_NOT_SUPPORTED(T);
   if (rhs > 0 && lhs > std::numeric_limits<T>::max() - rhs)
     return UBCheckRes::OVERFLOW_MAX;
   if (rhs < 0 && lhs < std::numeric_limits<T>::lowest() - rhs)
@@ -33,7 +34,7 @@ UBCheckRes UBCheckSum(T lhs, T rhs) {
 
 template <typename T>
 UBCheckRes UBCheckDiff(T lhs, T rhs) {
-  FLT_POINT_NOT_SUPPORTED;
+  FLT_POINT_NOT_SUPPORTED(T);
   if (rhs > 0 && lhs < std::numeric_limits<T>::lowest() + rhs)
     return UBCheckRes::OVERFLOW_MIN;
   if (rhs < 0 && lhs > std::numeric_limits<T>::max() + rhs)
@@ -44,7 +45,7 @@ UBCheckRes UBCheckDiff(T lhs, T rhs) {
 
 template <typename T>
 UBCheckRes UBCheckMul(T lhs, T rhs) {
-  FLT_POINT_NOT_SUPPORTED;
+  FLT_POINT_NOT_SUPPORTED(T);
   if (lhs == 0 || rhs == 0)
     return UBCheckRes::SAFE_OPERATION;
   T maxLim = std::numeric_limits<T>::max();
@@ -74,7 +75,7 @@ UBCheckRes UBCheckMul(T lhs, T rhs) {
 
 template <typename T>
 UBCheckRes UBCheckDiv(T lhs, T rhs) {
-  FLT_POINT_NOT_SUPPORTED;
+  FLT_POINT_NOT_SUPPORTED(T);
   if (rhs == 0)
     return UBCheckRes::DIV_BY_0;
   if (!(std::numeric_limits<T>::is_signed && rhs == static_cast<T>(-1)))
@@ -106,15 +107,17 @@ UBCheckRes UBCheckMod(T lhs, T rhs) {
   return UBCheckRes::SAFE_OPERATION;
 }
 
-template <typename T>
-UBCheckRes UBCheckBitShiftLeft(T lhs, T rhs) {
-  assert(std::numeric_limits<T>::is_integer);
+template <typename LhsType, typename RhsType>
+UBCheckRes UBCheckBitShiftLeft(LhsType lhs, RhsType rhs) {
+  assert(
+      std::numeric_limits<LhsType>::is_integer &&
+      std::numeric_limits<RhsType>::is_integer);
   return UBCheckRes::SAFE_OPERATION; // todo
 }
 
 template <typename T>
 UBCheckRes UBCheckUnaryNeg(T expr) {
-  FLT_POINT_NOT_SUPPORTED;
+  FLT_POINT_NOT_SUPPORTED(T);
   if (expr > 0 && std::numeric_limits<T>::lowest() + expr > 0)
     return UBCheckRes::OVERFLOW_MIN;
   if (expr < 0 && std::numeric_limits<T>::max() + expr < 0)
