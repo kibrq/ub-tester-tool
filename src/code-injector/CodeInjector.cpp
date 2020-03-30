@@ -6,6 +6,101 @@
 
 namespace ub_tester {
 
+namespace {
+bool isSymbol(char Ch, SPECIAL_SYMBOL Symb) {
+  return Ch == static_cast<char>(Symb);
+}
+bool isNotSymbol(char Ch, SPECIAL_SYMBOL Symb) {
+  return Ch != static_cast<char>(Symb);
+}
+
+bool isAnySymbol(char Ch) {
+  for (auto S : SpecialSymbolRange::getInstance()) {
+    if (isSymbol(Ch, S)) {
+      return true;
+    }
+  }
+  return false;
+}
+bool isNotAnySymbol(char Ch) {
+  for (auto S : SpecialSymbolRange::getInstance()) {
+    if (isSymbol(Ch, S)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+char getAsChar(SPECIAL_SYMBOL Symb) { return static_cast<char>(Symb); }
+
+SPECIAL_SYMBOL getAsSymb(char Ch) {
+  assert(isAnySymbol(Ch));
+  return static_cast<SPECIAL_SYMBOL>(Ch);
+}
+
+bool isNoneOf(char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2) {
+  return isNotSymbol(Ch, Symb1) && isNotSymbol(Ch, Symb2);
+}
+
+template <typename... Ss>
+bool isNoneOf(
+    char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2, Ss... Symbs) {
+  return isNotSymbol(Ch, Symb1) && isNoneOf(Ch, Symb2, Symbs...);
+}
+
+bool isAnyOf(char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2) {
+  return isSymbol(Ch, Symb1) || isSymbol(Ch, Symb2);
+}
+
+template <typename... Ss>
+bool isAnyOf(char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2, Ss... Symbs) {
+  return isSymbol(Ch, Symb1) || isAnyOf(Ch, Symb2, Symbs...);
+}
+
+} // namespace
+
+// SpecialSymbolRange
+
+SpecialSymbolRange::Iterator::Iterator(SPECIAL_SYMBOL Symb) : Symb_(Symb) {}
+SpecialSymbolRange::Iterator& SpecialSymbolRange::Iterator::operator++() {
+  switch (Symb_) {
+  case SPECIAL_SYMBOL::ARG:
+    Symb_ = SPECIAL_SYMBOL::ANY;
+    break;
+  case SPECIAL_SYMBOL::ANY:
+    Symb_ = SPECIAL_SYMBOL::SKIP;
+    break;
+  case SPECIAL_SYMBOL::SKIP:
+    Symb_ = SPECIAL_SYMBOL::NONE;
+    break;
+  case SPECIAL_SYMBOL::NONE:
+    std::abort();
+    break;
+  }
+  return *this;
+}
+
+bool SpecialSymbolRange::Iterator::operator!=(
+    const SpecialSymbolRange::Iterator& Other) const {
+  return static_cast<char>(Symb_) != static_cast<char>(Other.Symb_);
+}
+SPECIAL_SYMBOL SpecialSymbolRange::Iterator::operator*() const { return Symb_; }
+
+SpecialSymbolRange::Iterator SpecialSymbolRange::begin() const {
+  return Iterator(SPECIAL_SYMBOL::ARG);
+}
+
+SpecialSymbolRange::Iterator SpecialSymbolRange::end() const {
+  return Iterator(SPECIAL_SYMBOL::NONE);
+}
+
+SpecialSymbolRange& SpecialSymbolRange::getInstance() {
+  static SpecialSymbolRange Range;
+  return Range;
+}
+
+// CodeInjector
+
 CodeInjector::CodeInjector(const std::string& Filename) : CodeInjector() {
   openFile(Filename);
 }
@@ -45,20 +140,12 @@ void CodeInjector::openFile(const std::string& Filename) {
     std::getline(ins, inp);
     ColumnOffsets_.emplace_back(inp.length(), 0);
     FileBuffer_.emplace_back(std::move(inp));
-    SourceFile_.push_back(FileBuffer_.back());
+    SourceFile_.append(FileBuffer_.back());
+    SourceFile_ += '\n';
   }
   LineOffsets_.resize(FileBuffer_.size());
   isClosed_ = false;
 }
-
-namespace {
-bool isSymbol(char Ch, SPECIAL_SYMBOL Symb) {
-  return Ch == static_cast<char>(Symb);
-}
-bool isNotSymbol(char Ch, SPECIAL_SYMBOL Symb) {
-  return Ch != static_cast<char>(Symb);
-}
-} // namespace
 
 bool SourcePosition::onTheSameLine(const SourcePosition& Other) {
   return Line_ == Other.Line_;
@@ -68,12 +155,18 @@ size_t SourcePosition::diff(const SourcePosition& Other) {
   return Other.Col_ - Col_;
 }
 
-SourcePosition SourcePosition::moveCol(size_t Val) {
-  return {Line_, Col_ + Val};
+SourcePosition& SourcePosition::operator+=(const SourcePosition& Other) {
+  Line_ += Other.Line_;
+  Col_ += Other.Col_;
+  return *this;
 }
 
-SourcePosition SourcePosition::moveLine(size_t Val) {
-  return {Line_ + Val, Col_};
+SourcePosition& SourcePosition::changeLine(size_t Line) {
+  return *this += {Line, 0};
+}
+
+SourcePosition& SourcePosition::changeCol(size_t Col) {
+  return *this += {0, Col};
 }
 
 CodeInjector::OutputPosition CodeInjector::transform(SourcePosition Pos) {
@@ -115,7 +208,7 @@ CodeInjector::insertLineBefore(SourcePosition Pos, const std::string& Line) {
 
 CodeInjector&
 CodeInjector::insertLineAfter(SourcePosition Pos, const std::string& Line) {
-  return insertLineBefore(Pos.moveLine(1), Line);
+  return insertLineBefore(Pos.changeLine(1), Line);
 }
 
 CodeInjector& CodeInjector::insertSubstringBefore(
@@ -129,7 +222,7 @@ CodeInjector& CodeInjector::insertSubstringBefore(
 
 CodeInjector& CodeInjector::insertSubstringAfter(
     SourcePosition Pos, const std::string& Substring) {
-  return insertSubstringBefore(Pos.moveCol(1), Substring);
+  return insertSubstringBefore(Pos.changeCol(1), Substring);
 }
 
 CodeInjector& CodeInjector::eraseLine(SourcePosition Pos) {
@@ -153,11 +246,11 @@ CodeInjector& CodeInjector::substituteSubstring(
     return *this;
   }
 
-  BeginPos = BeginPos.moveLine(1);
+  BeginPos.changeLine(1);
 
   while (BeginPos.Line_ < EndPos.Line_) {
     eraseLine(BeginPos);
-    BeginPos = BeginPos.moveLine(1);
+    BeginPos.changeLine(1);
   }
 
   getLine(EndPos).erase(
@@ -166,35 +259,41 @@ CodeInjector& CodeInjector::substituteSubstring(
   return *this;
 }
 
+size_t CodeInjector::getPositionAsOffset(SourcePosition Pos) {
+  size_t Offset = 0;
+  for (size_t Line = 0; Line < Pos.Line_; Line++) {
+    Offset += ColumnOffsets_[Line].size() + 1;
+  }
+  Offset += Pos.Col_;
+  return Offset;
+}
+
+SourcePosition CodeInjector::getOffsetAsPosition(size_t Offset) {
+  size_t Line = 0, Col = 0;
+  while (Offset >= ColumnOffsets_[Line].size() + 1) {
+    Offset -= ColumnOffsets_[Line].size() + 1;
+    Line++;
+  }
+  Col = Offset;
+  return {Line, Col};
+}
+
 SourcePosition
 CodeInjector::findFirstEntry(SourcePosition Pos, const std::string& Substring) {
-  while (1) {
-    size_t pos = SourceFile_[Pos.Line_].find(Substring, Pos.Col_);
-    if (pos == std::string::npos) {
-      Pos.Col_ = 0;
-      Pos = Pos.moveLine(1);
-    } else {
-      Pos.Col_ = pos;
-      break;
-    }
-  }
 
-  return Pos;
+  size_t Offset = getPositionAsOffset(Pos);
+  Offset = SourceFile_.find(Substring, Offset);
+  assert(Offset != std::string::npos);
+  return getOffsetAsPosition(Offset);
 }
 
 SourcePosition CodeInjector::findFirstEntry(SourcePosition Pos, char Char) {
-  while (1) {
-    size_t pos = SourceFile_[Pos.Line_].find_first_of(Char, Pos.Col_);
-    if (pos == std::string::npos) {
-      Pos.Col_ = 0;
-      Pos = Pos.moveLine(1);
-    } else {
-      Pos.Col_ = pos;
-      break;
-    }
-  }
 
-  return Pos;
+  size_t Offset = getPositionAsOffset(Pos);
+  Offset = SourceFile_.find_first_of(Char, Offset);
+  assert(Offset != std::string::npos);
+
+  return getOffsetAsPosition(Offset);
 }
 
 CodeInjector& CodeInjector::substitute(
@@ -210,23 +309,33 @@ CodeInjector& CodeInjector::substitute(
 
   while (1) {
     while (getChar(CurPos) == SourceFormat[CurFormatPos]) {
-      CurPos = CurPos.moveCol(1), CurFormatPos++;
+      CurPos.changeCol(1), CurFormatPos++;
     }
 
-    assert(
-        isSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ARG) ||
-        isSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ANY));
+    assert(isAnySymbol(SourceFormat[CurFormatPos]));
 
-    if (isSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ANY)) {
+    // ANY and SKIP
+
+    if (isAnyOf(
+            SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ANY,
+            SPECIAL_SYMBOL::SKIP)) {
+
+      SPECIAL_SYMBOL Symb = getAsSymb(SourceFormat[CurFormatPos]);
       CurFormatPos++;
-
-      assert(isNotSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ANY));
+      assert(isNoneOf(
+          SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ANY,
+          SPECIAL_SYMBOL::SKIP));
 
       CurPos = isSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ARG)
                    ? findFirstEntry(CurPos, Args[CurArg])
                    : findFirstEntry(CurPos, SourceFormat[CurFormatPos]);
+      if (Symb == SPECIAL_SYMBOL::SKIP) {
+        CurBegin = CurPos;
+      }
       continue;
     }
+
+    // ARG
 
     assert(isSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ARG));
 
@@ -242,16 +351,15 @@ CodeInjector& CodeInjector::substitute(
       CurPos = findFirstEntry(CurPos, Args[CurArg]);
       for (const char& ArgChar : Args[CurArg]) {
         if (ArgChar == '\n') {
-          CurPos.moveLine(1);
+          CurPos.changeLine(1);
           CurPos.Col_ = 0;
         } else {
           assert(getChar(CurPos) == ArgChar);
-          CurPos = CurPos.moveCol(1);
+          CurPos.changeCol(1);
         }
       }
       CurFormatPos++;
-      if (isNotSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ARG) &&
-          isNotSymbol(SourceFormat[CurFormatPos], SPECIAL_SYMBOL::ANY)) {
+      if (isNotAnySymbol(SourceFormat[CurFormatPos])) {
         CurPos = findFirstEntry(CurPos, SourceFormat[CurFormatPos]);
       }
       CurBegin = CurPos;
