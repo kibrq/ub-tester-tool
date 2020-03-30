@@ -1,5 +1,5 @@
-#include "UBUtility.h"
 #include "arithmetic-overflow/FindArithmeticUBVisitor.h"
+#include "UBUtility.h"
 #include <cassert>
 
 using namespace clang;
@@ -57,7 +57,7 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
       BinopName == "<<" || BinopName == ">>" ||
       LhsType.getAsString() == RhsType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT_BINOP_OVERFLOW("
+  llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT_BINOP("
                << OperationName << ", " << getExprAsString(Lhs, Context) << ", "
                << getExprAsString(Rhs, Context) << ", "
                << BinopType.getAsString() << ");\n";
@@ -65,8 +65,8 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
 }
 
 bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
-  if (!Unop->canOverflow())
-    return true;
+  /*if (!Unop->canOverflow()) // char c = CHAR_MAX; c++; cannot overflow?
+    return true;*/ // can't use canOverflow(), it causes ignored warnings
 
   QualType UnopType = Unop->getType();
   const Type* UnopTypePtr = UnopType.getTypePtr();
@@ -86,7 +86,9 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   } else if (UnopName == "--") {
     OperationName = Unop->isPrefix() ? "PrefixDecr" : "PostfixDecr";
   } else {
-    llvm_unreachable("Unknown unary operator can overflow");
+    if (Unop->canOverflow())
+      llvm_unreachable("Not known unary operator can overflow");
+    return true;
   }
 
   // check UnopType assumption
@@ -99,7 +101,7 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
       SubExpr->getType().getUnqualifiedType().getCanonicalType();
   assert(SubExprType.getAsString() == UnopType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Unop, Context) << " ASSERT_UNOP_OVERFLOW("
+  llvm::outs() << getExprLineNCol(Unop, Context) << " ASSERT_UNOP("
                << OperationName << ", " << getExprAsString(SubExpr, Context)
                << ", " << UnopType.getAsString() << ");\n";
 

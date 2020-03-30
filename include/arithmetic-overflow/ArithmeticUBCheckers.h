@@ -16,6 +16,10 @@ enum class UBCheckRes {
   MOD_UNDEFINED_DIV_OVERFLOWS_MIN  // only %
 };
 
+/* ArithmeticUBCheckers only detect problem, then ArithmeticUBAsserts decide is
+ * it warning or error: for example, unsigned overflow is detected as OVERFLOW,
+ * then ArithmeticUBAsserts push warning, not error. */
+
 template <typename T>
 UBCheckRes UBCheckSum(T lhs, T rhs) {
   FLT_POINT_NOT_SUPPORTED;
@@ -106,6 +110,16 @@ template <typename T>
 UBCheckRes UBCheckBitShiftLeft(T lhs, T rhs) {
   assert(std::numeric_limits<T>::is_integer);
   return UBCheckRes::SAFE_OPERATION; // todo
+}
+
+template <typename T>
+UBCheckRes UBCheckUnaryNeg(T expr) {
+  FLT_POINT_NOT_SUPPORTED;
+  if (expr > 0 && std::numeric_limits<T>::lowest() + expr > 0)
+    return UBCheckRes::OVERFLOW_MIN;
+  if (expr < 0 && std::numeric_limits<T>::max() + expr < 0)
+    return UBCheckRes::OVERFLOW_MAX;
+  return UBCheckRes::SAFE_OPERATION;
 }
 
 } // namespace ub_tester
