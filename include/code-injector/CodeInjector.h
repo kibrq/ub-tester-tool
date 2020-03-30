@@ -1,11 +1,20 @@
 #pragma once
 
 #include <cstddef>
-#include <initializer_list>
 #include <string>
 #include <vector>
 
 namespace ub_tester {
+
+enum class SPECIAL_SYMBOL : char { ARG = '@', ANY = '#' };
+
+struct SourcePosition {
+  size_t Line_, Col_;
+  bool onTheSameLine(const SourcePosition& Other);
+  size_t diff(const SourcePosition& Other);
+  SourcePosition moveCol(size_t Val);
+  SourcePosition moveLine(size_t Val);
+};
 
 class CodeInjector {
 public:
@@ -29,42 +38,45 @@ public:
 
   void closeFile();
 
-  CodeInjector& eraseSubstring(size_t LineNum, size_t BeginPos, size_t Length);
+  CodeInjector& eraseLine(SourcePosition BeginPos);
 
-  CodeInjector& eraseLine(size_t LineNum);
+  CodeInjector&
+  insertSubstringAfter(SourcePosition Pos, const std::string& Substring);
 
-  CodeInjector& insertSubstringAfter(
-      size_t LineNum, size_t BeginPos, const std::string& Substring);
+  CodeInjector&
+  insertSubstringBefore(SourcePosition Pos, const std::string& Substring);
 
-  CodeInjector& insertSubstringBefore(
-      size_t LineNum, size_t BeginPos, const std::string& Substring);
+  CodeInjector& insertLineAfter(SourcePosition Pos, const std::string& Line);
 
-  CodeInjector& insertLineAfter(size_t LineNum, const std::string& Line);
-
-  CodeInjector& insertLineBefore(size_t LineNum, const std::string& Line);
+  CodeInjector& insertLineBefore(SourcePosition Pos, const std::string& Line);
 
   CodeInjector& substituteSubstring(
-      size_t BeginLine, size_t BeginPos, size_t EndLine, size_t EndPos,
+      SourcePosition BeginPos, SourcePosition EndPos,
       const std::string& Substring);
 
-  using SubArgs = std::vector<std::string>;
-
   CodeInjector& substitute(
-      size_t BeginLine, size_t BeginPos, std::string SourceFormat,
-      std::string OutputFormat, const std::vector<std::string>& Args);
+      SourcePosition Pos, std::string SourceFormat, std::string OutputFormat,
+      const std::vector<std::string>& Args);
 
 private:
-  char get(size_t LineNum, size_t ColumnNum);
-  size_t transformLineNum(size_t LineNum);
-  size_t transformColumnNum(size_t LineNum, size_t ColumnNum);
-  void changeLineOffsets(size_t InitPos, int Val = 1);
-  void changeColumnOffsets(size_t LineNum, size_t InitPos, int Val = 1);
-  void findFirstEntry(size_t& LineNum, size_t& CurPos, char Char);
+  struct OutputPosition {
+    size_t Line_, Col_;
+  };
 
 private:
-  bool Closed_;
+  char& getChar(SourcePosition Pos);
+  std::string& getLine(SourcePosition Pos);
+  OutputPosition transform(SourcePosition Pos);
+  void changeLineOffsets(SourcePosition BeginPos, int Val = 1);
+  void changeColumnOffsets(SourcePosition BeginPos, int Val = 1);
+  SourcePosition
+  findFirstEntry(SourcePosition BeginPos, const std::string& Substring);
+  SourcePosition findFirstEntry(SourcePosition BeginPos, char Char);
+
+private:
+  bool isClosed_;
   std::string OutputFilename_;
-  std::vector<std::string> FileBuffer_;
+  std::vector<std::string> FileBuffer_, SourceFile_;
   std::vector<int> LineOffsets_;
   std::vector<std::vector<int>> ColumnOffsets_;
 };

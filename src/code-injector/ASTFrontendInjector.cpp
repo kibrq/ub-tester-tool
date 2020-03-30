@@ -43,7 +43,7 @@ void ASTFrontendInjector::insertLineBefore(
     const std::string& Line) {
   std::string Filename = SM.getFilename(Loc).str();
   size_t LineNum = getLine(SM, Loc);
-  Files_[Filename].insertLineBefore(LineNum, Line);
+  Files_[Filename].insertLineBefore({LineNum, 0}, Line);
 }
 
 void ASTFrontendInjector::insertLineAfter(
@@ -51,7 +51,7 @@ void ASTFrontendInjector::insertLineAfter(
     const std::string& Line) {
   std::string Filename = SM.getFilename(Loc).str();
   size_t LineNum = getLine(SM, Loc);
-  Files_[Filename].insertLineAfter(LineNum, Line);
+  Files_[Filename].insertLineAfter({LineNum, 0}, Line);
 }
 
 void ASTFrontendInjector::substitute(
@@ -63,7 +63,7 @@ void ASTFrontendInjector::substitute(
   size_t LineNum = getLine(SM, Loc);
   size_t BeginPos = getCol(SM, Loc);
   Files_[Filename].substitute(
-      LineNum, BeginPos, SourceFormat, OutputFormat, Args);
+      {LineNum, BeginPos}, SourceFormat, OutputFormat, Args);
 }
 
 void ASTFrontendInjector::substituteSubstring(
@@ -75,7 +75,7 @@ void ASTFrontendInjector::substituteSubstring(
   size_t ColBegin = getCol(SM, Begin);
   size_t ColEnd = getCol(SM, End);
   Files_[Filename].substituteSubstring(
-      LineNumBegin, ColBegin, LineNumEnd, ColEnd, Substitution);
+      {LineNumBegin, ColBegin}, {LineNumEnd, ColEnd}, Substitution);
 }
 
 void ASTFrontendInjector::substituteSubstring(
