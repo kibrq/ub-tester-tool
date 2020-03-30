@@ -2,6 +2,7 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "UBUtility.h"
@@ -28,8 +29,11 @@ public:
 
   bool TraverseVarDecl(clang::VarDecl*);
 
+  bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr*);
+
 private:
-  std::string generateSafeType(clang::VarDecl* ArrayVarDecl);
+  void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
+  void executeSubstitutionOfDecl(clang::VarDecl* ArrayDecl);
 
 private:
   struct ArrayInfo_t {
@@ -37,12 +41,12 @@ private:
     std::string Name_, Type_;
     std::vector<std::string> Sizes_;
     std::string InitList_;
-    bool isIncompleteType_, shouldVisitNodes_, hasInitList_;
+    bool isIncompleteType_, isConst_, shouldVisitNodes_, hasInitList_;
   };
 
 private:
   ArrayInfo_t Array_;
-  clang::ASTContext* Context;
+  clang::ASTContext* Context_;
 };
 
 } // namespace ub_tester

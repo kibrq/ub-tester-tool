@@ -15,10 +15,10 @@ void CArrayHandler::ArrayInfo_t::reset() {
   Sizes_.clear();
 }
 
-CArrayHandler::CArrayHandler(ASTContext* Context) : Context(Context) {}
+CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {}
 
 bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
-  if (Context->getSourceManager().isInMainFile(fd->getBeginLoc())) {
+  if (Context_->getSourceManager().isInMainFile(fd->getBeginLoc())) {
     for (const auto& param : fd->parameters()) {
       auto type = param->getOriginalType().getTypePtrOrNull();
       if (type && type->isArrayType()) {
@@ -36,6 +36,14 @@ bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     Array_.Type_ = Type->getElementType().getUnqualifiedType().getAsString();
+    if (Array_.Type_.compare("const char *") == 0) {
+      Array_.Type_ = "char *";
+      Array_.isConst_ = true;
+    } else {
+      Array_.isConst_ = Type->getElementType().isConstQualified() ||
+                        Type->getElementType().isLocalConstQualified() ||
+                        Type->getElementType().isConstant(*Context_);
+    }
   }
   return true;
 }
@@ -50,7 +58,7 @@ bool CArrayHandler::VisitConstantArrayType(ConstantArrayType* Type) {
 
 bool CArrayHandler::VisitVariableArrayType(VariableArrayType* Type) {
   if (Array_.shouldVisitNodes_)
-    Array_.Sizes_.push_back(getExprAsString(Type->getSizeExpr(), Context));
+    Array_.Sizes_.push_back(getExprAsString(Type->getSizeExpr(), Context_));
   return true;
 }
 
@@ -67,7 +75,7 @@ bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
         Array_.Sizes_.begin(), std::to_string(List->getNumInits()));
     Array_.shouldVisitNodes_ = false;
     Array_.hasInitList_ = true;
-    Array_.InitList_ = getExprAsString(List, Context);
+    Array_.InitList_ = getExprAsString(List, Context_);
   }
   return true;
 }
@@ -77,10 +85,71 @@ bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
     Array_.Sizes_.insert(
         Array_.Sizes_.begin(), std::to_string(Literal->getLength() + 1));
     Array_.hasInitList_ = true;
-    Array_.InitList_ = getExprAsString(Literal, Context);
+    Array_.InitList_ = getExprAsString(Literal, Context_);
   }
   return true;
 }
+
+namespace {
+std::string getSubstitutionType(bool isStatic, bool isConst, size_t Dimension);
+
+std::string getSizes(const std::vector<std::string>& Sizes);
+
+std::pair<std::string, std::string> getDeclFormats(
+    const std::string& Type, const std::string& Sizes, bool hasInitList,
+    const std::string& InitList);
+
+std::vector<std::string> getDeclArgs(
+    const std::string& Type, const std::string& Name, bool hasInitList,
+    const std::string& InitList);
+
+} // namespace
+
+// Expects that if static and const used together, static is before const
+void CArrayHandler::executeSubstitutionOfDecl(VarDecl* ArrayDecl) {
+  SourceLocation BeginLoc = ArrayDecl->getBeginLoc();
+  std::string generatedType = getSubstitutionType(
+      ArrayDecl->isStaticLocal(), Array_.isConst_, Array_.Sizes_.size());
+  std::string generatedSizes = getSizes(Array_.Sizes_);
+  std::pair<std::string, std::string> Formats = getDeclFormats(
+      generatedType, generatedSizes, Array_.hasInitList_, Array_.InitList_);
+  std::vector<std::string> Args = getDeclArgs(
+      Array_.Type_, Array_.Name_, Array_.hasInitList_, Array_.InitList_);
+  BeginLoc.dump(Context_->getSourceManager());
+  llvm::outs() << "SourceFormat: " << Formats.first << "\n"
+               << "OutputFormat: " << Formats.second << '\n';
+}
+
+bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
+  if (Context_->getSourceManager().isInMainFile(VDecl->getBeginLoc())) {
+    auto Type = VDecl->getType().getTypePtrOrNull();
+    Array_.shouldVisitNodes_ = Type->isArrayType();
+    if (Type && Array_.shouldVisitNodes_) {
+      RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
+      Array_.Name_ = VDecl->getName().str();
+      executeSubstitutionOfDecl(VDecl);
+    }
+    Array_.reset();
+  }
+  return true;
+}
+
+void CArrayHandler::executeSubstitutionOfSubscript(
+    ArraySubscriptExpr* SubscriptExpr) {}
+
+bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
+  if (Context_->getSourceManager().isInMainFile(SubscriptExpr->getBeginLoc())) {
+    auto BaseType = SubscriptExpr->getBase()->getType().getTypePtrOrNull();
+    if (BaseType && BaseType->isArrayType()) {
+      executeSubstitutionOfSubscript(SubscriptExpr);
+    }
+  }
+  return true;
+}
+
+} // namespace ub_tester
+
+namespace ub_tester {
 
 namespace {
 SourceLocation findLocAfterRSquare(
@@ -118,6 +187,20 @@ void generateTemplateType(
   Stream << ">";
 }
 
+std::string getSubstitutionType(bool isStatic, bool isConst, size_t Dimension) {
+  std::stringstream Type;
+  Type << (isStatic ? "static " : "");
+  for (size_t i = 0; i < Dimension; i++) {
+    Type << "UBSafeCArray<";
+  }
+  Type << (isConst ? "const " : "");
+  Type << "@";
+  for (size_t i = 0; i < Dimension; i++) {
+    Type << ">";
+  }
+  return Type.str();
+}
+
 std::string getSizes(const std::vector<std::string>& Sizes) {
   std::stringstream VectorSizes;
   VectorSizes << "{";
@@ -130,39 +213,25 @@ std::string getSizes(const std::vector<std::string>& Sizes) {
   VectorSizes << "}";
   return VectorSizes.str();
 }
+
+std::pair<std::string, std::string> getDeclFormats(
+    const std::string& Type, const std::string& Sizes, bool hasInitList,
+    const std::string& InitList) {
+  std::stringstream SourceFormat, OutputFormat;
+  SourceFormat << "#@#@#" << (hasInitList ? "=@" : "");
+  OutputFormat << Type << " "
+               << "@(" << Sizes << (hasInitList ? ", " + InitList : "") << ")";
+  return {SourceFormat.str(), OutputFormat.str()};
+}
+
+std::vector<std::string> getDeclArgs(
+    const std::string& Type, const std::string& Name, bool hasInitList,
+    const std::string& InitList) {
+  std::vector<std::string> Args = {Type, Name};
+  if (hasInitList)
+    Args.push_back(InitList);
+  return Args;
+}
+
 } // namespace
-
-std::string CArrayHandler::generateSafeType(VarDecl* VDecl) {
-  std::stringstream NewDecl;
-  if (VDecl->isStaticLocal()) {
-    NewDecl << "static ";
-  }
-  generateTemplateType(NewDecl, Array_.Type_, Array_.Sizes_.size() - 1);
-  return NewDecl.str();
-}
-
-bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
-  if (Context->getSourceManager().isInMainFile(VDecl->getBeginLoc())) {
-    auto Type = VDecl->getType().getTypePtrOrNull();
-    Array_.shouldVisitNodes_ = Type->isArrayType();
-    if (Type && Array_.shouldVisitNodes_) {
-      RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
-      SourceLocation EndLoc =
-          findLocAfterRSquare(VDecl, Context, Array_.isIncompleteType_);
-      EndLoc.dump(Context->getSourceManager());
-      Array_.Name_ = VDecl->getName().str();
-      llvm::outs() << generateSafeType(VDecl) << ' ' << Array_.Name_ << "("
-                   << getSizes(Array_.Sizes_);
-      if (Array_.hasInitList_) {
-        llvm::outs() << ", " << Array_.InitList_;
-      }
-      llvm::outs() << ")\n";
-      // "% %" -> UBSafeCArray<%> %(Size)
-      // "% %=%" -> UBSafeCArray<%> %(Size, %)
-    }
-    Array_.reset();
-  }
-  return true;
-}
-
 } // namespace ub_tester
