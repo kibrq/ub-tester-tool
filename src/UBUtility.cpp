@@ -17,8 +17,9 @@ std::string getExprAsString(const Expr* ex, const ASTContext* Context) {
 
 std::string getLowestLevelPointeeType(const Type* T) {
   if (auto* PT = llvm::dyn_cast<PointerType>(T)) {
-    if (llvm::isa<PointerType>(PT->getPointeeType().getTypePtrOrNull())) {
-      return getLowestLevelPointeeType(PT);
+    if (auto* PPT = llvm::dyn_cast<PointerType>(
+            PT->getPointeeType().getTypePtrOrNull())) {
+      return getLowestLevelPointeeType(PPT);
     }
     return PT->getPointeeType().getUnqualifiedType().getAsString();
   }

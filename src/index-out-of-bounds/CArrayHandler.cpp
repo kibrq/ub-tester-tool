@@ -1,6 +1,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
 
+#include "UBUtility.h"
 #include "index-out-of-bounds/CArrayHandler.h"
 
 #include <sstream>
@@ -11,11 +12,14 @@ using namespace clang;
 namespace ub_tester {
 
 void CArrayHandler::ArrayInfo_t::reset() {
-  hasInitList_ = shouldVisitNodes_ = isIncompleteType_ = false;
+  isElementIsPointer_ = hasInitList_ = shouldVisitNodes_ = isIncompleteType_ =
+      false;
   Sizes_.clear();
 }
 
-CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {}
+CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {
+  Array_.reset();
+}
 
 bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
   if (Context_->getSourceManager().isInMainFile(fd->getBeginLoc())) {
@@ -35,14 +39,12 @@ bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
 
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
-    Array_.Type_ = Type->getElementType().getUnqualifiedType().getAsString();
-    if (Array_.Type_.compare("const char *") == 0) {
-      Array_.Type_ = "char *";
-      Array_.isConst_ = true;
+    if (Type->getElementType()->isPointerType()) {
+      Array_.LowestLevelPointeeType_ =
+          getLowestLevelPointeeType(Type->getElementType().getTypePtr());
+      Array_.isElementIsPointer_ = true;
     } else {
-      Array_.isConst_ = Type->getElementType().isConstQualified() ||
-                        Type->getElementType().isLocalConstQualified() ||
-                        Type->getElementType().isConstant(*Context_);
+      Array_.Type_ = Type->getElementType().getUnqualifiedType().getAsString();
     }
   }
   return true;
@@ -51,7 +53,8 @@ bool CArrayHandler::VisitArrayType(ArrayType* Type) {
 bool CArrayHandler::VisitConstantArrayType(ConstantArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     int StdBase = 10;
-    Array_.Sizes_.push_back(Type->getSize().toString(StdBase, false));
+    Array_.Sizes_.push_back(
+        Type->getSize().toString(StdBase, false)); // llvm::APInt demands base
   }
   return true;
 }
@@ -70,9 +73,13 @@ bool CArrayHandler::VisitIncompleteArrayType(IncompleteArrayType* Type) {
 }
 
 bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
-  if (Array_.shouldVisitNodes_ && Array_.isIncompleteType_) {
-    Array_.Sizes_.insert(
-        Array_.Sizes_.begin(), std::to_string(List->getNumInits()));
+  if (Array_.shouldVisitNodes_) {
+    if (Array_.isIncompleteType_) {
+      Array_.Sizes_.insert(
+          Array_.Sizes_.begin(), std::to_string(List->getNumInits()));
+    }
+
+    // Cause of inner InitLists and StringLiterals
     Array_.shouldVisitNodes_ = false;
     Array_.hasInitList_ = true;
     Array_.InitList_ = getExprAsString(List, Context_);
@@ -91,13 +98,16 @@ bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
 }
 
 namespace {
-std::string getSubstitutionType(bool isStatic, bool isConst, size_t Dimension);
 
-std::string getSizes(const std::vector<std::string>& Sizes);
+std::string getCuttedPointerTypeAsString(
+    const std::string& PointeeType, VarDecl*, ASTContext*);
+
+std::string getSubstituterTypeAsString(bool isStatic, size_t Dimension);
+
+std::string getSizesAsString(const std::vector<std::string>& Sizes);
 
 std::pair<std::string, std::string> getDeclFormats(
-    const std::string& Type, const std::string& Sizes, bool hasInitList,
-    const std::string& InitList);
+    const std::string& Type, const std::string& Sizes, bool hasInitList);
 
 std::vector<std::string> getDeclArgs(
     const std::string& Type, const std::string& Name, bool hasInitList,
@@ -105,27 +115,33 @@ std::vector<std::string> getDeclArgs(
 
 } // namespace
 
-// Expects that if static and const used together, static is before const
 void CArrayHandler::executeSubstitutionOfDecl(VarDecl* ArrayDecl) {
   SourceLocation BeginLoc = ArrayDecl->getBeginLoc();
-  std::string generatedType = getSubstitutionType(
-      ArrayDecl->isStaticLocal(), Array_.isConst_, Array_.Sizes_.size());
-  std::string generatedSizes = getSizes(Array_.Sizes_);
-  std::pair<std::string, std::string> Formats = getDeclFormats(
-      generatedType, generatedSizes, Array_.hasInitList_, Array_.InitList_);
+  std::string generatedType = getSubstituterTypeAsString(
+      ArrayDecl->isStaticLocal(), Array_.Sizes_.size());
+  std::string generatedSizes = getSizesAsString(Array_.Sizes_);
+  std::pair<std::string, std::string> Formats =
+      getDeclFormats(generatedType, generatedSizes, Array_.hasInitList_);
+  if (Array_.isElementIsPointer_) {
+    Array_.Type_ = getCuttedPointerTypeAsString(
+        Array_.LowestLevelPointeeType_, ArrayDecl, Context_);
+  }
   std::vector<std::string> Args = getDeclArgs(
       Array_.Type_, Array_.Name_, Array_.hasInitList_, Array_.InitList_);
-  BeginLoc.dump(Context_->getSourceManager());
   llvm::outs() << "SourceFormat: " << Formats.first << "\n"
                << "OutputFormat: " << Formats.second << '\n';
+  for (const auto& Arg : Args) {
+    llvm::outs() << Arg << ' ';
+  }
+  llvm::outs() << '\n';
 }
 
 bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
   if (Context_->getSourceManager().isInMainFile(VDecl->getBeginLoc())) {
     auto Type = VDecl->getType().getTypePtrOrNull();
     Array_.shouldVisitNodes_ = Type->isArrayType();
-    if (Type && Array_.shouldVisitNodes_) {
-      RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
+    RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
+    if (Type && Type->isArrayType()) {
       Array_.Name_ = VDecl->getName().str();
       executeSubstitutionOfDecl(VDecl);
     }
@@ -134,66 +150,68 @@ bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
   return true;
 }
 
+namespace {
+std::pair<std::string, std::string> getSubscriptFormats();
+std::vector<std::string> getSubscriptArgs(ArraySubscriptExpr*, ASTContext*);
+} // namespace
+
 void CArrayHandler::executeSubstitutionOfSubscript(
-    ArraySubscriptExpr* SubscriptExpr) {}
+    ArraySubscriptExpr* SubscriptExpr) {
+  SourceLocation BeginLoc = SubscriptExpr->getBeginLoc();
+  std::pair<std::string, std::string> Formats = getSubscriptFormats();
+  std::vector<std::string> Args = getSubscriptArgs(SubscriptExpr, Context_);
+  llvm::outs() << "SourceFormat: " << Formats.first << "\n"
+               << "OutputFormat: " << Formats.second << '\n';
+  for (const auto& Arg : Args) {
+    llvm::outs() << Arg << ' ';
+  }
+  llvm::outs() << '\n';
+}
 
 bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
+
   if (Context_->getSourceManager().isInMainFile(SubscriptExpr->getBeginLoc())) {
-    auto BaseType = SubscriptExpr->getBase()->getType().getTypePtrOrNull();
-    if (BaseType && BaseType->isArrayType()) {
-      executeSubstitutionOfSubscript(SubscriptExpr);
-    }
+    executeSubstitutionOfSubscript(SubscriptExpr);
   }
   return true;
 }
 
-} // namespace ub_tester
-
-namespace ub_tester {
-
 namespace {
-SourceLocation findLocAfterRSquare(
-    VarDecl* VDecl, ASTContext* Context, bool isIncompleteType) {
 
-  SourceLocation CurLoc = VDecl->getLocation(),
-                 LastValid = VDecl->getLocation();
+std::string getCuttedPointerTypeAsString(
+    const std::string& PointeeType, VarDecl* VDecl, ASTContext* Context) {
+  SourceLocation Begin = VDecl->getBeginLoc(), End = VDecl->getBeginLoc(),
+                 CurLoc = VDecl->getBeginLoc();
   SourceManager& SM = Context->getSourceManager();
-  LangOptions LO = Context->getLangOpts();
-
+  const LangOptions& LO = Context->getLangOpts();
   bool flag = true;
   while (flag) {
-    tok::TokenKind TKind =
-        Lexer::findNextToken(CurLoc, SM, LO).getValue().getKind();
-    if (TKind == tok::semi || TKind == tok::equal) {
+    auto Tok = Lexer::findNextToken(CurLoc, SM, LO);
+    assert(Tok.hasValue());
+    if (Tok.getValue().is(tok::raw_identifier)) {
+      if (Tok.getValue().getRawIdentifier().str().compare(PointeeType) == 0) {
+        Begin = Tok.getValue().getLocation();
+      }
+    }
+    if (Tok.getValue().is(tok::star)) {
+      End = Tok.getValue().getEndLoc();
+    }
+    if (Tok.getValue().isOneOf(tok::semi, tok::equal)) {
       flag = false;
     }
-    CurLoc = Lexer::findNextToken(CurLoc, SM, LO).getValue().getLocation();
-    if (TKind == tok::r_square) {
-      LastValid = CurLoc;
-    }
+    CurLoc = Tok.getValue().getLocation();
   }
-  return Lexer::getLocForEndOfToken(LastValid, 0, SM, LO);
+
+  return Lexer::getSourceText(CharSourceRange::getCharRange(Begin, End), SM, LO)
+      .str();
 }
 
-void generateTemplateType(
-    std::stringstream& Stream, const std::string& Type, int MaxDepth,
-    int CurDepth = 0) {
-  Stream << "UBSafeCArray<";
-  if (CurDepth == MaxDepth) {
-    Stream << Type;
-  } else {
-    generateTemplateType(Stream, Type, MaxDepth, CurDepth + 1);
-  }
-  Stream << ">";
-}
-
-std::string getSubstitutionType(bool isStatic, bool isConst, size_t Dimension) {
+std::string getSubstituterTypeAsString(bool isStatic, size_t Dimension) {
   std::stringstream Type;
   Type << (isStatic ? "static " : "");
   for (size_t i = 0; i < Dimension; i++) {
     Type << "UBSafeCArray<";
   }
-  Type << (isConst ? "const " : "");
   Type << "@";
   for (size_t i = 0; i < Dimension; i++) {
     Type << ">";
@@ -201,7 +219,7 @@ std::string getSubstitutionType(bool isStatic, bool isConst, size_t Dimension) {
   return Type.str();
 }
 
-std::string getSizes(const std::vector<std::string>& Sizes) {
+std::string getSizesAsString(const std::vector<std::string>& Sizes) {
   std::stringstream VectorSizes;
   VectorSizes << "{";
   for (size_t i = 0; i < Sizes.size(); i++) {
@@ -215,12 +233,11 @@ std::string getSizes(const std::vector<std::string>& Sizes) {
 }
 
 std::pair<std::string, std::string> getDeclFormats(
-    const std::string& Type, const std::string& Sizes, bool hasInitList,
-    const std::string& InitList) {
+    const std::string& Type, const std::string& Sizes, bool hasInitList) {
   std::stringstream SourceFormat, OutputFormat;
   SourceFormat << "#@#@#" << (hasInitList ? "=@" : "");
   OutputFormat << Type << " "
-               << "@(" << Sizes << (hasInitList ? ", " + InitList : "") << ")";
+               << "@(" << Sizes << (hasInitList ? ", @" : "") << ")";
   return {SourceFormat.str(), OutputFormat.str()};
 }
 
@@ -230,6 +247,20 @@ std::vector<std::string> getDeclArgs(
   std::vector<std::string> Args = {Type, Name};
   if (hasInitList)
     Args.push_back(InitList);
+  return Args;
+}
+
+std::pair<std::string, std::string> getSubscriptFormats() {
+  std::string SourceFormat = "@[@]";
+  std::string OutputFormat = "ASSERT(@, @)";
+  return {SourceFormat, OutputFormat};
+}
+
+std::vector<std::string>
+getSubscriptArgs(ArraySubscriptExpr* SubscriptExpr, ASTContext* Context) {
+  std::vector<std::string> Args;
+  Args.push_back(getExprAsString(SubscriptExpr->getLHS(), Context));
+  Args.push_back(getExprAsString(SubscriptExpr->getRHS(), Context));
   return Args;
 }
 

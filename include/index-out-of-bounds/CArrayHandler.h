@@ -5,8 +5,6 @@
 #include <utility>
 #include <vector>
 
-#include "UBUtility.h"
-
 namespace ub_tester {
 
 class CArrayHandler : public clang::RecursiveASTVisitor<CArrayHandler> {
@@ -41,7 +39,10 @@ private:
     std::string Name_, Type_;
     std::vector<std::string> Sizes_;
     std::string InitList_;
-    bool isIncompleteType_, isConst_, shouldVisitNodes_, hasInitList_;
+    bool shouldVisitNodes_;
+    bool isIncompleteType_, hasInitList_;
+    bool isElementIsPointer_;
+    std::string LowestLevelPointeeType_;
   };
 
 private:
