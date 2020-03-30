@@ -5,10 +5,9 @@
 
 namespace ub_tester {
 
-class PointerSubstituter
-    : public clang::RecursiveASTVisitor<PointerSubstituter> {
+class PointerHandler : public clang::RecursiveASTVisitor<PointerHandler> {
 public:
-  explicit PointerSubstituter(clang::ASTContext* Context);
+  explicit PointerHandler(clang::ASTContext* Context);
 
   bool VisitFunctionDecl(clang::FunctionDecl* fd);
 
@@ -25,9 +24,15 @@ public:
   bool VisitBinaryOperator(clang::BinaryOperator* bo);
 
 private:
+  struct PointerInfo_t {
+    void reset();
+    std::string Name_, Type_, Size_;
+    bool shouldVisitNodes_, shouldVisitDeclRefExpr_;
+  };
+
+private:
   clang::ASTContext* Context;
-  var_info_ pointer_;
-  bool should_visit_decl_ref_expr_;
+  PointerInfo_t Pointer_;
 };
 
 } // namespace ub_tester

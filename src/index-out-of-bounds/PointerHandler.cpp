@@ -1,4 +1,4 @@
-#include "index-out-of-bounds/PointerSubstituter.h"
+#include "index-out-of-bounds/PointerHandler.h"
 #include "clang/Basic/SourceManager.h"
 #include <cstdio>
 #include <sstream>
@@ -28,14 +28,17 @@ std::unordered_map<std::string, determine_size> allocation_functions_ = {
 
 namespace ub_tester {
 
-PointerSubstituter::PointerSubstituter(ASTContext* Context)
-    : Context(Context) {}
+void PointerHandler::PointerInfo_t::reset() {
+  shouldVisitNodes_ = shouldVisitDeclRefExpr_ = false;
+}
+
+PointerHandler::PointerHandler(ASTContext* Context) : Context(Context) {}
 
 bool isPointer(const Type* t) {
   return t && t->isPointerType() && !t->isFunctionPointerType();
 }
 
-bool PointerSubstituter::VisitFunctionDecl(FunctionDecl* fd) {
+bool PointerHandler::VisitFunctionDecl(FunctionDecl* fd) {
   if (Context->getSourceManager().isInMainFile(fd->getBeginLoc())) {
     for (const auto& param : fd->parameters()) {
       auto type = param->getOriginalType().getTypePtrOrNull();
@@ -51,74 +54,67 @@ bool PointerSubstituter::VisitFunctionDecl(FunctionDecl* fd) {
   return true;
 }
 
-bool PointerSubstituter::VisitPointerType(PointerType* pt) {
-  if (pointer_.should_visit_nodes_) {
-    pointer_.type_ = pt->getPointeeType().getAsString();
+bool PointerHandler::VisitPointerType(PointerType* pt) {
+  if (Pointer_.shouldVisitNodes_) {
+    Pointer_.Type_ = pt->getPointeeType().getAsString();
   }
   return true;
 }
 
-bool PointerSubstituter::VisitCXXNewExpr(CXXNewExpr* cne) {
+bool PointerHandler::VisitCXXNewExpr(CXXNewExpr* cne) {
   // TODO
   return true;
 }
 
-bool PointerSubstituter::VisitCallExpr(CallExpr* ce) {
-  if (pointer_.should_visit_nodes_) {
+bool PointerHandler::VisitCallExpr(CallExpr* ce) {
+  if (Pointer_.shouldVisitNodes_) {
     FunctionDecl* decl = ce->getDirectCallee();
     if (Context->getSourceManager().isInExternCSystemHeader(
             decl->getBeginLoc())) {
       std::string function_name = decl->getNameInfo().getAsString();
       if (allocation_functions_.find(function_name) !=
           allocation_functions_.end()) {
-        pointer_.size_ =
-            allocation_functions_[function_name](ce, pointer_.type_, Context);
+        Pointer_.Size_ =
+            allocation_functions_[function_name](ce, Pointer_.Type_, Context);
       }
     }
   }
   return true;
 }
 
-bool PointerSubstituter::TraverseVarDecl(VarDecl* vd) {
+bool PointerHandler::TraverseVarDecl(VarDecl* vd) {
   if (Context->getSourceManager().isInMainFile(vd->getBeginLoc())) {
     auto type = vd->getType().getTypePtrOrNull();
-    pointer_.should_visit_nodes_ = isPointer(type);
-    if (pointer_.should_visit_nodes_) {
-      RecursiveASTVisitor<PointerSubstituter>::TraverseVarDecl(vd);
-      pointer_.name_ = vd->getNameAsString();
-      printf(
-          "UBSafePointer<%s> %s\n%s.setSize(%s)\n", pointer_.type_.c_str(),
-          pointer_.name_.c_str(), pointer_.name_.c_str(),
-          pointer_.size_.c_str());
+    Pointer_.shouldVisitNodes_ = isPointer(type);
+    if (Pointer_.shouldVisitNodes_) {
+      RecursiveASTVisitor<PointerHandler>::TraverseVarDecl(vd);
+      Pointer_.Name_ = vd->getNameAsString();
     }
-    pointer_.should_visit_nodes_ = false;
+    Pointer_.reset();
   }
   return true;
 }
 
-bool PointerSubstituter::VisitDeclRefExpr(DeclRefExpr* ref_expr) {
-  if (should_visit_decl_ref_expr_) {
-
+bool PointerHandler::VisitDeclRefExpr(DeclRefExpr* ref_expr) {
+  if (Pointer_.shouldVisitNodes_) {
     auto type = ref_expr->getDecl()->getType().getTypePtrOrNull();
     if (type && type->isPointerType()) {
-      pointer_.name_ = ref_expr->getDecl()->getNameAsString();
-      pointer_.should_visit_nodes_ = true;
+      Pointer_.Name_ = ref_expr->getDecl()->getNameAsString();
+      Pointer_.shouldVisitNodes_ = true;
     }
   }
   return true;
 }
 
-bool PointerSubstituter::VisitBinaryOperator(BinaryOperator* bo) {
+bool PointerHandler::VisitBinaryOperator(BinaryOperator* bo) {
   if (Context->getSourceManager().isInMainFile(bo->getBeginLoc())) {
-    should_visit_decl_ref_expr_ = true;
-    RecursiveASTVisitor<PointerSubstituter>::TraverseStmt(bo->getLHS());
-    should_visit_decl_ref_expr_ = false;
-    if (pointer_.should_visit_nodes_) {
-      RecursiveASTVisitor<PointerSubstituter>::TraverseStmt(bo->getRHS());
-      printf(
-          "%s.setSize(%s)\n", pointer_.name_.c_str(), pointer_.size_.c_str());
-      pointer_.should_visit_nodes_ = false;
+    Pointer_.shouldVisitDeclRefExpr_ = true;
+    RecursiveASTVisitor<PointerHandler>::TraverseStmt(bo->getLHS());
+    Pointer_.shouldVisitDeclRefExpr_ = false;
+    if (Pointer_.shouldVisitNodes_) {
+      RecursiveASTVisitor<PointerHandler>::TraverseStmt(bo->getRHS());
     }
+    Pointer_.reset();
   }
   return true;
 }
