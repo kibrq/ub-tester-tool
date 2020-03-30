@@ -1,18 +1,14 @@
 #pragma once
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Expr.h"
+#include "clang/AST/Type.h"
 
 #include <string>
 
-#include "clang/AST/ASTContext.h"
-#include "clang/AST/Expr.h"
-
 namespace ub_tester {
 
-struct var_info_ {
-  std::string name_, size_, type_;
-  bool should_visit_nodes_;
-};
+std::string getExprAsString(const clang::Expr*, const clang::ASTContext*);
 
-std::string
-getExprAsString(const clang::Expr* ex, const clang::ASTContext* Context);
+std::string getPointeeType(const clang::Type*);
 
 }; // namespace ub_tester
