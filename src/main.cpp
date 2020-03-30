@@ -9,7 +9,8 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
-#include "arithmetic-overflow/FindArithmeticOverflowConsumer.h"
+#include "arithmetic-overflow/ArithmeticUBAsserts.h"
+#include "arithmetic-overflow/FindArithmeticUBConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -24,12 +25,11 @@ class UBTesterAction : public ASTFrontendAction {
 public:
   virtual std::unique_ptr<ASTConsumer>
   CreateASTConsumer(CompilerInstance& Compiler, StringRef InFile) {
-    std::unique_ptr<ASTConsumer> ArithmeticOverflowConsumer =
-        std::make_unique<FindArithmeticOverflowConsumer>(
-            &Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
+        std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    consumers.emplace_back(std::move(ArithmeticOverflowConsumer));
+    consumers.emplace_back(std::move(ArithmeticUBConsumer));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }

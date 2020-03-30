@@ -3,10 +3,10 @@
 
 namespace ub_tester {
 
-class FindArithmeticOverflowVisitor
-    : public clang::RecursiveASTVisitor<FindArithmeticOverflowVisitor> {
+class FindArithmeticUBVisitor
+    : public clang::RecursiveASTVisitor<FindArithmeticUBVisitor> {
 public:
-  explicit FindArithmeticOverflowVisitor(clang::ASTContext* Context);
+  explicit FindArithmeticUBVisitor(clang::ASTContext* Context);
 
   bool VisitBinaryOperator(clang::BinaryOperator* Binop);
   bool VisitUnaryOperator(clang::UnaryOperator* Unop);

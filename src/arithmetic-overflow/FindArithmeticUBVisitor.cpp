@@ -1,17 +1,15 @@
-#include "arithmetic-overflow/FindArithmeticOverflowVisitor.h"
 #include "UBUtility.h"
-#include "arithmetic-overflow/ArithmeticOverflowAsserts.h"
+#include "arithmetic-overflow/FindArithmeticUBVisitor.h"
 #include <cassert>
 
 using namespace clang;
 
 namespace ub_tester {
 
-FindArithmeticOverflowVisitor::FindArithmeticOverflowVisitor(
-    ASTContext* Context)
+FindArithmeticUBVisitor::FindArithmeticUBVisitor(ASTContext* Context)
     : Context(Context) {}
 
-bool FindArithmeticOverflowVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
+bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   QualType BinopType = Binop->getType();
   const Type* BinopTypePtr = BinopType.getTypePtr();
   if (BinopTypePtr->isDependentType())
@@ -59,14 +57,14 @@ bool FindArithmeticOverflowVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
       BinopName == "<<" || BinopName == ">>" ||
       LhsType.getAsString() == RhsType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT(" << OperationName
-               << ", " << getExprAsString(Lhs, Context) << ", "
+  llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT_BINOP_OVERFLOW("
+               << OperationName << ", " << getExprAsString(Lhs, Context) << ", "
                << getExprAsString(Rhs, Context) << ", "
                << BinopType.getAsString() << ");\n";
   return true;
 }
 
-bool FindArithmeticOverflowVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
+bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   if (!Unop->canOverflow())
     return true;
 
@@ -82,11 +80,11 @@ bool FindArithmeticOverflowVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   std::string UnopName = UnaryOperator::getOpcodeStr(Unop->getOpcode()).str();
   std::string OperationName = "undefined";
   if (UnopName == "-") {
-    OperationName = "UnaryNegation";
+    OperationName = "UnaryNeg";
   } else if (UnopName == "++") {
-    OperationName = Unop->isPrefix() ? "PrefixIncrement" : "PostfixIncrement";
+    OperationName = Unop->isPrefix() ? "PrefixIncr" : "PostfixIncr";
   } else if (UnopName == "--") {
-    OperationName = Unop->isPrefix() ? "PrefixDecrement" : "PostfixDecrement";
+    OperationName = Unop->isPrefix() ? "PrefixDecr" : "PostfixDecr";
   } else {
     llvm_unreachable("Unknown unary operator can overflow");
   }
@@ -101,9 +99,9 @@ bool FindArithmeticOverflowVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
       SubExpr->getType().getUnqualifiedType().getCanonicalType();
   assert(SubExprType.getAsString() == UnopType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Unop, Context) << " ASSERT(" << OperationName
-               << ", " << getExprAsString(SubExpr, Context) << ", "
-               << UnopType.getAsString() << ");\n";
+  llvm::outs() << getExprLineNCol(Unop, Context) << " ASSERT_UNOP_OVERFLOW("
+               << OperationName << ", " << getExprAsString(SubExpr, Context)
+               << ", " << UnopType.getAsString() << ");\n";
 
   return true;
 }
