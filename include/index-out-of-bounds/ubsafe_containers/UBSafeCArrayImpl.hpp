@@ -4,71 +4,53 @@
 namespace ub_tester {
 
 template <typename T>
+UBSafeCArray<T>::UBSafeCArray(const std::initializer_list<T>& InitList)
+    : Data_{InitList} {}
+
+template <typename T>
 void UBSafeCArray<T>::setSize(size_t Size) {
   Data_.resize(Size);
 }
 
 template <typename T>
 void UBSafeCArray<T>::setSize(const std::vector<size_t>& Sizes, int CurDepth) {
-  assert(CurDepth < Sizes.size());
   setSize(Sizes[CurDepth]);
 }
 
 template <typename T>
-T& UBSafeCArray<T>::operator[](int index) noexcept {
-  if (index < 0 || index >= Data_.size()) {
-    // exit(0);
-  }
-  return Data_[index];
+UBSafeCArray<T>::UBSafeCArray(const std::vector<size_t>& Sizes, bool) {
+  setSize(Sizes);
 }
 
 template <typename T>
-const T& UBSafeCArray<T>::operator[](int index) const noexcept {
-  if (index < 0 || index >= Data_.size()) {
-    // exit(0);
-  }
-  return Data_[index];
+UBSafeCArray<T>::UBSafeCArray(
+    std::vector<size_t> Sizes, const std::initializer_list<T>& Args)
+    : UBSafeCArray(Sizes, false) {
+  Data_ = Args;
 }
 
 template <typename T>
-UBSafeCArray<T>::UBSafeCArray(const std::initializer_list<T>& args) {
-  Data_ = args;
+const T& UBSafeCArray<T>::operator[](int Index) const {
+  return Data_.at(Index);
 }
 
-char& UBSafeCArray<char>::operator[](int index) noexcept {
-  if (index < 0 || index >= Data_.size()) {
-    // exit(0);
-  }
-  return Data_[index];
+template <typename T>
+T& UBSafeCArray<T>::operator[](int Index) {
+  return Data_.at(Index);
 }
 
-const char& UBSafeCArray<char>::operator[](int index) const noexcept {
-  if (index < 0 || index >= Data_.size()) {
-    // exit(0);
-  }
-  return Data_[index];
-}
+// UBSafeCArray specialization
 
-void UBSafeCArray<char>::setSize(size_t Size) { Data_.resize(Size); }
-void UBSafeCArray<char>::setSize(
-    const std::vector<size_t>& Sizes, int CurDepth) {
-  setSize(Sizes[CurDepth]);
-}
-
-UBSafeCArray<char>::UBSafeCArray(const std::initializer_list<char>& args) {
-  Data_ = args;
-}
-
-UBSafeCArray<char>::UBSafeCArray(const char* str) {
-  do {
-    Data_.push_back(*str);
-  } while (*str != '\0');
-}
+template <typename T>
+UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(
+    const std::initializer_list<UBSafeCArray<T>>& InitList)
+    : Data_{InitList} {}
 
 template <typename T>
 void UBSafeCArray<UBSafeCArray<T>>::setSize(size_t Size) {
   Data_.resize(Size);
 }
+
 template <typename T>
 void UBSafeCArray<UBSafeCArray<T>>::setSize(
     const std::vector<size_t>& Sizes, int CurDepth) {
@@ -79,26 +61,28 @@ void UBSafeCArray<UBSafeCArray<T>>::setSize(
 }
 
 template <typename T>
-UBSafeCArray<T>& UBSafeCArray<UBSafeCArray<T>>::operator[](int index) noexcept {
-  if (index < 0 || index >= Data_.size()) {
-    // exit(0);
-  }
-  return Data_[index];
-}
-
-template <typename T>
-const UBSafeCArray<T>&
-UBSafeCArray<UBSafeCArray<T>>::operator[](int index) const noexcept {
-  if (index < 0 || index >= Data_.size()) {
-    // exit(0);
-  }
-  return Data_[index];
+UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(
+    const std::vector<size_t>& Sizes, bool) {
+  setSize(Sizes);
 }
 
 template <typename T>
 UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(
-    const std::initializer_list<UBSafeCArray<T>>& args) {
-  Data_ = args;
+    std::vector<size_t> Sizes,
+    const std::initializer_list<UBSafeCArray<T>>& Args)
+    : Data_{Args} {
+  setSize(Sizes);
+}
+
+template <typename T>
+const UBSafeCArray<T>&
+UBSafeCArray<UBSafeCArray<T>>::operator[](int Index) const {
+  return Data_.at(Index);
+}
+
+template <typename T>
+UBSafeCArray<T>& UBSafeCArray<UBSafeCArray<T>>::operator[](int Index) {
+  return Data_.at(Index);
 }
 
 } // namespace ub_tester
