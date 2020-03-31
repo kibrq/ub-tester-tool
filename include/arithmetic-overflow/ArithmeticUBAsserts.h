@@ -16,14 +16,15 @@
 
 #define OVERFLOW_ASSERT_FAILED(type, returnExprIfWarning)                      \
   if (!std::numeric_limits<type>::is_signed) {                                 \
-    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING_CODE);                              \
-    return returnExprIfWarning;                                                \
+    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING_CODE, returnExprIfWarning);         \
   } else                                                                       \
     ASSERT_FAILED(OVERFLOW_EXIT_CODE)
 
 // in future failures and warnings will be collected by special class
 #define ASSERT_FAILED(exitCode) /*exit(exitCode)*/ return 0 // for testing
-#define PUSH_WARNING(warningCode) std::cerr << "Warning has been generated.\n";
+#define PUSH_WARNING(warningCode, returnExprIfWarning)                         \
+  std::cerr << "Warning has been generated.\n";                                \
+  return returnExprIfWarning;
 
 #define ARE_SAME_TYPES(type1, type2)                                           \
   typedef std::is_same<type1, type2> areSameTypes__;                           \
@@ -42,8 +43,10 @@ constexpr int OVERFLOW_EXIT_CODE = -1;
 constexpr int DIVISION_BY_ZERO_EXIT_CODE = -2;
 constexpr int UNDEFINED_MOD_EXIT_CODE = -3;
 constexpr int UNDEFINED_BITSHIFT_LEFT_EXIT_CODE = -4;
+constexpr int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
 
-constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -5;
+constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
+constexpr int IMPL_DEFINED_WARNING_CODE = -7;
 
 template <typename LhsType, typename RhsType>
 LhsType AssertSum(
@@ -239,6 +242,39 @@ LhsType AssertBitShiftLeft(
     return lhs << rhs;
   default:
     assert(0 && "Unexpected UBCheckRes from UBCheckBitShiftLeft");
+  }
+}
+
+template <typename LhsType, typename RhsType>
+LhsType AssertBitShiftRight(
+    LhsType lhs, RhsType rhs, const char* lhsTypeName, const char* fileName,
+    int line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<RhsType>::is_integer);
+
+  switch (UBCheckBitShiftRight<LhsType, RhsType>(lhs, rhs)) {
+  case UBCheckRes::BITSHIFT_NEGATIVE_RHS:
+    std::cerr << lhsTypeName << " bitshift right (>>) is undefined in "
+              << fileName << " line: " << line << "\nlog: negative rhs; "
+              << +rhs << " < 0\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
+  case UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS:
+    std::cerr << lhsTypeName << " bitshift right (>>) is undefined in "
+              << fileName << " line: " << line
+              << "\nlog: rhs >= number of bits in lhs type; " << +rhs
+              << " >= " << +(sizeof(LhsType) * CHAR_BIT) << "\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
+  case UBCheckRes::IMPL_DEFINED_OPERATION:
+    std::cerr << lhsTypeName
+              << " bitshift right (>>) is implementation-defined in "
+              << fileName << " line: " << line << "\nlog: negative lhs; "
+              << +lhs << " < 0\n";
+    PUSH_WARNING(IMPL_DEFINED_WARNING_CODE, lhs >> rhs);
+
+  case UBCheckRes::SAFE_OPERATION:
+    return lhs >> rhs;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckBitShiftRight");
   }
 }
 

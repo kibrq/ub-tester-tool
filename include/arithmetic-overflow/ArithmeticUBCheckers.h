@@ -10,17 +10,18 @@
 
 namespace ub_tester {
 
-enum class UBCheckRes {
+enum class UBCheckRes {             // can be used as return from:
   OVERFLOW_MAX,                     // all operators
   OVERFLOW_MIN,                     // all operators
   SAFE_OPERATION,                   // all operators
+  IMPL_DEFINED_OPERATION,           // all operators
   DIV_BY_0,                         // only / and %
   MOD_UNDEFINED_DIV_OVERFLOWS_MAX,  // only %
   MOD_UNDEFINED_DIV_OVERFLOWS_MIN,  // only %
-  BITSHIFT_NEGATIVE_RHS,            // only for << and >>
-  BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS, // only for << and >>
-  BITSHIFT_LEFT_NEGATIVE_LHS,       // only for <<
-  BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS // only for <<
+  BITSHIFT_NEGATIVE_RHS,            // only << and >>
+  BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS, // only << and >>
+  BITSHIFT_LEFT_NEGATIVE_LHS,       // only <<
+  BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS // only <<
 };
 
 /* ArithmeticUBCheckers only detect problem, then ArithmeticUBAsserts decide is
@@ -144,6 +145,27 @@ UBCheckRes UBCheckBitShiftLeft(LhsType lhs, RhsType rhs) {
     return UBCheckRes::OVERFLOW_MAX; // for unsigned occurs overflow
   }
 
+  return UBCheckRes::SAFE_OPERATION;
+}
+
+template <typename LhsType, typename RhsType>
+UBCheckRes UBCheckBitShiftRight(LhsType lhs, RhsType rhs) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<RhsType>::is_integer);
+
+  if (rhs < 0)
+    return UBCheckRes::BITSHIFT_NEGATIVE_RHS;
+  if (rhs >= static_cast<RhsType>(sizeof(LhsType) * 8))
+    return UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS;
+
+// since C++20 all other cases are SAFE_OPERATION
+// but now C++17 is considered
+#if __cplusplus > 201703L
+  return UBCheckRes::SAFE_OPERATION;
+#endif
+
+  if (lhs < 0)
+    return UBCheckRes::IMPL_DEFINED_OPERATION;
   return UBCheckRes::SAFE_OPERATION;
 }
 
