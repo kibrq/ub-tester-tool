@@ -223,14 +223,14 @@ std::string getSubstituterTypeAsString(bool isStatic, size_t Dimension) {
 
 std::string getSizesAsString(const std::vector<std::string>& Sizes) {
   std::stringstream VectorSizes;
-  VectorSizes << "{";
+  VectorSizes << "std::vector<size_t>({";
   for (size_t i = 0; i < Sizes.size(); i++) {
     VectorSizes << Sizes[i];
     if (i != Sizes.size() - 1) {
       VectorSizes << ", ";
     }
   }
-  VectorSizes << "}";
+  VectorSizes << "})";
   return VectorSizes.str();
 }
 
