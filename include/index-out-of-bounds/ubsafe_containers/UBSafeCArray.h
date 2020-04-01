@@ -11,7 +11,7 @@ class UBSafeCArray {
 public:
   explicit UBSafeCArray() = default;
   UBSafeCArray(const std::initializer_list<T>&);
-  UBSafeCArray(const std::vector<size_t>& Sizes, bool);
+  UBSafeCArray(const std::vector<size_t>& Sizes);
   UBSafeCArray(
       const std::vector<size_t> Sizes, const std::initializer_list<T>&);
 
@@ -30,7 +30,7 @@ class UBSafeCArray<UBSafeCArray<T>> {
 public:
   explicit UBSafeCArray() = default;
   UBSafeCArray(const std::initializer_list<UBSafeCArray<T>>&);
-  UBSafeCArray(const std::vector<size_t>& Sizes, bool);
+  UBSafeCArray(const std::vector<size_t>& Sizes);
   UBSafeCArray(
       const std::vector<size_t> Sizes,
       const std::initializer_list<UBSafeCArray<T>>&);

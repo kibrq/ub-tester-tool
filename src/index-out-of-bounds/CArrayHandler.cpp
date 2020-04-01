@@ -21,22 +21,6 @@ CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {
   Array_.reset();
 }
 
-bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
-  if (Context_->getSourceManager().isInMainFile(fd->getBeginLoc())) {
-    for (const auto& param : fd->parameters()) {
-      auto type = param->getOriginalType().getTypePtrOrNull();
-      if (type && type->isArrayType()) {
-        printf("Array in function declaration\n");
-      }
-    }
-    auto return_type = fd->getReturnType().getTypePtrOrNull();
-    if (return_type && return_type->isArrayType()) {
-      printf("Array in return stmt\n");
-    }
-  }
-  return true;
-}
-
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     PrintingPolicy pp(Context_->getLangOpts());
@@ -102,40 +86,44 @@ bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
 namespace {
 
 std::string getCuttedPointerTypeAsString(
-    const std::string& PointeeType, VarDecl*, ASTContext*);
+    const std::string& PointeeType, SourceLocation BeginLoc, ASTContext*);
 
 std::string getSubstituterTypeAsString(bool isStatic, size_t Dimension);
 
 std::string getSizesAsString(const std::vector<std::string>& Sizes);
 
 std::pair<std::string, std::string> getDeclFormats(
-    const std::string& Type, const std::string& Sizes, bool hasInitList);
+    const std::string& SubstituterType, const std::string& Sizes, bool needCtor,
+    bool hasInitList);
 
 std::vector<std::string> getDeclArgs(
-    const std::string& Type, const std::string& Name, bool hasInitList,
+    const std::string& ElementsType, const std::string& Name, bool hasInitList,
     const std::string& InitList);
 
 } // namespace
 
-void CArrayHandler::executeSubstitutionOfDecl(VarDecl* ArrayDecl) {
-  SourceLocation BeginLoc = ArrayDecl->getBeginLoc();
-  std::string generatedType = getSubstituterTypeAsString(
-      ArrayDecl->isStaticLocal(), Array_.Sizes_.size());
-  std::string generatedSizes = getSizesAsString(Array_.Sizes_);
-  std::pair<std::string, std::string> Formats =
-      getDeclFormats(generatedType, generatedSizes, Array_.hasInitList_);
+void CArrayHandler::executeSubstitutionOfArrayDecl(
+    SourceLocation BeginLoc, bool isStatic, bool needCtor) {
+  size_t Dimension = Array_.Sizes_.size();
+  std::string SubstituterTypeAsString =
+      getSubstituterTypeAsString(isStatic, Dimension);
+  std::string SubstituterSizesAsString = getSizesAsString(Array_.Sizes_);
+  std::pair<std::string, std::string> Formats = getDeclFormats(
+      SubstituterTypeAsString, SubstituterSizesAsString, needCtor,
+      Array_.hasInitList_);
   if (Array_.isElementIsPointer_) {
     Array_.Type_ = getCuttedPointerTypeAsString(
-        Array_.LowestLevelPointeeType_, ArrayDecl, Context_);
+        Array_.LowestLevelPointeeType_, BeginLoc, Context_);
   }
-  std::vector<std::string> Args = getDeclArgs(
+  std::vector<std::string> SubstituterArgs = getDeclArgs(
       Array_.Type_, Array_.Name_, Array_.hasInitList_, Array_.InitList_);
-  llvm::outs() << "SourceFormat: " << Formats.first << "\n"
-               << "OutputFormat: " << Formats.second << '\n';
-  for (const auto& Arg : Args) {
-    llvm::outs() << Arg << ' ';
-  }
-  llvm::outs() << '\n';
+  llvm::outs() << "SourceFormat: " << Formats.first << '\n';
+  llvm::outs() << "OutputFormat: " << Formats.second << '\n';
+}
+
+void CArrayHandler::executeSubstitutionOfArrayDecl(VarDecl* ArrayDecl) {
+  executeSubstitutionOfArrayDecl(
+      ArrayDecl->getBeginLoc(), ArrayDecl->isStaticLocal(), true);
 }
 
 bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
@@ -145,7 +133,32 @@ bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
     RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
     if (Type && Type->isArrayType()) {
       Array_.Name_ = VDecl->getName().str();
-      executeSubstitutionOfDecl(VDecl);
+      executeSubstitutionOfArrayDecl(VDecl);
+    }
+    Array_.reset();
+  }
+  return true;
+}
+
+void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl) {
+  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false);
+}
+
+bool CArrayHandler::VisitFunctionDecl(FunctionDecl* FDecl) {
+  if (Context_->getSourceManager().isInMainFile(FDecl->getBeginLoc())) {
+    for (const auto& Param : FDecl->parameters()) {
+      auto Type = Param->getOriginalType().getTypePtrOrNull();
+      Array_.shouldVisitNodes_ = Type && Type->isArrayType();
+      RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(Param);
+      if (Type && Type->isArrayType()) {
+        Array_.Name_ = Param->getName().str();
+        executeSubstitutionOfArrayDecl(Param);
+      }
+      Array_.reset();
+    }
+    auto return_type = FDecl->getReturnType().getTypePtrOrNull();
+    if (return_type && return_type->isArrayType()) {
+      printf("Array in return stmt\n");
     }
     Array_.reset();
   }
@@ -181,9 +194,9 @@ bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
 namespace {
 
 std::string getCuttedPointerTypeAsString(
-    const std::string& PointeeType, VarDecl* VDecl, ASTContext* Context) {
-  SourceLocation Begin = VDecl->getBeginLoc(), End = VDecl->getBeginLoc(),
-                 CurLoc = VDecl->getBeginLoc();
+    const std::string& PointeeType, SourceLocation BeginLoc,
+    ASTContext* Context) {
+  SourceLocation Begin = BeginLoc, End = BeginLoc, CurLoc = BeginLoc;
   SourceManager& SM = Context->getSourceManager();
   const LangOptions& LO = Context->getLangOpts();
   bool flag = true;
@@ -235,12 +248,15 @@ std::string getSizesAsString(const std::vector<std::string>& Sizes) {
 }
 
 std::pair<std::string, std::string> getDeclFormats(
-    const std::string& Type, const std::string& Sizes, bool hasInitList) {
+    const std::string& Type, const std::string& Sizes, bool needCtor,
+    bool hasInitList) {
   std::stringstream SourceFormat, OutputFormat;
-  SourceFormat << "#@#@#" << (hasInitList ? "=@" : ";");
+  SourceFormat << "#@#@#[#]" << (hasInitList ? "=@" : "");
   OutputFormat << Type << " "
-               << "@(" << Sizes << (hasInitList ? ", @" : "") << ")"
-               << (hasInitList ? "" : ";");
+               << "@";
+  if (needCtor)
+    OutputFormat << "(" << Sizes << (hasInitList ? ", @" : "") << ")";
+
   return {SourceFormat.str(), OutputFormat.str()};
 }
 

@@ -31,7 +31,10 @@ public:
 
 private:
   void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
-  void executeSubstitutionOfDecl(clang::VarDecl* ArrayDecl);
+  void executeSubstitutionOfArrayDecl(
+      clang::SourceLocation BeginLoc, bool isStatic, bool needCtor);
+  void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
+  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
 
 private:
   struct ArrayInfo_t {
