@@ -15,4 +15,7 @@ struct var_info_ {
 std::string
 getExprAsString(const clang::Expr* ex, const clang::ASTContext* Context);
 
+std::string getRangeAsString(
+    const clang::SourceRange& Range, const clang::ASTContext* Context);
+
 }; // namespace ub_tester
