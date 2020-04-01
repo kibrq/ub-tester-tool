@@ -39,12 +39,14 @@ bool CArrayHandler::VisitFunctionDecl(FunctionDecl* fd) {
 
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
+    PrintingPolicy pp(Context_->getLangOpts());
     if (Type->getElementType()->isPointerType()) {
       Array_.LowestLevelPointeeType_ =
-          getLowestLevelPointeeType(Type->getElementType().getTypePtr());
+          getLowestLevelPointeeType(Type->getElementType()).getAsString(pp);
       Array_.isElementIsPointer_ = true;
     } else {
-      Array_.Type_ = Type->getElementType().getUnqualifiedType().getAsString();
+      Array_.Type_ =
+          Type->getElementType().getUnqualifiedType().getAsString(pp);
     }
   }
   return true;
