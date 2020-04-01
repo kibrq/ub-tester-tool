@@ -237,9 +237,10 @@ std::string getSizesAsString(const std::vector<std::string>& Sizes) {
 std::pair<std::string, std::string> getDeclFormats(
     const std::string& Type, const std::string& Sizes, bool hasInitList) {
   std::stringstream SourceFormat, OutputFormat;
-  SourceFormat << "#@#@#" << (hasInitList ? "=@" : "");
+  SourceFormat << "#@#@#" << (hasInitList ? "=@" : ";");
   OutputFormat << Type << " "
-               << "@(" << Sizes << (hasInitList ? ", @" : "") << ")";
+               << "@(" << Sizes << (hasInitList ? ", @" : "") << ")"
+               << (hasInitList ? "" : ";");
   return {SourceFormat.str(), OutputFormat.str()};
 }
 
