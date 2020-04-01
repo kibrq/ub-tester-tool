@@ -42,19 +42,8 @@ bool isNoneOf(char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2) {
   return isNotSymbol(Ch, Symb1) && isNotSymbol(Ch, Symb2);
 }
 
-template <typename... Ss>
-bool isNoneOf(
-    char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2, Ss... Symbs) {
-  return isNotSymbol(Ch, Symb1) && isNoneOf(Ch, Symb2, Symbs...);
-}
-
 bool isAnyOf(char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2) {
   return isSymbol(Ch, Symb1) || isSymbol(Ch, Symb2);
-}
-
-template <typename... Ss>
-bool isAnyOf(char Ch, SPECIAL_SYMBOL Symb1, SPECIAL_SYMBOL Symb2, Ss... Symbs) {
-  return isSymbol(Ch, Symb1) || isAnyOf(Ch, Symb2, Symbs...);
 }
 
 } // namespace

@@ -9,7 +9,7 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
-#include "ASTFrontendInjector.h"
+#include "code-injector/ASTFrontendInjector.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -25,9 +25,7 @@ public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
-    ASTFrontendInjector::getInstance().addFile(
-        Compiler.getASTContext().getSourceManager());
-
+    ASTFrontendInjector::getInstance().addFile(&Compiler.getASTContext());
     // std::unique_ptr<ASTConsumer> consumer1 =
     //    std::make_unique<SomeConsumer>(Compiler.getASTContext());
     // Create your consumers here

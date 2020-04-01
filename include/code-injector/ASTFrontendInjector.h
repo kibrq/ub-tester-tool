@@ -1,6 +1,6 @@
 #pragma once
 
-#include "clang/Basic/SourceManager.h"
+#include "clang/AST/ASTContext.h"
 
 #include "code-injector/CodeInjector.h"
 
@@ -20,36 +20,43 @@ public:
   ASTFrontendInjector& operator=(const ASTFrontendInjector& other) = delete;
   ASTFrontendInjector& operator=(ASTFrontendInjector&& other) = delete;
 
-  void addFile(const clang::SourceManager& SM);
+  void addFile(const clang::ASTContext* Context);
+  void addFile(const std::string& Filename);
 
   void insertLineBefore(
-      const clang::SourceManager& SM, const clang::SourceLocation& Loc,
+      const clang::ASTContext* Context, const clang::SourceLocation& Loc,
       const std::string& Line);
 
   void insertLineAfter(
-      const clang::SourceManager& SM, const clang::SourceLocation& Loc,
+      const clang::ASTContext* Context, const clang::SourceLocation& Loc,
       const std::string& Line);
 
   // Formats must have equal count of %.
-  // substitute(Loc, "%+%", "AssertSum(%, %)");
+  // substitute(Context, Loc, "%+%", "AssertSum(%, %)", "a", Expr);
   void substitute(
-      const clang::SourceManager& SM, const clang::SourceLocation& BeginLoc,
+      const clang::ASTContext* Context, const clang::SourceLocation& BeginLoc,
       const std::string& SourceFormat, const std::string& SubstitutionFormat,
       const SubArgs& Args);
+
+  template <typename... Args>
+  void substitute(
+      const clang::ASTContext* Context, clang::SourceLocation& BeginLoc,
+      const std::string& SourceFormat, const std::string& SubstitutionFormat,
+      Args... as);
 
   // These functions suppose that this range contains on one Line and you won't
   // handle this range anymore
 
   void substituteSubstring(
-      const clang::SourceManager& SM, const clang::SourceLocation& Begin,
+      const clang::ASTContext* Context, const clang::SourceLocation& Begin,
       const clang::SourceLocation& End, const std::string& Substitution);
 
   void substituteSubstring(
-      const clang::SourceManager& SM, const clang::CharSourceRange& Range,
+      const clang::ASTContext* Context, const clang::CharSourceRange& Range,
       const std::string& Substitution);
 
   void substituteSubstring(
-      const clang::SourceManager& SM, const clang::SourceRange& Range,
+      const clang::ASTContext* Context, const clang::SourceRange& Range,
       const std::string& Substitution);
 
 private:
@@ -60,3 +67,5 @@ private:
 };
 
 }; // namespace ub_tester
+
+#include "ASTFrontendInjectorImpl.hpp"
