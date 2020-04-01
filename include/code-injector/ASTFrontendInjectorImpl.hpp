@@ -74,7 +74,7 @@ inline SubArgs generateArgumentsForSubstitution(
 } // namespace
 
 template <typename... Args>
-void substitute(
+void ASTFrontendInjector::substitute(
     const clang::ASTContext* Context, const clang::SourceLocation& BeginLoc,
     const std::string& SourceFormat, const std::string& OutputFormat,
     Args... as) {

@@ -40,7 +40,7 @@ public:
 
   template <typename... Args>
   void substitute(
-      const clang::ASTContext* Context, clang::SourceLocation& BeginLoc,
+      const clang::ASTContext* Context, const clang::SourceLocation& BeginLoc,
       const std::string& SourceFormat, const std::string& SubstitutionFormat,
       Args... as);
 
