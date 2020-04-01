@@ -15,14 +15,13 @@ std::string getExprAsString(const Expr* ex, const ASTContext* Context) {
       .str();
 }
 
-std::string getLowestLevelPointeeType(const Type* T) {
-  if (auto* PT = llvm::dyn_cast<PointerType>(T)) {
-    if (auto* PPT = llvm::dyn_cast<PointerType>(
-            PT->getPointeeType().getTypePtrOrNull())) {
-      return getLowestLevelPointeeType(PPT);
+QualType getLowestLevelPointeeType(QualType QT) {
+  if (auto* PT = llvm::dyn_cast<PointerType>(QT)) {
+    if (isa<PointerType>(PT->getPointeeType().getTypePtrOrNull())) {
+      return getLowestLevelPointeeType(PT->getPointeeType());
     }
-    return PT->getPointeeType().getUnqualifiedType().getAsString();
+    return PT->getPointeeType().getUnqualifiedType();
   }
-  return "";
+  return QT;
 }
 } // namespace ub_tester

@@ -9,6 +9,6 @@ namespace ub_tester {
 
 std::string getExprAsString(const clang::Expr*, const clang::ASTContext*);
 
-std::string getLowestLevelPointeeType(const clang::Type*);
+clang::QualType getLowestLevelPointeeType(clang::QualType);
 
 }; // namespace ub_tester
