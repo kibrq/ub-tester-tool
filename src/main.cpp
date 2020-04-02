@@ -7,11 +7,11 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
-#include "code-injector/ASTFrontendInjector.h"
 #include "arithmetic-overflow/ArithmeticUBAsserts.h"
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
+#include "code-injector/ASTFrontendInjector.h"
+#include "index-out-of-bounds/IOBConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
-#include "index-out-of-bounds/IndexOutOfBoundsConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -24,19 +24,21 @@ static cl::extrahelp MoreHelp("\nMore help text...\n");
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
-
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler,
+                                                                llvm::StringRef InFile) {
     ASTFrontendInjector::getInstance().addFile(&Compiler.getASTContext());
-  
-    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer = std::make_unique<IndexOutOfBoundsConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer = std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
+
+    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
+        std::make_unique<IOBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> UninitVarsConsumer =
+        std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
+        std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
-
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }
