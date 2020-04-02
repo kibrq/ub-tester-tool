@@ -1,6 +1,3 @@
-Language: Cpp
-PointerAlignment: true
-AlignAfterOpenBracket: AlwaysBreak
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-AlwaysBreakTemplateDeclarations: true
-BreakBeforeTernaryOperators: true
+BasedOnStyle: LLVM
+PointerAlignment: Left
+ColumnLimit: 135

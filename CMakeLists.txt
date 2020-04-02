@@ -41,8 +41,10 @@ else()
 
     add_subdirectory(${UB_SRC})
     set(arithmetic-overflow $<TARGET_OBJECTS:ARITHMETIC_OVERFLOW>)
+    set(uninit-variables $<TARGET_OBJECTS:UNINIT_VARIABLES>)
+    set(index-out-of-bounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
 
-    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${arithmetic-overflow})
+    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${index-out-of-bounds} ${uninit-variables} ${arithmetic-overflow})
 
     target_link_libraries(${UB_EXE}
         LLVMSupport
@@ -51,5 +53,5 @@ else()
         )
 
     target_link_libraries(${UB_EXE} pthread z dl)
-    
+   
 endif()
