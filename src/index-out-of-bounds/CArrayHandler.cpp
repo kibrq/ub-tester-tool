@@ -12,6 +12,7 @@
 
 // TODO Handle templates instations
 // TODO Handle fields
+// TODO Handle taking address of array
 
 using namespace clang;
 
