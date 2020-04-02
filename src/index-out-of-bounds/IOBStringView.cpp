@@ -13,9 +13,13 @@ constexpr const char* InvalidSizeChecker = "ASSERT_INVALID_SIZE";
 } // namespace
 
 namespace ub_tester {
-std::string
-generateSafeArrayTypename(size_t Dimension, const std::string& Type) {
+namespace iob_view {
+
+std::string generateSafeArrayTypename(bool isStatic, size_t Dimension,
+                                      const std::string& Type) {
   std::stringstream SS;
+  if (isStatic)
+    SS << "static ";
   for (size_t i = 0; i < Dimension; i++) {
     SS << SafeArrayTypename << "<";
   }
@@ -26,9 +30,9 @@ generateSafeArrayTypename(size_t Dimension, const std::string& Type) {
   return SS.str();
 }
 
-std::string generateSafeArrayCtor(
-    const std::vector<std::string>& Sizes,
-    const std::optional<std::string> InitList) {
+std::string
+generateSafeArrayCtor(const std::vector<std::string>& Sizes,
+                      const std::optional<std::string>& InitList) {
   std::stringstream SS;
   SS << InvalidSizeChecker << "(" << SizesTypename << "({";
   for (size_t i = 0; i < Sizes.size(); i++) {
@@ -45,10 +49,12 @@ std::string generateSafeArrayCtor(
   return SS.str();
 }
 
-std::string generateIOBChecker(const std::string& LHS, const std::string& RHS) {
+std::string generateIOBChecker(const std::string& LHS,
+                               const std::string& RHS) {
   std::stringstream SS;
   SS << IOBChecker << "(" << LHS << ", " << RHS << ")";
   return SS.str();
 }
 
+} // namespace iob_view
 } // namespace ub_tester
