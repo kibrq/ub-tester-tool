@@ -7,9 +7,9 @@
 
 namespace ub_tester {
 
-class IndexOutOfBoundsConsumer : public clang::ASTConsumer {
+class IOBConsumer : public clang::ASTConsumer {
 public:
-  explicit IndexOutOfBoundsConsumer(clang::ASTContext* Context);
+  explicit IOBConsumer(clang::ASTContext* Context);
   virtual void HandleTranslationUnit(clang::ASTContext& Context);
 
 private:
