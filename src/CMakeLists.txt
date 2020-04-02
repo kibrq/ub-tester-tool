@@ -1,9 +1,8 @@
-
 add_definitions(${LLVM_CXXFLAGS})
 include_directories("${PROJECT_DIR}/${UB_INCLUDE}")
 
+add_subdirectory("arithmetic-overflow")
 add_subdirectory("uninit-variables")
-#set(indexOutOfBounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
 add_subdirectory("index-out-of-bounds")
 
 # Insert your subdirectories here 

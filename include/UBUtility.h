@@ -8,7 +8,7 @@
 namespace ub_tester {
 
 std::string getExprAsString(const clang::Expr*, const clang::ASTContext*);
-
+std::string getExprLineNCol(const clang::Expr*, const clang::ASTContext*);
 clang::QualType getLowestLevelPointeeType(clang::QualType);
 
 }; // namespace ub_tester

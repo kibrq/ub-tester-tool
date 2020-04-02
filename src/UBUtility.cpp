@@ -1,7 +1,7 @@
 #include "clang/Lex/Lexer.h"
 
+#include <sstream>
 #include "UBUtility.h"
-
 #include <cassert>
 
 using namespace clang;
@@ -13,6 +13,16 @@ std::string getExprAsString(const Expr* ex, const ASTContext* Context) {
              CharSourceRange::getTokenRange(ex->getSourceRange()),
              Context->getSourceManager(), Context->getLangOpts())
       .str();
+}
+
+std::string getExprLineNCol(const Expr* Expression, const ASTContext* Context) {
+  FullSourceLoc FullLocation = Context->getFullLoc(Expression->getBeginLoc());
+  std::stringstream res;
+  if (!FullLocation.isValid())
+    return "invalid location";
+  res << FullLocation.getSpellingLineNumber() << ":"
+      << FullLocation.getSpellingColumnNumber();
+  return res.str();
 }
 
 QualType getLowestLevelPointeeType(QualType QT) {
