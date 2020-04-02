@@ -40,11 +40,14 @@ else()
     set(UB_SRC src)
 
     add_subdirectory(${UB_SRC})
+    set(code-injector $<TARGET_OBJECTS:CODE_INJECTOR>)
+
+
     set(arithmetic-overflow $<TARGET_OBJECTS:ARITHMETIC_OVERFLOW>)
     set(uninit-variables $<TARGET_OBJECTS:UNINIT_VARIABLES>)
     set(index-out-of-bounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
 
-    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${index-out-of-bounds} ${uninit-variables} ${arithmetic-overflow})
+    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${index-out-of-bounds} ${uninit-variables} ${arithmetic-overflow} ${code-injector})
 
     target_link_libraries(${UB_EXE}
         LLVMSupport
