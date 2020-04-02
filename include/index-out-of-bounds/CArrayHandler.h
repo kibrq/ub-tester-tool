@@ -11,8 +11,6 @@ class CArrayHandler : public clang::RecursiveASTVisitor<CArrayHandler> {
 public:
   explicit CArrayHandler(clang::ASTContext*);
 
-  bool VisitFunctionDecl(clang::FunctionDecl*);
-
   bool VisitArrayType(clang::ArrayType*);
 
   bool VisitConstantArrayType(clang::ConstantArrayType*);
@@ -24,6 +22,8 @@ public:
   bool VisitInitListExpr(clang::InitListExpr*);
 
   bool VisitStringLiteral(clang::StringLiteral*);
+
+  bool TraverseParmVarDecl(clang::ParmVarDecl*);
 
   bool TraverseVarDecl(clang::VarDecl*);
 
@@ -41,6 +41,7 @@ private:
     void reset();
     std::string Name_, Type_;
     std::vector<std::string> Sizes_;
+    size_t Dimension_;
     std::string InitList_;
     bool shouldVisitNodes_;
     bool isIncompleteType_, hasInitList_;

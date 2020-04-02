@@ -7,6 +7,9 @@
 #include <sstream>
 #include <stdio.h>
 
+// TODO Handle templates instations
+// TODO Handle fields
+
 using namespace clang;
 
 namespace ub_tester {
@@ -14,6 +17,7 @@ namespace ub_tester {
 void CArrayHandler::ArrayInfo_t::reset() {
   isElementIsPointer_ = hasInitList_ = shouldVisitNodes_ = isIncompleteType_ =
       false;
+  Dimension_ = 0;
   Sizes_.clear();
 }
 
@@ -23,6 +27,7 @@ CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {
 
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
+    ++Array_.Dimension_;
     PrintingPolicy pp(Context_->getLangOpts());
     if (Type->getElementType()->isPointerType()) {
       Array_.LowestLevelPointeeType_ =
@@ -104,9 +109,8 @@ std::vector<std::string> getDeclArgs(
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(
     SourceLocation BeginLoc, bool isStatic, bool needCtor) {
-  size_t Dimension = Array_.Sizes_.size();
   std::string SubstituterTypeAsString =
-      getSubstituterTypeAsString(isStatic, Dimension);
+      getSubstituterTypeAsString(isStatic, Array_.Dimension_);
   std::string SubstituterSizesAsString = getSizesAsString(Array_.Sizes_);
   std::pair<std::string, std::string> Formats = getDeclFormats(
       SubstituterTypeAsString, SubstituterSizesAsString, needCtor,
@@ -144,21 +148,14 @@ void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl) {
   executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false);
 }
 
-bool CArrayHandler::VisitFunctionDecl(FunctionDecl* FDecl) {
-  if (Context_->getSourceManager().isInMainFile(FDecl->getBeginLoc())) {
-    for (const auto& Param : FDecl->parameters()) {
-      auto Type = Param->getOriginalType().getTypePtrOrNull();
-      Array_.shouldVisitNodes_ = Type && Type->isArrayType();
-      RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(Param);
-      if (Type && Type->isArrayType()) {
-        Array_.Name_ = Param->getName().str();
-        executeSubstitutionOfArrayDecl(Param);
-      }
-      Array_.reset();
-    }
-    auto return_type = FDecl->getReturnType().getTypePtrOrNull();
-    if (return_type && return_type->isArrayType()) {
-      printf("Array in return stmt\n");
+bool CArrayHandler::TraverseParmVarDecl(ParmVarDecl* PVarDecl) {
+  if (Context_->getSourceManager().isInMainFile(PVarDecl->getBeginLoc())) {
+    auto Type = PVarDecl->getOriginalType().getTypePtrOrNull();
+    Array_.shouldVisitNodes_ = Type && Type->isArrayType();
+    RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(PVarDecl);
+    if (Type && Type->isArrayType()) {
+      Array_.Name_ = PVarDecl->getName().str();
+      executeSubstitutionOfArrayDecl(PVarDecl);
     }
     Array_.reset();
   }
