@@ -3,11 +3,11 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/MultiplexConsumer.h"
-#include "clang/Tooling/Tooling.h"
-
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
+
+#include "index-out-of-bounds/IndexOutOfBoundsConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -22,12 +22,12 @@ class UBTesterAction : public clang::ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
-    // std::unique_ptr<ASTConsumer> consumer1 =
-    //    std::make_unique<SomeConsumer>(Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> consumer1 =
+        std::make_unique<IndexOutOfBoundsConsumer>(&Compiler.getASTContext());
     // Create your consumers here
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    // consumers.emplace_back(std::move(consumer1));
+    consumers.emplace_back(std::move(consumer1));
     // Add your consumers to vector here
 
     return std::make_unique<clang::MultiplexConsumer>(std::move(consumers));

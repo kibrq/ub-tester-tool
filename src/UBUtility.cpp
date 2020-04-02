@@ -1,5 +1,8 @@
-#include "UBUtility.h"
 #include "clang/Lex/Lexer.h"
+
+#include "UBUtility.h"
+
+#include <cassert>
 
 using namespace clang;
 
@@ -12,4 +15,13 @@ std::string getExprAsString(const Expr* ex, const ASTContext* Context) {
       .str();
 }
 
+QualType getLowestLevelPointeeType(QualType QT) {
+  if (auto* PT = llvm::dyn_cast<PointerType>(QT)) {
+    if (isa<PointerType>(PT->getPointeeType().getTypePtrOrNull())) {
+      return getLowestLevelPointeeType(PT->getPointeeType());
+    }
+    return PT->getPointeeType().getUnqualifiedType();
+  }
+  return QT;
+}
 } // namespace ub_tester
