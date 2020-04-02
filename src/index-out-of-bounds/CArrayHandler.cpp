@@ -18,7 +18,8 @@ using namespace clang;
 namespace ub_tester {
 
 void CArrayHandler::ArrayInfo_t::reset() {
-  isElementIsPointer_ = hasInitList_ = shouldVisitNodes_ = isIncompleteType_ = false;
+  Name_ = Type_ = LowestLevelPointeeType_ = InitList_ = std::nullopt;
+  shouldVisitNodes_ = isIncompleteType_ = false;
   Dimension_ = 0;
   Sizes_.clear();
 }
@@ -32,7 +33,6 @@ bool CArrayHandler::VisitArrayType(ArrayType* Type) {
     if (Type->getElementType()->isPointerType()) {
       Array_.LowestLevelPointeeType_ =
           getLowestLevelPointeeType(Type->getElementType()).getAsString(pp);
-      Array_.isElementIsPointer_ = true;
     } else {
       Array_.Type_ = Type->getElementType().getUnqualifiedType().getAsString(pp);
     }
@@ -69,7 +69,6 @@ bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
 
     // Cause of inner InitLists and StringLiterals
     Array_.shouldVisitNodes_ = false;
-    Array_.hasInitList_ = true;
     Array_.InitList_ = getExprAsString(List, Context_);
   }
   return true;
@@ -78,7 +77,6 @@ bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
 bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
   if (Array_.shouldVisitNodes_ && Array_.isIncompleteType_) {
     Array_.Sizes_.insert(Array_.Sizes_.begin(), std::to_string(Literal->getLength() + 1));
-    Array_.hasInitList_ = true;
     Array_.InitList_ = getExprAsString(Literal, Context_);
   }
   return true;
@@ -88,30 +86,34 @@ namespace {
 
 std::string getCuttedPointerTypeAsString(const std::string& PointeeType, SourceLocation BeginLoc,
                                          ASTContext*);
-
-std::pair<std::string, std::string> getDeclFormats(bool isStatic, size_t Dimension, bool needCtor,
-                                                   const std::vector<std::string>& Sizes,
-                                                   bool hasInitList);
-
-std::vector<std::string> getDeclArgs(const std::string& ElementsType, const std::string& Name,
-                                     const std::optional<std::string>& InitList);
-
 } // namespace
+
+std::pair<std::string, std::string> CArrayHandler::getDeclFormats(bool isStatic, bool needCtor) {
+  std::stringstream SourceFormat, OutputFormat;
+  SourceFormat << "#@#@#[#]" << (Array_.InitList_.has_value() && needCtor ? "#@" : "");
+  OutputFormat << iob_view::generateSafeArrayTypename(isStatic, Array_.Dimension_, "@") << " @";
+  if (needCtor)
+    OutputFormat << "("
+                 << iob_view::generateSafeArrayCtor(Array_.Sizes_,
+                                                    Array_.InitList_.has_value()
+                                                        ? std::optional<std::string>("@")
+                                                        : std::nullopt)
+                 << ")";
+
+  return {SourceFormat.str(), OutputFormat.str()};
+}
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(SourceLocation BeginLoc, bool isStatic,
                                                    bool needCtor) {
 
-  std::pair<std::string, std::string> Formats =
-      getDeclFormats(isStatic, Array_.Dimension_, needCtor, Array_.Sizes_, Array_.hasInitList_);
-  if (Array_.isElementIsPointer_) {
-    Array_.Type_ = getCuttedPointerTypeAsString(Array_.LowestLevelPointeeType_, BeginLoc, Context_);
+  std::pair<std::string, std::string> Formats = getDeclFormats(isStatic, needCtor);
+  if (not Array_.Type_.has_value()) {
+    Array_.Type_ =
+        getCuttedPointerTypeAsString(Array_.LowestLevelPointeeType_.value(), BeginLoc, Context_);
   }
-  std::vector<std::string> SubstituterArgs = getDeclArgs(
-      Array_.Type_, Array_.Name_,
-      Array_.hasInitList_ ? std::optional<std::string>(Array_.InitList_) : std::nullopt);
 
   ASTFrontendInjector::getInstance().substitute(Context_, BeginLoc, Formats.first, Formats.second,
-                                                SubstituterArgs);
+                                                Array_.Type_, Array_.Name_, Array_.InitList_);
 }
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(VarDecl* ArrayDecl) {
@@ -150,17 +152,16 @@ bool CArrayHandler::TraverseParmVarDecl(ParmVarDecl* PVarDecl) {
   return true;
 }
 
-namespace {
-std::pair<std::string, std::string> getSubscriptFormats();
-std::vector<std::string> getSubscriptArgs(ArraySubscriptExpr*, ASTContext*);
-} // namespace
+std::pair<std::string, std::string> CArrayHandler::getSubscriptFormats() {
+  return {"@[@]", iob_view::generateIOBChecker("@", "@")};
+}
 
 void CArrayHandler::executeSubstitutionOfSubscript(ArraySubscriptExpr* SubscriptExpr) {
   SourceLocation BeginLoc = SubscriptExpr->getBeginLoc();
   std::pair<std::string, std::string> Formats = getSubscriptFormats();
-  std::vector<std::string> Args = getSubscriptArgs(SubscriptExpr, Context_);
   ASTFrontendInjector::getInstance().substitute(Context_, SubscriptExpr->getBeginLoc(),
-                                                Formats.first, Formats.second, Args);
+                                                Formats.first, Formats.second,
+                                                SubscriptExpr->getLHS(), SubscriptExpr->getRHS());
 }
 
 bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
@@ -197,21 +198,6 @@ std::string getCuttedPointerTypeAsString(const std::string& PointeeType, SourceL
   }
 
   return Lexer::getSourceText(CharSourceRange::getCharRange(Begin, End), SM, LO).str();
-}
-
-std::pair<std::string, std::string> getDeclFormats(bool isStatic, size_t Dimension, bool needCtor,
-                                                   const std::vector<std::string>& Sizes,
-                                                   bool hasInitList) {
-  std::stringstream SourceFormat, OutputFormat;
-  SourceFormat << "#@#@#[#]" << (hasInitList && needCtor ? "#@" : "");
-  OutputFormat << iob_view::generateSafeArrayTypename(isStatic, Dimension, "@") << " @";
-  if (needCtor)
-    OutputFormat << "("
-                 << iob_view::generateSafeArrayCtor(
-                        Sizes, hasInitList ? std::optional<std::string>("@") : std::nullopt)
-                 << ")";
-
-  return {SourceFormat.str(), OutputFormat.str()};
 }
 
 std::vector<std::string> getDeclArgs(const std::string& Type, const std::string& Name,

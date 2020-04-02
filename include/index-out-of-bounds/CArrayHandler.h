@@ -1,6 +1,7 @@
 #pragma once
 #include "clang/AST/RecursiveASTVisitor.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,23 +31,24 @@ public:
   bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr*);
 
 private:
+  std::pair<std::string, std::string> getDeclFormats(bool isStatic, bool needCtor);
+  std::pair<std::string, std::string> getSubscriptFormats();
+
+private:
   void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
-  void executeSubstitutionOfArrayDecl(
-      clang::SourceLocation BeginLoc, bool isStatic, bool needCtor);
+  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic, bool needCtor);
   void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
   void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
 
 private:
   struct ArrayInfo_t {
     void reset();
-    std::string Name_, Type_;
+    std::optional<std::string> Name_;
+    std::optional<std::string> Type_, LowestLevelPointeeType_;
+    std::optional<std::string> InitList_;
     std::vector<std::string> Sizes_;
     size_t Dimension_;
-    std::string InitList_;
-    bool shouldVisitNodes_;
-    bool isIncompleteType_, hasInitList_;
-    bool isElementIsPointer_;
-    std::string LowestLevelPointeeType_;
+    bool shouldVisitNodes_, isIncompleteType_;
   };
 
 private:
