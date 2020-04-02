@@ -28,7 +28,7 @@ template <typename T> inline void generateArgumentsForSubstitution_(const clang:
 template <typename T>
 inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context, SubArgs& Vec, const std::optional<T>& Arg) {
   if (Arg.has_value()) {
-    generateArgumentsForSubstitution(Context, Vec, Arg.value());
+    generateArgumentsForSubstitution_(Context, Vec, Arg.value());
   }
 }
 
