@@ -124,7 +124,7 @@ void CArrayHandler::executeSubstitutionOfArrayDecl(VarDecl* ArrayDecl) {
 }
 
 bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
-  if (Context_->getSourceManager().isInMainFile(VDecl->getBeginLoc())) {
+  if (Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc())) {
     auto Type = VDecl->getType().getTypePtrOrNull();
     Array_.shouldVisitNodes_ = Type->isArrayType();
     RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
@@ -172,7 +172,7 @@ void CArrayHandler::executeSubstitutionOfSubscript(ArraySubscriptExpr* Subscript
 
 bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
 
-  if (Context_->getSourceManager().isInMainFile(SubscriptExpr->getBeginLoc())) {
+  if (Context_->getSourceManager().isWrittenInMainFile(SubscriptExpr->getBeginLoc())) {
     executeSubstitutionOfSubscript(SubscriptExpr);
   }
   return true;
