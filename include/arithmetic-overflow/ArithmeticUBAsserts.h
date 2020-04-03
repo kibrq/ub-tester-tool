@@ -39,14 +39,14 @@
 namespace ub_tester {
 
 // should be moved to others exit-codes
-constexpr int OVERFLOW_EXIT_CODE = -1;
-constexpr int DIVISION_BY_ZERO_EXIT_CODE = -2;
-constexpr int UNDEFINED_MOD_EXIT_CODE = -3;
-constexpr int UNDEFINED_BITSHIFT_LEFT_EXIT_CODE = -4;
-constexpr int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
+int OVERFLOW_EXIT_CODE = -1;
+int DIVISION_BY_ZERO_EXIT_CODE = -2;
+int UNDEFINED_MOD_EXIT_CODE = -3;
+int UNDEFINED_BITSHIFT_LEFT_EXIT_CODE = -4;
+int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
 
-constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
-constexpr int IMPL_DEFINED_WARNING_CODE = -7;
+int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
+int IMPL_DEFINED_WARNING_CODE = -7;
 
 template <typename LhsType, typename RhsType>
 LhsType assertSum(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
@@ -272,138 +272,138 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
 }
 
 template <typename T>
-T assertUnaryNeg(T expr, const char* typeName, const char* FileName, int Line) {
+T assertUnaryNeg(T Expr, const char* TypeName, const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
 
-  switch (UBCheckUnaryNeg<T>(expr)) {
+  switch (UBCheckUnaryNeg<T>(Expr)) {
   case UBCheckRes::OVERFLOW_MAX:
-    std::cerr << typeName << " overflow in " << FileName << " Line: " << Line
-              << "\nlog: -(" << +expr << ") > "
+    std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: -(" << +Expr << ") > "
               << +std::numeric_limits<T>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, -expr);
+    OVERFLOW_ASSERT_FAILED(T, -Expr);
 
   case UBCheckRes::OVERFLOW_MIN:
-    std::cerr << typeName << " overflow in " << FileName << " Line: " << Line
-              << "\nlog: -(" << +expr << ") < "
+    std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: -(" << +Expr << ") < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, -expr);
+    OVERFLOW_ASSERT_FAILED(T, -Expr);
 
   case UBCheckRes::SAFE_OPERATION:
-    return -expr;
+    return -Expr;
   default:
     assert(0 && "Unexpected UBCheckRes from UBCheckUnaryNeg");
   }
 }
 
 template <typename T>
-T& assertPrefixIncr(T& expr, const char* typeName, const char* FileName,
+T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
 
-  switch (UBCheckSum<T>(expr, 1)) {
+  switch (UBCheckSum<T>(Expr, 1)) {
   case UBCheckRes::OVERFLOW_MAX:
-    std::cerr << typeName << " overflow in " << FileName << " Line: " << Line
-              << "\nlog: ++(" << +expr << ") > "
+    std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: ++(" << +Expr << ") > "
               << +std::numeric_limits<T>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, ++expr);
+    OVERFLOW_ASSERT_FAILED(T, ++Expr);
 
   case UBCheckRes::OVERFLOW_MIN:
     assert(0 && "Prefix increment assert detected OVERFLOW_MIN");
 
   case UBCheckRes::SAFE_OPERATION:
-    return ++expr;
+    return ++Expr;
   default:
     assert(0 && "Unexpected UBCheckRes from UBCheckSum");
   }
 }
 template <>
-bool& assertPrefixIncr(bool& expr, const char* typeName, const char* FileName,
+bool& assertPrefixIncr(bool& Expr, const char* TypeName, const char* FileName,
                        int Line) {
-  UNUSED_ASSERT_ARGS(expr, typeName, FileName, Line);
+  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool prefix increment is deprecated since C++17");
 }
 
 template <typename T>
-T assertPostfixIncr(T& expr, const char* typeName, const char* FileName,
+T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
 
-  switch (UBCheckSum<T>(expr, 1)) {
+  switch (UBCheckSum<T>(Expr, 1)) {
   case UBCheckRes::OVERFLOW_MAX:
-    std::cerr << typeName << " overflow in " << FileName << " Line: " << Line
-              << "\nlog: (" << +expr << ")++ > "
+    std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: (" << +Expr << ")++ > "
               << +std::numeric_limits<T>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, expr++);
+    OVERFLOW_ASSERT_FAILED(T, Expr++);
 
   case UBCheckRes::OVERFLOW_MIN:
     assert(0 && "Postfix increment assert detected OVERFLOW_MIN");
 
   case UBCheckRes::SAFE_OPERATION:
-    return expr++;
+    return Expr++;
   default:
     assert(0 && "Unexpected UBCheckRes from UBCheckSum");
   }
 }
 template <>
-bool assertPostfixIncr(bool& expr, const char* typeName, const char* FileName,
+bool assertPostfixIncr(bool& Expr, const char* TypeName, const char* FileName,
                        int Line) {
-  UNUSED_ASSERT_ARGS(expr, typeName, FileName, Line);
+  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix increment is deprecated since C++17");
 }
 
 template <typename T>
-T& assertPrefixDecr(T& expr, const char* typeName, const char* FileName,
+T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
 
-  switch (UBCheckDiff<T>(expr, 1)) {
+  switch (UBCheckDiff<T>(Expr, 1)) {
   case UBCheckRes::OVERFLOW_MAX:
     assert(0 && "Prefix decrement assert detected OVERFLOW_MAX");
 
   case UBCheckRes::OVERFLOW_MIN:
-    std::cerr << typeName << " overflow in " << FileName << " Line: " << Line
-              << "\nlog: --(" << +expr << ") < "
+    std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: --(" << +Expr << ") < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, --expr);
+    OVERFLOW_ASSERT_FAILED(T, --Expr);
 
   case UBCheckRes::SAFE_OPERATION:
-    return --expr;
+    return --Expr;
   default:
     assert(0 && "Unexpected UBCheckRes from UBCheckDiff");
   }
 }
 template <>
-bool& assertPrefixDecr(bool& expr, const char* typeName, const char* FileName,
+bool& assertPrefixDecr(bool& Expr, const char* TypeName, const char* FileName,
                        int Line) {
-  UNUSED_ASSERT_ARGS(expr, typeName, FileName, Line);
+  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool prefix decrement is deprecated since C++17");
 }
 
 template <typename T>
-T assertPostfixDecr(T& expr, const char* typeName, const char* FileName,
+T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
 
-  switch (UBCheckDiff<T>(expr, 1)) {
+  switch (UBCheckDiff<T>(Expr, 1)) {
   case UBCheckRes::OVERFLOW_MAX:
     assert(0 && "Postfix decrement assert detected OVERFLOW_MAX");
 
   case UBCheckRes::OVERFLOW_MIN:
-    std::cerr << typeName << " overflow in " << FileName << " Line: " << Line
-              << "\nlog: (" << +expr << ")-- < "
+    std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: (" << +Expr << ")-- < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, expr--);
+    OVERFLOW_ASSERT_FAILED(T, Expr--);
 
   case UBCheckRes::SAFE_OPERATION:
-    return expr--;
+    return Expr--;
   default:
     assert(0 && "Unexpected UBCheckRes from UBCheckDiff");
   }
 }
 template <>
-bool assertPostfixDecr(bool& expr, const char* typeName, const char* FileName,
+bool assertPostfixDecr(bool& Expr, const char* TypeName, const char* FileName,
                        int Line) {
-  UNUSED_ASSERT_ARGS(expr, typeName, FileName, Line);
+  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix decrement is deprecated since C++17");
 }
 
