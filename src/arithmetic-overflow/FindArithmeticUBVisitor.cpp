@@ -1,5 +1,7 @@
 #include "arithmetic-overflow/FindArithmeticUBVisitor.h"
 #include "UBUtility.h"
+#include "code-injector/ASTFrontendInjector.h"
+#include "clang/Basic/SourceManager.h"
 #include <cassert>
 
 using namespace clang;
@@ -10,6 +12,8 @@ FindArithmeticUBVisitor::FindArithmeticUBVisitor(ASTContext* Context)
     : Context(Context) {}
 
 bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
+  if (!Context->getSourceManager().isWrittenInMainFile(Binop->getBeginLoc()))
+    return true;
   QualType BinopType = Binop->getType();
   const Type* BinopTypePtr = BinopType.getTypePtr();
   if (BinopTypePtr->isDependentType())
@@ -55,18 +59,20 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
 
   assert(LhsType.getAsString() == BinopType.getAsString());
   // lhs and rhs of bitshift operators can have different integer types
-  assert(
-      BinopName == "<<" || BinopName == ">>" ||
-      LhsType.getAsString() == RhsType.getAsString());
+  assert(BinopName == "<<" || BinopName == ">>" ||
+         LhsType.getAsString() == RhsType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT_BINOP("
-               << OperationName << ", " << getExprAsString(Lhs, Context) << ", "
-               << getExprAsString(Rhs, Context) << ", " << LhsType.getAsString()
-               << ", " << RhsType.getAsString() << ");\n";
+  ASTFrontendInjector::getInstance().substitute(
+      Context, Binop->getBeginLoc(), "@#" + BinopName + "#@",
+      "ASSERT_BINOP(" + OperationName + ", @, @, " + LhsType.getAsString() +
+          ", " + RhsType.getAsString() + ")",
+      Lhs, Rhs);
   return true;
 }
 
 bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
+  if (!Context->getSourceManager().isWrittenInMainFile(Unop->getBeginLoc()))
+    return true;
   /*if (!Unop->canOverflow()) // char c = CHAR_MAX; c++; cannot overflow?
     return true;*/ // can't use canOverflow(), it causes ignored warnings
 
@@ -81,12 +87,15 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
 
   std::string UnopName = UnaryOperator::getOpcodeStr(Unop->getOpcode()).str();
   std::string OperationName = "undefined";
+  bool IsPrefixOperator = true;
   if (UnopName == "-") {
     OperationName = "UnaryNeg";
   } else if (UnopName == "++") {
-    OperationName = Unop->isPrefix() ? "PrefixIncr" : "PostfixIncr";
+    IsPrefixOperator = Unop->isPrefix();
+    OperationName = IsPrefixOperator ? "PrefixIncr" : "PostfixIncr";
   } else if (UnopName == "--") {
-    OperationName = Unop->isPrefix() ? "PrefixDecr" : "PostfixDecr";
+    IsPrefixOperator = Unop->isPrefix();
+    OperationName = IsPrefixOperator ? "PrefixDecr" : "PostfixDecr";
   } else {
     if (Unop->canOverflow())
       llvm_unreachable("Not known unary operator can overflow");
@@ -103,9 +112,11 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
       SubExpr->getType().getUnqualifiedType().getCanonicalType();
   assert(SubExprType.getAsString() == UnopType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Unop, Context) << " ASSERT_UNOP("
-               << OperationName << ", " << getExprAsString(SubExpr, Context)
-               << ", " << UnopType.getAsString() << ");\n";
+  ASTFrontendInjector::getInstance().substitute(
+      Context, Unop->getBeginLoc(),
+      IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
+      "ASSERT_UNOP(" + OperationName + ", @, " + UnopType.getAsString() + ")",
+      SubExpr);
 
   return true;
 }
