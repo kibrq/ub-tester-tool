@@ -5,7 +5,6 @@ if ( NOT DEFINED ENV{LLVM_HOME})
     message(FATAL_ERROR "$LLVM_HOME is not defined")
 else()
     message(STATUS "$LLVM_HOME found: $ENV{LLVM_HOME}")
-    set(PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
     set(LLVM_HOME $ENV{LLVM_HOME} CACHE PATH "Root of LLVM installation")
     set(LLVM_INC ${LLVM_HOME}/include)
     set(LLVM_LIB ${LLVM_HOME}/lib)
@@ -39,21 +38,25 @@ else()
     set(UB_INCLUDE include)
     set(UB_SRC src)
 
+    set_property(GLOBAL PROPERTY GET_TOGETHER)
+
+    function(ADD_SOURCE)
+      get_property(tmp GLOBAL PROPERTY GET_TOGETHER)
+      list(APPEND tmp ${ARGV})
+      set_property(GLOBAL PROPERTY GET_TOGETHER ${tmp})
+    endfunction(ADD_SOURCE)
+
     add_subdirectory(${UB_SRC})
-    set(code-injector $<TARGET_OBJECTS:CODE_INJECTOR>)
-
-
-    set(arithmetic-overflow $<TARGET_OBJECTS:ARITHMETIC_OVERFLOW>)
-    set(uninit-variables $<TARGET_OBJECTS:UNINIT_VARIABLES>)
-    set(index-out-of-bounds $<TARGET_OBJECTS:INDEX_OUT_OF_BOUNDS>)
-
-    add_executable(${UB_EXE} $<TARGET_OBJECTS:GET_TOGETHER> ${index-out-of-bounds} ${uninit-variables} ${arithmetic-overflow} ${code-injector})
+    
+    get_property(ALL_SOURCES GLOBAL PROPERTY GET_TOGETHER)
+    
+    add_executable(${UB_EXE} ${ALL_SOURCES})
 
     target_link_libraries(${UB_EXE}
-        LLVMSupport
-        clangTooling
-        clangBasic
-        )
+      LLVMSupport
+      clangTooling
+      clangBasic
+      )
 
     target_link_libraries(${UB_EXE} pthread z dl)
    
