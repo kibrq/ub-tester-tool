@@ -1,6 +1,7 @@
 #pragma once
 #include "clang/AST/RecursiveASTVisitor.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,8 +11,6 @@ namespace ub_tester {
 class CArrayHandler : public clang::RecursiveASTVisitor<CArrayHandler> {
 public:
   explicit CArrayHandler(clang::ASTContext*);
-
-  bool VisitFunctionDecl(clang::FunctionDecl*);
 
   bool VisitArrayType(clang::ArrayType*);
 
@@ -25,27 +24,32 @@ public:
 
   bool VisitStringLiteral(clang::StringLiteral*);
 
+  bool VisitFunctionDecl(clang::FunctionDecl*);
+
   bool TraverseVarDecl(clang::VarDecl*);
 
   bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr*);
 
 private:
+  std::pair<std::string, std::string> getDeclFormats(bool isStatic, bool needCtor, char EndSymb);
+  std::pair<std::string, std::string> getSubscriptFormats();
+
+private:
   void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
-  void executeSubstitutionOfArrayDecl(
-      clang::SourceLocation BeginLoc, bool isStatic, bool needCtor);
+  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic, bool needCtor,
+                                      char EndSymb);
   void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
-  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
+  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl, char EndSymb);
 
 private:
   struct ArrayInfo_t {
     void reset();
-    std::string Name_, Type_;
+    std::optional<std::string> Name_;
+    std::optional<std::string> Type_, LowestLevelPointeeType_;
+    std::optional<std::string> InitList_;
     std::vector<std::string> Sizes_;
-    std::string InitList_;
-    bool shouldVisitNodes_;
-    bool isIncompleteType_, hasInitList_;
-    bool isElementIsPointer_;
-    std::string LowestLevelPointeeType_;
+    size_t Dimension_;
+    bool shouldVisitNodes_, isIncompleteType_;
   };
 
 private:
