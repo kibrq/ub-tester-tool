@@ -205,26 +205,5 @@ std::string getCuttedPointerTypeAsString(const std::string& PointeeType, SourceL
   return Lexer::getSourceText(CharSourceRange::getCharRange(Begin, End), SM, LO).str();
 }
 
-std::vector<std::string> getDeclArgs(const std::string& Type, const std::string& Name,
-                                     const std::optional<std::string>& InitList) {
-  std::vector<std::string> Args = {Type, Name};
-  if (InitList.has_value())
-    Args.push_back(InitList.value());
-  return Args;
-}
-
-std::pair<std::string, std::string> getSubscriptFormats() {
-  std::string SourceFormat = "@[@]";
-  std::string OutputFormat = iob_view::generateIOBChecker("@", "@");
-  return {SourceFormat, OutputFormat};
-}
-
-std::vector<std::string> getSubscriptArgs(ArraySubscriptExpr* SubscriptExpr, ASTContext* Context) {
-  std::vector<std::string> Args;
-  Args.push_back(getExprAsString(SubscriptExpr->getLHS(), Context));
-  Args.push_back(getExprAsString(SubscriptExpr->getRHS(), Context));
-  return Args;
-}
-
 } // namespace
 } // namespace ub_tester
