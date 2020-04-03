@@ -1,5 +1,6 @@
 #include "arithmetic-overflow/FindArithmeticUBVisitor.h"
 #include "UBUtility.h"
+#include "code-injector/ASTFrontendInjector.h"
 #include <cassert>
 
 using namespace clang;
@@ -55,14 +56,14 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
 
   assert(LhsType.getAsString() == BinopType.getAsString());
   // lhs and rhs of bitshift operators can have different integer types
-  assert(
-      BinopName == "<<" || BinopName == ">>" ||
-      LhsType.getAsString() == RhsType.getAsString());
+  assert(BinopName == "<<" || BinopName == ">>" ||
+         LhsType.getAsString() == RhsType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Binop, Context) << " ASSERT_BINOP("
-               << OperationName << ", " << getExprAsString(Lhs, Context) << ", "
-               << getExprAsString(Rhs, Context) << ", " << LhsType.getAsString()
-               << ", " << RhsType.getAsString() << ");\n";
+  ASTFrontendInjector::getInstance().substitute(
+      Context, Binop->getBeginLoc(), "@" + BinopName + "@",
+      "ASSERT_BINOP(" + OperationName + ", @, @, " + LhsType.getAsString() +
+          ", " + RhsType.getAsString() + ")",
+      Lhs, Rhs);
   return true;
 }
 
@@ -103,9 +104,11 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
       SubExpr->getType().getUnqualifiedType().getCanonicalType();
   assert(SubExprType.getAsString() == UnopType.getAsString());
 
-  llvm::outs() << getExprLineNCol(Unop, Context) << " ASSERT_UNOP("
-               << OperationName << ", " << getExprAsString(SubExpr, Context)
-               << ", " << UnopType.getAsString() << ");\n";
+  ASTFrontendInjector::getInstance().substitute(
+      Context, Unop->getBeginLoc(),
+      Unop->isPrefix() ? "@" + UnopName : UnopName + "@",
+      "ASSERT_UNOP(" + OperationName + ", @, " + UnopType.getAsString() + ")",
+      SubExpr);
 
   return true;
 }
