@@ -89,9 +89,10 @@ std::string getCuttedPointerTypeAsString(const std::string& PointeeType, SourceL
                                          ASTContext*);
 } // namespace
 
-std::pair<std::string, std::string> CArrayHandler::getDeclFormats(bool isStatic, bool needCtor) {
+std::pair<std::string, std::string> CArrayHandler::getDeclFormats(bool isStatic, bool needCtor,
+                                                                  char EndSymb) {
   std::stringstream SourceFormat, OutputFormat;
-  SourceFormat << "#@#@#[#]" << (Array_.InitList_.has_value() && needCtor ? "#@" : "");
+  SourceFormat << "#@#@#" << (Array_.InitList_.has_value() && needCtor ? "@" : "") << EndSymb;
   OutputFormat << iob_view::generateSafeArrayTypename(isStatic, Array_.Dimension_, "@") << " @";
   if (needCtor)
     OutputFormat << "("
@@ -101,13 +102,14 @@ std::pair<std::string, std::string> CArrayHandler::getDeclFormats(bool isStatic,
                                                         : std::nullopt)
                  << ")";
 
+  OutputFormat << EndSymb;
   return {SourceFormat.str(), OutputFormat.str()};
 }
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(SourceLocation BeginLoc, bool isStatic,
-                                                   bool needCtor) {
+                                                   bool needCtor, char EndSymb) {
 
-  std::pair<std::string, std::string> Formats = getDeclFormats(isStatic, needCtor);
+  std::pair<std::string, std::string> Formats = getDeclFormats(isStatic, needCtor, EndSymb);
   if (not Array_.Type_.has_value()) {
     Array_.Type_ =
         getCuttedPointerTypeAsString(Array_.LowestLevelPointeeType_.value(), BeginLoc, Context_);
@@ -118,7 +120,7 @@ void CArrayHandler::executeSubstitutionOfArrayDecl(SourceLocation BeginLoc, bool
 }
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(VarDecl* ArrayDecl) {
-  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), ArrayDecl->isStaticLocal(), true);
+  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), ArrayDecl->isStaticLocal(), true, ';');
 }
 
 bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
@@ -136,7 +138,7 @@ bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
 }
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl) {
-  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false);
+  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false, ',');
 }
 
 bool CArrayHandler::TraverseParmVarDecl(ParmVarDecl* PVarDecl) {
@@ -146,7 +148,9 @@ bool CArrayHandler::TraverseParmVarDecl(ParmVarDecl* PVarDecl) {
     RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(PVarDecl);
     if (Type && Type->isArrayType()) {
       Array_.Name_ = PVarDecl->getName().str();
-      executeSubstitutionOfArrayDecl(PVarDecl);
+      // executeSubstitutionOfArrayDecl(PVarDecl);
+      llvm::outs() << PVarDecl->getFunctionScopeDepth() << '\n';
+      llvm::outs() << PVarDecl->getFunctionScopeIndex() << '\n';
     }
     Array_.reset();
   }

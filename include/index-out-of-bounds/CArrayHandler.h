@@ -31,12 +31,13 @@ public:
   bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr*);
 
 private:
-  std::pair<std::string, std::string> getDeclFormats(bool isStatic, bool needCtor);
+  std::pair<std::string, std::string> getDeclFormats(bool isStatic, bool needCtor, char EndSymb);
   std::pair<std::string, std::string> getSubscriptFormats();
 
 private:
   void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
-  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic, bool needCtor);
+  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic, bool needCtor,
+                                      char EndSymb);
   void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
   void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
 
