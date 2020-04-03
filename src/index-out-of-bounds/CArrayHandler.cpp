@@ -137,22 +137,23 @@ bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
   return true;
 }
 
-void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl) {
-  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false, ',');
+void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl, char EndSymb) {
+  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false, EndSymb);
 }
 
-bool CArrayHandler::TraverseParmVarDecl(ParmVarDecl* PVarDecl) {
-  if (Context_->getSourceManager().isInMainFile(PVarDecl->getBeginLoc())) {
-    auto Type = PVarDecl->getOriginalType().getTypePtrOrNull();
-    Array_.shouldVisitNodes_ = Type && Type->isArrayType();
-    RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(PVarDecl);
-    if (Type && Type->isArrayType()) {
-      Array_.Name_ = PVarDecl->getName().str();
-      // executeSubstitutionOfArrayDecl(PVarDecl);
-      llvm::outs() << PVarDecl->getFunctionScopeDepth() << '\n';
-      llvm::outs() << PVarDecl->getFunctionScopeIndex() << '\n';
+bool CArrayHandler::VisitFunctionDecl(FunctionDecl* FDecl) {
+  if (Context_->getSourceManager().isWrittenInMainFile(FDecl->getBeginLoc())) {
+    for (const auto& Parm : FDecl->parameters()) {
+      auto Type = Parm->getOriginalType().getTypePtrOrNull();
+      Array_.shouldVisitNodes_ = Type && Type->isArrayType();
+      if (Array_.shouldVisitNodes_) {
+        RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(Parm);
+        Array_.Name_ = Parm->getName().str();
+        executeSubstitutionOfArrayDecl(
+            Parm, FDecl->getNumParams() - 1 == Parm->getFunctionScopeIndex() ? ')' : ',');
+      }
+      Array_.reset();
     }
-    Array_.reset();
   }
   return true;
 }

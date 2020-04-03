@@ -24,7 +24,7 @@ public:
 
   bool VisitStringLiteral(clang::StringLiteral*);
 
-  bool TraverseParmVarDecl(clang::ParmVarDecl*);
+  bool VisitFunctionDecl(clang::FunctionDecl*);
 
   bool TraverseVarDecl(clang::VarDecl*);
 
@@ -39,7 +39,7 @@ private:
   void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic, bool needCtor,
                                       char EndSymb);
   void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
-  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
+  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl, char EndSymb);
 
 private:
   struct ArrayInfo_t {
