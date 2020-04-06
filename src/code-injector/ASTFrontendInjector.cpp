@@ -39,14 +39,12 @@ void ASTFrontendInjector::addFile(const std::string& Filename) {
 
 void ASTFrontendInjector::addFile(const ASTContext* Context) {
   const SourceManager& SM = Context->getSourceManager();
-  std::string Filename =
-      SM.getFilename(SM.getLocForStartOfFile(SM.getMainFileID())).str();
+  std::string Filename = SM.getFilename(SM.getLocForStartOfFile(SM.getMainFileID())).str();
   addFile(Filename);
   llvm::outs() << generateOutputFilename(Filename) << '\n';
 }
 
-void ASTFrontendInjector::insertLineBefore(const ASTContext* Context,
-                                           const SourceLocation& Loc,
+void ASTFrontendInjector::insertLineBefore(const ASTContext* Context, const SourceLocation& Loc,
                                            const std::string& Line) {
   const SourceManager& SM = Context->getSourceManager();
 
@@ -55,8 +53,7 @@ void ASTFrontendInjector::insertLineBefore(const ASTContext* Context,
   Files_[Filename].insertLineBefore({LineNum, 0}, Line);
 }
 
-void ASTFrontendInjector::insertLineAfter(const ASTContext* Context,
-                                          const SourceLocation& Loc,
+void ASTFrontendInjector::insertLineAfter(const ASTContext* Context, const SourceLocation& Loc,
                                           const std::string& Line) {
   const SourceManager& SM = Context->getSourceManager();
 
@@ -65,19 +62,16 @@ void ASTFrontendInjector::insertLineAfter(const ASTContext* Context,
   Files_[Filename].insertLineAfter({LineNum, 0}, Line);
 }
 
-void ASTFrontendInjector::substitute(const ASTContext* Context,
-                                     const SourceLocation& Loc,
+void ASTFrontendInjector::substitute(const ASTContext* Context, const SourceLocation& Loc,
                                      const std::string& SourceFormat,
-                                     const std::string& OutputFormat,
-                                     const SubArgs& Args) {
+                                     const std::string& OutputFormat, const SubArgs& Args) {
   const SourceManager& SM = Context->getSourceManager();
 
   std::string Filename = SM.getFilename(Loc).str();
   CodeInjector& Injector = Files_[Filename];
   size_t LineNum = getLine(SM, Loc);
   size_t BeginPos = getCol(SM, Loc);
-  Files_[Filename].substitute({LineNum, BeginPos}, SourceFormat, OutputFormat,
-                              Args);
+  Files_[Filename].substitute({LineNum, BeginPos}, SourceFormat, OutputFormat, Args);
 }
 
 void ASTFrontendInjector::substituteSubstring(const ASTContext* Context,
@@ -90,13 +84,12 @@ void ASTFrontendInjector::substituteSubstring(const ASTContext* Context,
   size_t LineNumBegin = getLine(SM, Begin);
   size_t LineNumEnd = getLine(SM, End);
   size_t ColBegin = getCol(SM, Begin);
-  size_t ColEnd = getCol(SM, End);
-  Files_[Filename].substituteSubstring({LineNumBegin, ColBegin},
-                                       {LineNumEnd, ColEnd}, Substitution);
+  size_t ColEnd = getCol(SM, End) + 1;
+  Files_[Filename].substituteSubstring({LineNumBegin, ColBegin}, {LineNumEnd, ColEnd},
+                                       Substitution);
 }
 
-void ASTFrontendInjector::substituteSubstring(const ASTContext* Context,
-                                              const SourceRange& Range,
+void ASTFrontendInjector::substituteSubstring(const ASTContext* Context, const SourceRange& Range,
                                               const std::string& Substitution) {
 
   substituteSubstring(Context, Range.getBegin(), Range.getEnd(), Substitution);
