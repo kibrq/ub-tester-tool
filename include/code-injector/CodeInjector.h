@@ -7,7 +7,12 @@
 
 namespace ub_tester {
 
-enum class SPECIAL_SYMBOL : char { ARG = '@', ANY = '#', SKIP = '$', NONE = '\0' };
+enum class SPECIAL_SYMBOL : char {
+  ARG = '@',
+  ANY = '#',
+  SKIP = '$',
+  NONE = '\0'
+};
 
 class SpecialSymbolRange {
   class Iterator {
@@ -34,6 +39,9 @@ struct SourcePosition {
   SourcePosition& operator+=(const SourcePosition& Other);
   SourcePosition& changeLine(size_t Line);
   SourcePosition& changeCol(size_t Col);
+  SourcePosition& moveToNextLine();
+  bool operator<(const SourcePosition& Other);
+  bool operator==(const SourcePosition& Other);
 };
 
 class IncorrectSubstitutionException : public std::exception {
@@ -69,24 +77,40 @@ public:
 
   CodeInjector& eraseLine(SourcePosition BeginPos);
 
-  CodeInjector& insertSubstringAfter(SourcePosition Pos, const std::string& Substring);
+  CodeInjector&
+  insertSubstringAfter(SourcePosition Pos, const std::string& Substring);
 
-  CodeInjector& insertSubstringBefore(SourcePosition Pos, const std::string& Substring);
+  CodeInjector&
+  insertSubstringBefore(SourcePosition Pos, const std::string& Substring);
 
   CodeInjector& insertLineAfter(SourcePosition Pos, const std::string& Line);
 
   CodeInjector& insertLineBefore(SourcePosition Pos, const std::string& Line);
 
-  CodeInjector& substituteSubstring(SourcePosition BeginPos, SourcePosition EndPos,
-                                    const std::string& Substring);
+  CodeInjector& substituteSubstring(
+      SourcePosition BeginPos, SourcePosition EndPos,
+      const std::string& Substring);
 
-  CodeInjector& substitute(SourcePosition Pos, std::string SourceFormat, std::string OutputFormat,
-                           const std::vector<std::string>& Args);
+  CodeInjector& substitute(
+      SourcePosition Pos, std::string SourceFormat, std::string OutputFormat,
+      const std::vector<std::string>& Args);
+
+private:
+  struct Substitution {
+    SourcePosition BeginPos_;
+    std::string SourceFormat_, OutputFormat_;
+    std::vector<std::string> Args_;
+    bool operator<(const Substitution& Other);
+  };
 
 private:
   struct OutputPosition {
     size_t Line_, Col_;
   };
+
+private:
+  void executeSubstitution(Substitution& Sub);
+  void executeSubstitutions();
 
 private:
   char& getChar(SourcePosition Pos);
@@ -96,7 +120,8 @@ private:
   void changeColumnOffsets(SourcePosition BeginPos, int Val = 1);
   size_t getPositionAsOffset(SourcePosition Position);
   SourcePosition getOffsetAsPosition(size_t Offset);
-  SourcePosition findFirstEntry(SourcePosition BeginPos, const std::string& Substring);
+  SourcePosition
+  findFirstEntry(SourcePosition BeginPos, const std::string& Substring);
   SourcePosition findFirstEntry(SourcePosition BeginPos, char Char);
 
 private:
@@ -106,6 +131,7 @@ private:
   std::string SourceFile_;
   std::vector<int> LineOffsets_;
   std::vector<std::vector<int>> ColumnOffsets_;
+  std::vector<Substitution> Substitutions_;
 };
 
 } // namespace ub_tester
