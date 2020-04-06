@@ -65,6 +65,8 @@ bool CArrayHandler::VisitIncompleteArrayType(IncompleteArrayType* Type) {
 }
 
 bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
+  if (Context_->getSourceManager().isWrittenInMainFile(List->getBeginLoc()))
+    return true;
   if (List->isSemanticForm() && List->isSyntacticForm()) {
     ASTFrontendInjector::getInstance().substitute(Context_, List->getBeginLoc(), "@", "{@}", List);
   }
@@ -101,10 +103,9 @@ std::pair<std::string, std::string> CArrayHandler::getDeclFormats(bool isStatic,
   OutputFormat << iob_view::generateSafeArrayTypename(isStatic, Array_.Dimension_, "@") << " @";
   if (needCtor)
     OutputFormat << "("
-                 << iob_view::generateSafeArrayCtor(Array_.Sizes_,
-                                                    Array_.InitList_.has_value()
-                                                        ? std::optional<std::string>("@")
-                                                        : std::nullopt)
+                 << iob_view::generateSafeArrayCtor(Array_.Sizes_, Array_.InitList_.has_value()
+                                                                       ? std::optional("@")
+                                                                       : std::nullopt)
                  << ")";
 
   OutputFormat << EndSymb;
@@ -129,37 +130,40 @@ void CArrayHandler::executeSubstitutionOfArrayDecl(VarDecl* ArrayDecl) {
 }
 
 bool CArrayHandler::TraverseVarDecl(VarDecl* VDecl) {
-  if (Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc())) {
-    auto Type = VDecl->getType().getTypePtrOrNull();
-    Array_.shouldVisitNodes_ = Type->isArrayType();
-    RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
-    if (Type && Type->isArrayType()) {
-      Array_.Name_ = VDecl->getName().str();
-      executeSubstitutionOfArrayDecl(VDecl);
-    }
-    Array_.reset();
+  if (not Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
+    return true;
+  auto Type = VDecl->getType().getTypePtrOrNull();
+  Array_.shouldVisitNodes_ = Type->isArrayType();
+  RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(VDecl);
+  if (Type && Type->isArrayType()) {
+    Array_.Name_ = VDecl->getName().str();
+    executeSubstitutionOfArrayDecl(VDecl);
   }
+  Array_.reset();
+
   return true;
-}
+} // namespace ub_tester
 
 void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl, char EndSymb) {
   executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false, EndSymb);
 }
 
 bool CArrayHandler::VisitFunctionDecl(FunctionDecl* FDecl) {
-  if (Context_->getSourceManager().isWrittenInMainFile(FDecl->getBeginLoc())) {
-    for (const auto& Parm : FDecl->parameters()) {
-      auto Type = Parm->getOriginalType().getTypePtrOrNull();
-      Array_.shouldVisitNodes_ = Type && Type->isArrayType();
-      if (Array_.shouldVisitNodes_) {
-        RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(Parm);
-        Array_.Name_ = Parm->getName().str();
-        executeSubstitutionOfArrayDecl(
-            Parm, FDecl->getNumParams() - 1 == Parm->getFunctionScopeIndex() ? ')' : ',');
-      }
-      Array_.reset();
-    }
+  if (not Context_->getSourceManager().isWrittenInMainFile(FDecl->getBeginLoc())) {
+    return true;
   }
+  for (const auto& Parm : FDecl->parameters()) {
+    auto Type = Parm->getOriginalType().getTypePtrOrNull();
+    Array_.shouldVisitNodes_ = Type && Type->isArrayType();
+    if (Array_.shouldVisitNodes_) {
+      RecursiveASTVisitor<CArrayHandler>::TraverseParmVarDecl(Parm);
+      Array_.Name_ = Parm->getName().str();
+      executeSubstitutionOfArrayDecl(
+          Parm, FDecl->getNumParams() - 1 == Parm->getFunctionScopeIndex() ? ')' : ',');
+    }
+    Array_.reset();
+  }
+
   return true;
 }
 
