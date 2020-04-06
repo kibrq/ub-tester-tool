@@ -27,6 +27,8 @@ void CArrayHandler::ArrayInfo_t::reset() {
 
 CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) { Array_.reset(); }
 
+bool CArrayHandler::shouldVisitImplicitCode() { return shouldVisitImplicitListExpr_; }
+
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     ++Array_.Dimension_;
@@ -63,6 +65,9 @@ bool CArrayHandler::VisitIncompleteArrayType(IncompleteArrayType* Type) {
 }
 
 bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
+  if (List->isSemanticForm() && List->isSyntacticForm()) {
+    ASTFrontendInjector::getInstance().substitute(Context_, List->getBeginLoc(), "@", "{@}", List);
+  }
   if (Array_.shouldVisitNodes_) {
     if (Array_.isIncompleteType_) {
       Array_.Sizes_.insert(Array_.Sizes_.begin(), std::to_string(List->getNumInits()));
@@ -92,7 +97,7 @@ std::string getCuttedPointerTypeAsString(const std::string& PointeeType, SourceL
 std::pair<std::string, std::string> CArrayHandler::getDeclFormats(bool isStatic, bool needCtor,
                                                                   char EndSymb) {
   std::stringstream SourceFormat, OutputFormat;
-  SourceFormat << "#@#@#" << (Array_.InitList_.has_value() && needCtor ? "@" : "") << EndSymb;
+  SourceFormat << "#@#@#" << (Array_.InitList_.has_value() && needCtor ? "@#" : "") << EndSymb;
   OutputFormat << iob_view::generateSafeArrayTypename(isStatic, Array_.Dimension_, "@") << " @";
   if (needCtor)
     OutputFormat << "("

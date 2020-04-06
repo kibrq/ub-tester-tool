@@ -12,6 +12,8 @@ class CArrayHandler : public clang::RecursiveASTVisitor<CArrayHandler> {
 public:
   explicit CArrayHandler(clang::ASTContext*);
 
+  bool shouldVisitImplicitCode();
+
   bool VisitArrayType(clang::ArrayType*);
 
   bool VisitConstantArrayType(clang::ConstantArrayType*);
@@ -55,6 +57,7 @@ private:
 private:
   ArrayInfo_t Array_;
   clang::ASTContext* Context_;
+  bool shouldVisitImplicitListExpr_ = false;
 };
 
 } // namespace ub_tester
