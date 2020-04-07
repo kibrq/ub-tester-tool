@@ -26,22 +26,19 @@ public:
 
   bool VisitStringLiteral(clang::StringLiteral*);
 
-  bool VisitFunctionDecl(clang::FunctionDecl*);
-
-  bool TraverseVarDecl(clang::VarDecl*);
+  bool TraverseDecl(clang::Decl*);
 
   bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr*);
 
 private:
-  std::pair<std::string, std::string> getDeclFormats(bool isStatic, bool needCtor, char EndSymb);
-  std::pair<std::string, std::string> getSubscriptFormats();
-
-private:
   void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
-  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic, bool needCtor,
-                                      char EndSymb);
+
+  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc, bool isStatic,
+                                      bool isConstexprSize, bool needCtor);
   void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
-  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl, char EndSymb);
+  void executeSubstitutionOfArrayDecl(clang::FieldDecl* ArrayDecl);
+  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
+  void executeSubstitutionOfArrayDecl(clang::ValueDecl* ArrayDecl);
 
 private:
   struct ArrayInfo_t {
@@ -57,7 +54,6 @@ private:
 private:
   ArrayInfo_t Array_;
   clang::ASTContext* Context_;
-  bool shouldVisitImplicitListExpr_ = false;
 };
 
 } // namespace ub_tester
