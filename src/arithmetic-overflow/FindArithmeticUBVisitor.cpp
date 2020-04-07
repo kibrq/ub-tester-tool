@@ -56,9 +56,9 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
     return true; // some operations can make BinopType fundamental
                  // though lhs or rhs are pointer type
 
-  assert(LhsType.getAsString() == BinopType.getAsString());
+  assert(LhsType == BinopType);
   // lhs and rhs of bitshift operators can have different integer types
-  assert(BinopName == "<<" || BinopName == ">>" || LhsType.getAsString() == RhsType.getAsString());
+  assert(BinopName == "<<" || BinopName == ">>" || LhsType == RhsType);
 
   ASTFrontendInjector::getInstance().substitute(
       Context, Binop->getBeginLoc(), "@#" + BinopName + "#@",
@@ -107,7 +107,7 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
 
   Expr* SubExpr = Unop->getSubExpr();
   QualType SubExprType = SubExpr->getType().getUnqualifiedType().getCanonicalType();
-  assert(SubExprType.getAsString() == UnopType.getAsString());
+  assert(SubExprType == UnopType);
 
   ASTFrontendInjector::getInstance().substitute(
       Context, Unop->getBeginLoc(), IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
