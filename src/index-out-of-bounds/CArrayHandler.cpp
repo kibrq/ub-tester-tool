@@ -169,7 +169,7 @@ void CArrayHandler::executeSubstitutionOfArrayDecl(ValueDecl* ArrayDecl) {
 bool CArrayHandler::TraverseDecl(Decl* D) {
   const Type* T = nullptr;
   ValueDecl* VDecl = nullptr;
-  if ((VDecl = dyn_cast<ValueDecl>(D))) {
+  if (D && (VDecl = dyn_cast<ValueDecl>(D))) {
     if (not Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
       return true;
 
