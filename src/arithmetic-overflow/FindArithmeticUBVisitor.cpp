@@ -8,7 +8,8 @@ using namespace clang;
 
 namespace ub_tester {
 
-FindArithmeticUBVisitor::FindArithmeticUBVisitor(ASTContext* Context) : Context(Context) {}
+FindArithmeticUBVisitor::FindArithmeticUBVisitor(ASTContext* Context)
+    : Context(Context) {}
 
 bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   if (!Context->getSourceManager().isWrittenInMainFile(Binop->getBeginLoc()))
@@ -52,7 +53,8 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   QualType LhsType = Lhs->getType().getUnqualifiedType().getCanonicalType();
   QualType RhsType = Rhs->getType().getUnqualifiedType().getCanonicalType();
   // only fundamental type arithmetic is supported
-  if (!(LhsType.getTypePtr()->isFundamentalType() && RhsType.getTypePtr()->isFundamentalType()))
+  if (!(LhsType.getTypePtr()->isFundamentalType() &&
+        RhsType.getTypePtr()->isFundamentalType()))
     return true; // some operations can make BinopType fundamental
                  // though lhs or rhs are pointer type
 
@@ -62,8 +64,8 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
 
   ASTFrontendInjector::getInstance().substitute(
       Context, Binop->getBeginLoc(), "@#" + BinopName + "#@",
-      "ASSERT_BINOP(" + OperationName + ", @, @, " + LhsType.getAsString() + ", " +
-          RhsType.getAsString() + ")",
+      "ASSERT_BINOP(" + OperationName + ", @, @, " + LhsType.getAsString() +
+          ", " + RhsType.getAsString() + ")",
       Lhs, Rhs);
   return true;
 }
@@ -106,25 +108,32 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   UnopType = UnopType.getCanonicalType();
 
   Expr* SubExpr = Unop->getSubExpr();
-  QualType SubExprType = SubExpr->getType().getUnqualifiedType().getCanonicalType();
+  QualType SubExprType =
+      SubExpr->getType().getUnqualifiedType().getCanonicalType();
   assert(SubExprType == UnopType);
 
   ASTFrontendInjector::getInstance().substitute(
-      Context, Unop->getBeginLoc(), IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
-      "ASSERT_UNOP(" + OperationName + ", @, " + UnopType.getAsString() + ")", SubExpr);
+      Context, Unop->getBeginLoc(),
+      IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
+      "ASSERT_UNOP(" + OperationName + ", @, " + UnopType.getAsString() + ")",
+      SubExpr);
   return true;
 }
 
-bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(CompoundAssignOperator* CompAssignOp) {
-  if (!Context->getSourceManager().isWrittenInMainFile(CompAssignOp->getBeginLoc()))
+bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
+    CompoundAssignOperator* CompAssignOp) {
+  if (!Context->getSourceManager().isWrittenInMainFile(
+          CompAssignOp->getBeginLoc()))
     return true;
 
-  /* for (lhs CompAssignOp rhs): lhs is converted to CompAssignOp->getComputationLHSType(), rhs is
-   * converted to CompAssignOp->getRHS()->getType(), operation perfoms, then result is converted to
-   * CompAssignOp->getType() (original type of lhs, == CompAssignOp->getLHS()->getType())
-   * and is written to lhs */
-  /* presumably, CompAssignOp->getComputationLHSType() == CompAssignOp->getComputationResultType()
-   * for all fundamental types (and differs for pointer operations) */
+  /* for (lhs CompAssignOp rhs): lhs is converted to
+   * CompAssignOp->getComputationLHSType(), rhs is converted to
+   * CompAssignOp->getRHS()->getType(), operation perfoms, then result is
+   * converted to CompAssignOp->getType() (original type of lhs, ==
+   * CompAssignOp->getLHS()->getType()) and is written to lhs */
+  /* presumably, CompAssignOp->getComputationLHSType() ==
+   * CompAssignOp->getComputationResultType() for all fundamental types (and
+   * differs for pointer operations) */
 
   QualType CompAssignOpType = CompAssignOp->getType();
   QualType LhsComputationType = CompAssignOp->getComputationLHSType();
@@ -175,16 +184,18 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(CompoundAssignOperator
 
   // check understanding of CompoundAssignOperator
   assert(LhsType == CompAssignOpType);
-  assert(LhsComputationType == CompAssignOp->getComputationResultType().getCanonicalType());
+  assert(LhsComputationType ==
+         CompAssignOp->getComputationResultType().getCanonicalType());
   // should be automatically true because LhsComputationType is fundamental
   assert(RhsType.getTypePtr()->isFundamentalType());
   // lhs and rhs of bitshift operators can have different integer types
-  assert(CompAssignOpName == "<<=" || CompAssignOpName == ">>=" || LhsComputationType == RhsType);
+  assert(CompAssignOpName == "<<=" || CompAssignOpName == ">>=" ||
+         LhsComputationType == RhsType);
 
   ASTFrontendInjector::getInstance().substitute(
       Context, CompAssignOp->getBeginLoc(), "@#" + CompAssignOpName + "#@",
-      "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " + LhsComputationType.getAsString() +
-          ", " + RhsType.getAsString() + ")",
+      "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " +
+          LhsComputationType.getAsString() + ", " + RhsType.getAsString() + ")",
       Lhs, Rhs);
   return true;
 }
