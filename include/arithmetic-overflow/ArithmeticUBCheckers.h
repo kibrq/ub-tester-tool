@@ -127,7 +127,7 @@ UBCheckRes UBCheckBitShiftLeft(LhsType Lhs, RhsType Rhs) {
 // since C++20 all other cases are SAFE_OPERATION
 // but now C++17 is considered
 #if __cplusplus > 201703L
-  return UBCheckRes::SAFE_OPERATION;
+  return UBCheckRes::SAFE_OPERATION; // TODO: overflow warning
 #endif
 
   if (Lhs < 0)

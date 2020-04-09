@@ -14,17 +14,22 @@
 #define ASSERT_UNOP(Operation, Expr, Type)                                     \
   assert##Operation<Type>((Expr), #Type, __FILE__, __LINE__)
 
-#define OVERFLOW_ASSERT_FAILED(Type, ReturnExprIfWarning)                      \
+#define ASSERT_COMPASSIGNOP(Operation, Lhs, Rhs, LhsType, LhsComputationType,  \
+                            RhsType)                                           \
+  assertCompAssignOp##Operation<LhsType, LhsComputationType, RhsType>(         \
+      (Lhs), (Rhs), #LhsType, #LhsComputationType, __FILE__, __LINE__)
+
+#define OVERFLOW_ASSERT_FAILED(Type, DoIfWarning)                              \
   if (!std::numeric_limits<Type>::is_signed) {                                 \
-    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING_CODE, ReturnExprIfWarning);         \
+    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING_CODE, DoIfWarning);                 \
   } else                                                                       \
     ASSERT_FAILED(OVERFLOW_EXIT_CODE)
 
 // in future failures and warnings will be collected by special class
 #define ASSERT_FAILED(ExitCode) exit(ExitCode) // return 0 // for testing
-#define PUSH_WARNING(WarningCode, ReturnExprIfWarning)                         \
+#define PUSH_WARNING(WarningCode, DoIfWarning)                                 \
   std::cerr << "Warning " << WarningCode << " has been generated.\n";          \
-  return ReturnExprIfWarning;
+  DoIfWarning;
 
 #define ARE_SAME_TYPES(Type1, Type2)                                           \
   typedef std::is_same<Type1, Type2> AreSameTypes__;                           \
@@ -59,13 +64,13 @@ LhsType assertSum(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " + " << +Rhs << " > "
               << +std::numeric_limits<LhsType>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs + Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs + Rhs);
 
   case UBCheckRes::OVERFLOW_MIN:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " + " << +Rhs << " < "
               << +std::numeric_limits<LhsType>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs + Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs + Rhs);
 
   case UBCheckRes::SAFE_OPERATION:
     return Lhs + Rhs;
@@ -85,13 +90,13 @@ LhsType assertDiff(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " - " << +Rhs << " > "
               << +std::numeric_limits<LhsType>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs - Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs - Rhs);
 
   case UBCheckRes::OVERFLOW_MIN:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " - " << +Rhs << " < "
               << +std::numeric_limits<LhsType>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs - Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs - Rhs);
 
   case UBCheckRes::SAFE_OPERATION:
     return Lhs - Rhs;
@@ -111,13 +116,13 @@ LhsType assertMul(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " * " << +Rhs << " > "
               << +std::numeric_limits<LhsType>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs * Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs * Rhs);
 
   case UBCheckRes::OVERFLOW_MIN:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " * " << +Rhs << " < "
               << +std::numeric_limits<LhsType>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs * Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs * Rhs);
 
   case UBCheckRes::SAFE_OPERATION:
     return Lhs * Rhs;
@@ -138,13 +143,13 @@ LhsType assertDiv(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " / " << +Rhs << " > "
               << +std::numeric_limits<LhsType>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs / Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs / Rhs);
 
   case UBCheckRes::OVERFLOW_MIN:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " / " << +Rhs << " < "
               << +std::numeric_limits<LhsType>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs / Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs / Rhs);
 
   case UBCheckRes::DIV_BY_0:
     std::cerr << LhsTypeName << " division by 0 in " << FileName
@@ -203,29 +208,29 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   switch (UBCheckBitShiftLeft<LhsType, RhsType>(Lhs, Rhs)) {
   case UBCheckRes::BITSHIFT_NEGATIVE_RHS:
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
-              << FileName << " Line: " << Line << "\nlog: negative Rhs; "
+              << FileName << " Line: " << Line << "\nlog: negative rhs; "
               << +Rhs << " < 0\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
   case UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS:
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
               << FileName << " Line: " << Line
-              << "\nlog: Rhs >= number of bits in Lhs type; " << +Rhs
+              << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
               << " >= " << +(sizeof(LhsType) * CHAR_BIT) << "\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
   case UBCheckRes::BITSHIFT_LEFT_NEGATIVE_LHS:
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
-              << FileName << " Line: " << Line << "\nlog: negative Lhs; "
+              << FileName << " Line: " << Line << "\nlog: negative lhs; "
               << +Lhs << " < 0\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
   case UBCheckRes::
       BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS:
-    std::cerr << LhsTypeName << " bitshift left (<<) undefined is in "
+    std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
               << FileName << " Line: " << Line
-              << "\nlog: signed Lhs is non-negative, but result is not "
-                 "representable in unsigned version of LhsType; ("
+              << "\nlog: signed lhs is non-negative, but result is not "
+                 "representable in unsigned version of lhs type; ("
               << +Lhs << " << " << +Rhs << ") > "
               << std::numeric_limits<UnsignedLhsType>::max() << "\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
@@ -234,7 +239,7 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: (" << +Lhs << " << " << +Rhs << ") > "
               << +std::numeric_limits<LhsType>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(LhsType, Lhs << Rhs);
+    OVERFLOW_ASSERT_FAILED(LhsType, return Lhs << Rhs);
 
   case UBCheckRes::SAFE_OPERATION:
     return Lhs << Rhs;
@@ -252,21 +257,21 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   switch (UBCheckBitShiftRight<LhsType, RhsType>(Lhs, Rhs)) {
   case UBCheckRes::BITSHIFT_NEGATIVE_RHS:
     std::cerr << LhsTypeName << " bitshift right (>>) is undefined in "
-              << FileName << " Line: " << Line << "\nlog: negative Rhs; "
+              << FileName << " Line: " << Line << "\nlog: negative rhs; "
               << +Rhs << " < 0\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
 
   case UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS:
     std::cerr << LhsTypeName << " bitshift right (>>) is undefined in "
               << FileName << " Line: " << Line
-              << "\nlog: Rhs >= number of bits in Lhs type; " << +Rhs
+              << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
               << " >= " << +(sizeof(LhsType) * CHAR_BIT) << "\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
 
   case UBCheckRes::IMPL_DEFINED_OPERATION:
     std::cerr << LhsTypeName
               << " bitshift right (>>) is implementation-defined in "
-              << FileName << " Line: " << Line << "\nlog: negative Lhs; "
+              << FileName << " Line: " << Line << "\nlog: negative lhs; "
               << +Lhs << " < 0\n";
     PUSH_WARNING(IMPL_DEFINED_WARNING_CODE, Lhs >> Rhs);
 
@@ -286,13 +291,13 @@ T assertUnaryNeg(T Expr, const char* TypeName, const char* FileName, int Line) {
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: -(" << +Expr << ") > "
               << +std::numeric_limits<T>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, -Expr);
+    OVERFLOW_ASSERT_FAILED(T, return -Expr);
 
   case UBCheckRes::OVERFLOW_MIN:
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: -(" << +Expr << ") < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, -Expr);
+    OVERFLOW_ASSERT_FAILED(T, return -Expr);
 
   case UBCheckRes::SAFE_OPERATION:
     return -Expr;
@@ -311,7 +316,7 @@ T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: ++(" << +Expr << ") > "
               << +std::numeric_limits<T>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, ++Expr);
+    OVERFLOW_ASSERT_FAILED(T, return ++Expr);
 
   case UBCheckRes::OVERFLOW_MIN:
     assert(0 && "Prefix increment assert detected OVERFLOW_MIN");
@@ -339,7 +344,7 @@ T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: (" << +Expr << ")++ > "
               << +std::numeric_limits<T>::max() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, Expr++);
+    OVERFLOW_ASSERT_FAILED(T, return Expr++);
 
   case UBCheckRes::OVERFLOW_MIN:
     assert(0 && "Postfix increment assert detected OVERFLOW_MIN");
@@ -370,7 +375,7 @@ T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: --(" << +Expr << ") < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, --Expr);
+    OVERFLOW_ASSERT_FAILED(T, return --Expr);
 
   case UBCheckRes::SAFE_OPERATION:
     return --Expr;
@@ -398,7 +403,7 @@ T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: (" << +Expr << ")-- < "
               << +std::numeric_limits<T>::lowest() << "\n";
-    OVERFLOW_ASSERT_FAILED(T, Expr--);
+    OVERFLOW_ASSERT_FAILED(T, return Expr--);
 
   case UBCheckRes::SAFE_OPERATION:
     return Expr--;
@@ -411,6 +416,371 @@ bool assertPostfixDecr(bool& Expr, const char* TypeName, const char* FileName,
                        int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix decrement is deprecated since C++17");
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
+                               const char* LhsTypeName,
+                               const char* LhsComputationTypeName,
+                               const char* FileName, int Line) {
+  FLT_POINT_NOT_SUPPORTED(LhsType);
+  FLT_POINT_NOT_SUPPORTED(LhsComputationType);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+
+  switch (UBCheckSum<LhsComputationType>(static_cast<LhsComputationType>(Lhs),
+                                         Rhs)) {
+  case UBCheckRes::OVERFLOW_MAX:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " + " << +Rhs << " > "
+              << +std::numeric_limits<LhsComputationType>::max()
+              << ";\n     lhs += rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::OVERFLOW_MIN:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " + " << +Rhs << " < "
+              << +std::numeric_limits<LhsComputationType>::lowest()
+              << ";\n     lhs += rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckSum");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs + Rhs)
+  return Lhs += Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
+                                const char* LhsTypeName,
+                                const char* LhsComputationTypeName,
+                                const char* FileName, int Line) {
+  FLT_POINT_NOT_SUPPORTED(LhsType);
+  FLT_POINT_NOT_SUPPORTED(LhsComputationType);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+
+  switch (UBCheckDiff<LhsComputationType>(static_cast<LhsComputationType>(Lhs),
+                                          Rhs)) {
+  case UBCheckRes::OVERFLOW_MAX:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " - " << +Rhs << " > "
+              << +std::numeric_limits<LhsComputationType>::max()
+              << ";\n     lhs -= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::OVERFLOW_MIN:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " - " << +Rhs << " < "
+              << +std::numeric_limits<LhsComputationType>::lowest()
+              << ";\n     lhs -= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckDiff");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs - Rhs)
+  return Lhs -= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
+                               const char* LhsTypeName,
+                               const char* LhsComputationTypeName,
+                               const char* FileName, int Line) {
+  FLT_POINT_NOT_SUPPORTED(LhsType);
+  FLT_POINT_NOT_SUPPORTED(LhsComputationType);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+
+  switch (UBCheckMul<LhsComputationType>(static_cast<LhsComputationType>(Lhs),
+                                         Rhs)) {
+  case UBCheckRes::OVERFLOW_MAX:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " * " << +Rhs << " > "
+              << +std::numeric_limits<LhsComputationType>::max()
+              << ";\n     lhs *= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::OVERFLOW_MIN:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " * " << +Rhs << " < "
+              << +std::numeric_limits<LhsComputationType>::lowest()
+              << ";\n     lhs *= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckMul");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs * Rhs)
+  return Lhs *= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
+                               const char* LhsTypeName,
+                               const char* LhsComputationTypeName,
+                               const char* FileName, int Line) {
+  FLT_POINT_NOT_SUPPORTED(LhsType);
+  FLT_POINT_NOT_SUPPORTED(LhsComputationType);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+
+  switch (UBCheckDiv<LhsComputationType>(static_cast<LhsComputationType>(Lhs),
+                                         Rhs)) {
+  case UBCheckRes::OVERFLOW_MAX:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " / " << +Rhs << " > "
+              << +std::numeric_limits<LhsComputationType>::max()
+              << ";\n     lhs /= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::OVERFLOW_MIN:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " / " << +Rhs << " < "
+              << +std::numeric_limits<LhsComputationType>::lowest()
+              << ";\n     lhs /= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::DIV_BY_0:
+    std::cerr << LhsComputationTypeName << " /= by 0 in " << FileName
+              << " Line: " << Line << "\nlog: lhs /= rhs is computed as "
+              << LhsComputationTypeName << " expr\n";
+    ASSERT_FAILED(DIVISION_BY_ZERO_EXIT_CODE);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckDiv");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs / Rhs)
+  return Lhs /= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
+                               const char* LhsTypeName,
+                               const char* LhsComputationTypeName,
+                               const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+
+  switch (UBCheckMod<LhsComputationType>(static_cast<LhsComputationType>(Lhs),
+                                         Rhs)) {
+  case UBCheckRes::MOD_UNDEFINED_DIV_OVERFLOWS_MAX:
+    std::cerr << LhsComputationTypeName << " mod (%=) is undefined in "
+              << FileName << " Line: " << Line
+              << "\nlog: because division is undefined; overflow: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " / " << +Rhs << " > " << +std::numeric_limits<LhsType>::max()
+              << ";\n     lhs %= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    ASSERT_FAILED(UNDEFINED_MOD_EXIT_CODE);
+
+  case UBCheckRes::MOD_UNDEFINED_DIV_OVERFLOWS_MIN:
+    std::cerr << LhsComputationTypeName << " mod (%=) is undefined in "
+              << FileName << " Line: " << Line
+              << "\nlog: because division is undefined; overflow: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " / " << +Rhs << " < "
+              << +std::numeric_limits<LhsType>::lowest()
+              << ";\n     lhs %= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    ASSERT_FAILED(UNDEFINED_MOD_EXIT_CODE);
+
+  case UBCheckRes::DIV_BY_0:
+    std::cerr << LhsComputationTypeName << " mod (%=) by 0 in " << FileName
+              << " Line: " << Line << "\nlog: lhs %= rhs is computed as "
+              << LhsComputationTypeName << " expr\n";
+    ASSERT_FAILED(DIVISION_BY_ZERO_EXIT_CODE);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckMod");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs % Rhs)
+  return Lhs %= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
+                                        const char* LhsTypeName,
+                                        const char* LhsComputationTypeName,
+                                        const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  assert(std::numeric_limits<RhsType>::is_integer);
+  typedef typename std::make_unsigned<LhsComputationType>::type
+      UnsignedLhsComputationType;
+
+  switch (UBCheckBitShiftLeft<LhsComputationType, RhsType>(
+      static_cast<LhsComputationType>(Lhs), Rhs)) {
+  case UBCheckRes::BITSHIFT_NEGATIVE_RHS:
+    std::cerr << LhsComputationTypeName
+              << " bitshift left (<<=) is undefined in " << FileName
+              << " Line: " << Line << "\nlog: negative rhs; " << +Rhs
+              << " < 0;\n     lhs <<= rhs is computed as "
+              << LhsComputationTypeName << " expr\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
+
+  case UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS:
+    std::cerr << LhsComputationTypeName
+              << " bitshift left (<<=) is undefined in " << FileName
+              << " Line: " << Line
+              << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
+              << " >= " << +(sizeof(LhsComputationType) * CHAR_BIT)
+              << ";\n     lhs <<= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
+
+  case UBCheckRes::BITSHIFT_LEFT_NEGATIVE_LHS:
+    std::cerr << LhsComputationTypeName
+              << " bitshift left (<<=) is undefined in " << FileName
+              << " Line: " << Line << "\nlog: negative lhs; "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " < 0;\n     lhs <<= rhs is computed as "
+              << LhsComputationTypeName << " expr\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
+
+  case UBCheckRes::
+      BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS:
+    std::cerr
+        << LhsComputationTypeName << " bitshift left (<<=) is undefined in "
+        << FileName << " Line: " << Line
+        << "\nlog: signed lhs is non-negative, but result is not "
+           "representable in unsigned version of lhs (computation) type; ("
+        << "(" << LhsTypeName << " " << +Lhs << " -> " << LhsComputationTypeName
+        << " " << +static_cast<LhsComputationType>(Lhs) << ")"
+        << " << " << +Rhs << ") > "
+        << std::numeric_limits<UnsignedLhsComputationType>::max()
+        << ";\n     lhs <<= rhs is computed as " << LhsComputationTypeName
+        << " expr\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
+
+  case UBCheckRes::OVERFLOW_MAX:
+    std::cerr << LhsComputationTypeName << " overflow in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "(" << LhsTypeName << " " << +Lhs << " -> "
+              << LhsComputationTypeName << " "
+              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << " << " << +Rhs << " > "
+              << +std::numeric_limits<LhsComputationType>::max()
+              << ";\n     lhs <<= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    OVERFLOW_ASSERT_FAILED(LhsComputationType, break);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckBitShiftLeft");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs << Rhs)
+  return Lhs <<= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
+                                         const char* LhsTypeName,
+                                         const char* LhsComputationTypeName,
+                                         const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  assert(std::numeric_limits<RhsType>::is_integer);
+
+  switch (UBCheckBitShiftRight<LhsComputationType, RhsType>(
+      static_cast<LhsComputationType>(Lhs), Rhs)) {
+  case UBCheckRes::BITSHIFT_NEGATIVE_RHS:
+    std::cerr << LhsComputationTypeName
+              << " bitshift right (>>=) is undefined in " << FileName
+              << " Line: " << Line << "\nlog: negative rhs; " << +Rhs
+              << " < 0;\n     lhs >>= rhs is computed as "
+              << LhsComputationTypeName << " expr\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
+
+  case UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS:
+    std::cerr << LhsComputationTypeName
+              << " bitshift right (>>=) is undefined in " << FileName
+              << " Line: " << Line
+              << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
+              << " >= " << +(sizeof(LhsComputationType) * CHAR_BIT)
+              << ";\n     lhs >>= rhs is computed as " << LhsComputationTypeName
+              << " expr\n";
+    ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
+
+  case UBCheckRes::IMPL_DEFINED_OPERATION:
+    std::cerr << LhsTypeName
+              << " bitshift right (>>=) is implementation-defined in "
+              << FileName << " Line: " << Line << "\nlog: negative lhs; "
+              << +static_cast<LhsComputationType>(Lhs)
+              << " < 0;\n     lhs >>= rhs is computed as "
+              << LhsComputationTypeName << " expr\n";
+    PUSH_WARNING(IMPL_DEFINED_WARNING_CODE, break);
+
+  case UBCheckRes::SAFE_OPERATION:
+    break;
+  default:
+    assert(0 && "Unexpected UBCheckRes from UBCheckBitShiftRight");
+  }
+  // should check res convertation from LhsComputationType to LhsType
+  // UBCheckIntegerCast<LhsType, LhsComputationType>(Lhs >> Rhs)
+  return Lhs >>= Rhs;
 }
 
 } // namespace ub_tester

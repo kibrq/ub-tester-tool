@@ -195,7 +195,8 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
   ASTFrontendInjector::getInstance().substitute(
       Context, CompAssignOp->getBeginLoc(), "@#" + CompAssignOpName + "#@",
       "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " +
-          LhsComputationType.getAsString() + ", " + RhsType.getAsString() + ")",
+          LhsType.getAsString() + ", " + LhsComputationType.getAsString() +
+          ", " + RhsType.getAsString() + ")",
       Lhs, Rhs);
   return true;
 }
