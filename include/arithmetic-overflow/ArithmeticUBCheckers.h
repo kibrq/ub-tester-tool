@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ArithmeticUBUtility.h"
 #include <cassert>
 #include <climits>
 #include <limits>
@@ -121,7 +122,7 @@ UBCheckRes UBCheckBitShiftLeft(LhsType Lhs, RhsType Rhs) {
 
   if (Rhs < 0)
     return UBCheckRes::BITSHIFT_NEGATIVE_RHS;
-  if (Rhs >= static_cast<RhsType>(sizeof(LhsType) * 8))
+  if (Rhs >= static_cast<RhsType>(arithm_ut::getTypeSizeInBits<LhsType>()))
     return UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS;
 
 // since C++20 all other cases are SAFE_OPERATION
@@ -154,7 +155,7 @@ UBCheckRes UBCheckBitShiftRight(LhsType Lhs, RhsType Rhs) {
 
   if (Rhs < 0)
     return UBCheckRes::BITSHIFT_NEGATIVE_RHS;
-  if (Rhs >= static_cast<RhsType>(sizeof(LhsType) * 8))
+  if (Rhs >= static_cast<RhsType>(arithm_ut::getTypeSizeInBits<LhsType>()))
     return UBCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS;
 
 // since C++20 all other cases are SAFE_OPERATION

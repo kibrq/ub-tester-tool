@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ArithmeticUBCheckers.h"
+#include "TypeConversionCheckers.h"
 #include <cstring>
 #include <iostream>
 
@@ -31,9 +32,7 @@
   std::cerr << "Warning " << WarningCode << " has been generated.\n";          \
   DoIfWarning;
 
-#define ARE_SAME_TYPES(Type1, Type2)                                           \
-  typedef std::is_same<Type1, Type2> AreSameTypes__;                           \
-  assert(AreSameTypes__::value)
+#define ARE_SAME_TYPES(Type1, Type2) assert((std::is_same<Type1, Type2>::value))
 // will be removed in future, when class for message-args appears
 #define UNUSED_ASSERT_ARGS(Arg1, Arg2, Arg3, Arg4)                             \
   (void)Arg1;                                                                  \
@@ -216,7 +215,7 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
               << FileName << " Line: " << Line
               << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
-              << " >= " << +(sizeof(LhsType) * CHAR_BIT) << "\n";
+              << " >= " << +arithm_ut::getTypeSizeInBits<LhsType>() << "\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
   case UBCheckRes::BITSHIFT_LEFT_NEGATIVE_LHS:
@@ -265,7 +264,7 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     std::cerr << LhsTypeName << " bitshift right (>>) is undefined in "
               << FileName << " Line: " << Line
               << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
-              << " >= " << +(sizeof(LhsType) * CHAR_BIT) << "\n";
+              << " >= " << +arithm_ut::getTypeSizeInBits<LhsType>() << "\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
 
   case UBCheckRes::IMPL_DEFINED_OPERATION:
@@ -273,7 +272,7 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
               << " bitshift right (>>) is implementation-defined in "
               << FileName << " Line: " << Line << "\nlog: negative lhs; "
               << +Lhs << " < 0\n";
-    PUSH_WARNING(IMPL_DEFINED_WARNING_CODE, Lhs >> Rhs);
+    PUSH_WARNING(IMPL_DEFINED_WARNING_CODE, return Lhs >> Rhs);
 
   case UBCheckRes::SAFE_OPERATION:
     return Lhs >> Rhs;
@@ -682,7 +681,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
               << " bitshift left (<<=) is undefined in " << FileName
               << " Line: " << Line
               << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
-              << " >= " << +(sizeof(LhsComputationType) * CHAR_BIT)
+              << " >= " << +arithm_ut::getTypeSizeInBits<LhsComputationType>()
               << ";\n     lhs <<= rhs is computed as " << LhsComputationTypeName
               << " expr\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
@@ -759,7 +758,7 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
               << " bitshift right (>>=) is undefined in " << FileName
               << " Line: " << Line
               << "\nlog: rhs >= number of bits in lhs type; " << +Rhs
-              << " >= " << +(sizeof(LhsComputationType) * CHAR_BIT)
+              << " >= " << +arithm_ut::getTypeSizeInBits<LhsComputationType>()
               << ";\n     lhs >>= rhs is computed as " << LhsComputationTypeName
               << " expr\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE);
