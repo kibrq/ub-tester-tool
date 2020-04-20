@@ -5,8 +5,8 @@
 #include "index-out-of-bounds/ub-safe-containers/UBSafeCArray.h"
 #include "index-out-of-bounds/ub-safe-containers/UBSafePointer.h"
 
-#include "arithmetic-overflows/ArithmeticUBAsserts.h"
+#include "arithmetic-overflow/ArithmeticUBAsserts.h"
 
-#include "uninit-variables/UninitVarsDetection.h"
+// #include "uninit-variables/UninitVarsDetection.h"
 
 #endif
