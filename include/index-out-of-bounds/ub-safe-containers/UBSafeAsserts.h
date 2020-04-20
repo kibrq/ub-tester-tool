@@ -3,6 +3,8 @@
 #include "UBSafeCArray.h"
 
 #include <climits>
+#include <cstdlib>
+#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -15,36 +17,38 @@ namespace ub_tester {
   ub_tester::checkInvalidSize(Sizes, __FILE__, __LINE__)
 
 template <typename T>
-T& checkIOB(
-    UBSafeCArray<T>& Array, int Index, const char* Filename, size_t LineNum) {
+T& checkIOB(UBSafeCArray<T>& Array, int Index, const char* Filename,
+            size_t LineNum) {
   try {
     return Array[Index];
   } catch (const std::out_of_range& e) {
-    // TODO
+    std::cout << "Index out of bounds!" << e.what() << std::endl
+              << "On " << Filename << "::" << LineNum << std::endl;
+    std::abort();
   }
 }
 
 template <typename T>
-const T& checkIOB(
-    const UBSafeCArray<T>& Array, int Index, const char* Filename,
-    size_t LineNum) {
+const T& checkIOB(const UBSafeCArray<T>& Array, int Index, const char* Filename,
+                  size_t LineNum) {
   try {
     return Array[Index];
   } catch (const std::out_of_range& e) {
-    // TODO
+    std::cout << "Index out of bounds!" << e.what() << std::endl
+              << "On " << Filename << "::" << LineNum << std::endl;
+    std::abort();
   }
 }
 
 template <typename T>
-T& checkIOB(
-    int Index, UBSafeCArray<T>& Array, const char* Filename, size_t LineNum) {
+T& checkIOB(int Index, UBSafeCArray<T>& Array, const char* Filename,
+            size_t LineNum) {
   return checkIOB(Array, Index, Filename, LineNum);
 }
 
 template <typename T>
-const T& checkIOB(
-    int Index, const UBSafeCArray<T>& Array, const char* Filename,
-    size_t LineNum) {
+const T& checkIOB(int Index, const UBSafeCArray<T>& Array, const char* Filename,
+                  size_t LineNum) {
   return checkIOB(Array, Index, Filename, LineNum);
 }
 
@@ -55,8 +59,8 @@ T& checkIOB(T*& Array, int Index, const char* Filename, size_t LineNum) {
 }
 
 template <typename T>
-const T&
-checkIOB(const T*& Array, int Index, const char* Filename, size_t LineNum) {
+const T& checkIOB(const T*& Array, int Index, const char* Filename,
+                  size_t LineNum) {
   // TODO
   return Array[Index];
 }
@@ -67,8 +71,8 @@ T& checkIOB(int Index, T*& Array, const char* Filename, size_t LineNum) {
 }
 
 template <typename T>
-const T&
-checkIOB(int Index, const T*& Array, const char* Filename, size_t LineNum) {
+const T& checkIOB(int Index, const T*& Array, const char* Filename,
+                  size_t LineNum) {
   return checkIOB(Array, Index, Filename, LineNum);
 }
 
@@ -78,8 +82,8 @@ T& checkIOB(T Array[], int Index, const char* Filename, size_t LineNum) {
 }
 
 template <typename T>
-const T&
-checkIOB(const T Array[], int Index, const char* Filename, size_t LineNum) {
+const T& checkIOB(const T Array[], int Index, const char* Filename,
+                  size_t LineNum) {
   return Array[Index];
 }
 
@@ -89,16 +93,18 @@ T& checkIOB(int Index, T Array[], const char* Filename, size_t LineNum) {
 }
 
 template <typename T>
-const T&
-checkIOB(int Index, const T Array[], const char* Filename, size_t LineNum) {
+const T& checkIOB(int Index, const T Array[], const char* Filename,
+                  size_t LineNum) {
   return checkIOB(Array, Index, Filename, LineNum);
 }
 
-inline void
-checkInvalidSize(std::vector<int> Sizes, const char* Filename, size_t LineNum) {
+inline void checkInvalidSize(std::vector<int> Sizes, const char* Filename,
+                             size_t LineNum) {
   for (const auto& Size : Sizes) {
     if (Size < 0 || Size >= SIZE_MAX) {
-      // TODO
+      std::cout << "Invalid size of an array" << std::endl
+                << "On " << Filename << "::" << LineNum << std::endl;
+      std::abort();
     }
   }
 }
