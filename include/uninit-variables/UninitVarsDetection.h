@@ -6,6 +6,7 @@
 #include <sstream>
 
 // this only needs to be included in target file; no other use
+// TODO: require <string> or change to c-like string
 template <typename T> class UB_UninitSafeType {
 public:
   UB_UninitSafeType() : value{}, isInit{false}, isIgnored{false} {}
@@ -29,6 +30,7 @@ public:
   T& tryInitValue(T t) {
     value = t;
     isInit = true;
+    return value;
   }
 
 private:
