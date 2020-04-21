@@ -9,4 +9,6 @@
 
 // #include "uninit-variables/UninitVarsDetection.h"
 
+using namespace ub_tester;
+
 #endif
