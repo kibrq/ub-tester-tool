@@ -98,8 +98,9 @@ const T& checkIOB(int Index, const T Array[], const char* Filename,
   return checkIOB(Array, Index, Filename, LineNum);
 }
 
-inline void checkInvalidSize(std::vector<int> Sizes, const char* Filename,
-                             size_t LineNum) {
+inline const std::vector<int>& checkInvalidSize(const std::vector<int>& Sizes,
+                                                const char* Filename,
+                                                size_t LineNum) {
   for (const auto& Size : Sizes) {
     if (Size < 0 || Size >= SIZE_MAX) {
       std::cout << "Invalid size of an array" << std::endl
@@ -107,5 +108,6 @@ inline void checkInvalidSize(std::vector<int> Sizes, const char* Filename,
       std::abort();
     }
   }
+  return Sizes;
 }
 } // namespace ub_tester
