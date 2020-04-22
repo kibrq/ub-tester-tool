@@ -4,7 +4,8 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 
 #include <sstream>
-
+#include <stdexcept>
+#include <string>
 // this only needs to be included in target file; no other use
 // TODO: require <string> or change to c-like string
 template <typename T> class UB_UninitSafeType {

@@ -70,7 +70,7 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
     std::string TypeSubstitution = UB_UninitSafeTypeConsts::TEMPLATE_NAME + "<" + VariableType.getAsString() + "> ";
 
     if (VariableDecl->hasInit()) {
-      std::string TypeAndNameSubstitution = TypeSubstitution + VariableDecl->getNameAsString();
+      std::string VariableName = VariableDecl->getNameAsString();
 
       Expr* InitializationExpr = dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
       assert(InitializationExpr);
@@ -78,8 +78,9 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
       // TODO: maybe shift here by 1?
 
-      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@", TypeAndNameSubstitution + "(@)",
-                                                    dyn_cast<Expr>(InitializationExpr));
+      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@",
+                                                    TypeSubstitution + "@{@}", VariableName,
+                                                    getExprAsString(dyn_cast<Expr>(InitializationExpr), Context));
     } else {
       // std::pair<std::string, std::string> lrlr = LocRangeToStrings(VariableDecl->getSourceRange(), Context->getSourceManager());
       // std::cout << lrlr.first << '-' << lrlr.second << std::endl;
@@ -139,23 +140,12 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       const CallExpr* CallingFunction = ParentIterNode.get<CallExpr>();
 
       if (CallingFunction) {
-        std::cout << "yay\n";
+        // THIS FINALLY WORKS
         FoundCallingFunction = true;
       }
 
     } while (!FoundCallingFunction);
-
-    // CallExpr* CallingFunction = Context->getParents(ICE)[0].get<CallExpr>();
-    // if (CallingFunction) {
-    //   std::cout << "yay\n";
-    // }
-
-    // for (DynTypedNode& Par : Context->getParents(ICE)) {
-    //   CallExpr* FuncCall = Par.get<CallExpr>();
-    //   if (FuncCall != nullptr && ){
-    //   }
-    // }
-  }
+    }
 
   return true;
 }
