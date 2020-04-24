@@ -23,35 +23,6 @@ using namespace llvm;
 
 namespace ub_tester {
 
-namespace UB_UninitSafeTypeConsts {
-const std::string TEMPLATE_NAME = "UB_UninitSafeType";
-const std::string GETMETHOD_NAME = "getValue";
-const std::string INITMETHOD_NAME = "tryInitValue";
-} // namespace UB_UninitSafeTypeConsts
-
-using LocationPair = std::pair<unsigned int, unsigned int>;
-
-LocationPair GetLocationPair(SourceLocation&& Location, const SourceManager& Manager) {
-  return LocationPair(Manager.getSpellingLineNumber(Location), Manager.getSpellingColumnNumber(Location));
-}
-
-std::string LocPairToString(const LocationPair& LP) {
-  std::stringstream res{};
-  res << LP.first << ':' << LP.second;
-  return res.str();
-}
-
-using LocationRange = std::pair<LocationPair, LocationPair>;
-
-LocationRange GetLocationRange(const SourceRange& SR, const SourceManager& Manager) {
-  return LocationRange(GetLocationPair(SR.getBegin(), Manager), GetLocationPair(SR.getEnd(), Manager));
-}
-
-std::pair<std::string, std::string> LocRangeToStrings(const SourceRange&& SR, const SourceManager& Manager) {
-  LocationRange LR = GetLocationRange(SR, Manager);
-  return std::pair(LocPairToString(LR.first), LocPairToString(LR.second));
-}
-
 // all constructors
 
 FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
@@ -78,9 +49,8 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
       // TODO: maybe shift here by 1?
 
-      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@",
-                                                    TypeSubstitution + "@{@}", VariableName,
-                                                    getExprAsString(dyn_cast<Expr>(InitializationExpr), Context));
+      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@", TypeSubstitution + "@{@}",
+                                                    VariableName, getExprAsString(dyn_cast<Expr>(InitializationExpr), Context));
     } else {
       // std::pair<std::string, std::string> lrlr = LocRangeToStrings(VariableDecl->getSourceRange(), Context->getSourceManager());
       // std::cout << lrlr.first << '-' << lrlr.second << std::endl;
@@ -145,12 +115,12 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       }
 
     } while (!FoundCallingFunction);
-    }
+  }
 
   return true;
 }
 
-// detect Safe_T initializations; substitute with .init() function
+// detect Safe_T assignments; substitute with .init() function
 bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
   if (!Context->getSourceManager().isInMainFile(BinOp->getBeginLoc()))
     return true;
@@ -159,11 +129,10 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
     // assuming all fundamental types are already Safe_T
     // TODO: replace 'assuming' with assert (?)
 
-    LocationRange DefinitionExprLocationRange = GetLocationRange(BinOp->getRHS()->getSourceRange(), Context->getSourceManager());
-
-    std::string substitution = '.' + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "( [[ file contents from " +
-                               LocPairToString(DefinitionExprLocationRange.first) + " to " +
-                               LocPairToString(DefinitionExprLocationRange.second) + " ]] )";
+    // LocationRange DefinitionExprLocationRange = GetLocationRange(BinOp->getRHS()->getSourceRange(), Context->getSourceManager());
+    // std::string substitution = '.' + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "( [[ file contents from " +
+    //                            LocPairToString(DefinitionExprLocationRange.first) + " to " +
+    //                            LocPairToString(DefinitionExprLocationRange.second) + " ]] )";
 
     ASTFrontendInjector::getInstance().substitute(Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
                                                   "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),

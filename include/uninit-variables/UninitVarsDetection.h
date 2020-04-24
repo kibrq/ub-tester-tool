@@ -5,6 +5,12 @@
 
 namespace ub_tester {
 
+namespace UB_UninitSafeTypeConsts {
+const std::string TEMPLATE_NAME = "UB_UninitSafeType";
+const std::string GETMETHOD_NAME = "getValue";
+const std::string INITMETHOD_NAME = "tryInitValue";
+} // namespace UB_UninitSafeTypeConsts
+
 class FindFundTypeVarDeclVisitor : public clang::RecursiveASTVisitor<FindFundTypeVarDeclVisitor> {
 public:
   explicit FindFundTypeVarDeclVisitor(clang::ASTContext* Context);
