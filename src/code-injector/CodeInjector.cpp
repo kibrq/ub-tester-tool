@@ -80,7 +80,7 @@ void CodeInjector::erase(size_t Offset, size_t Count) {
   updateOffsets(Offset + Count, -Count);
 }
 
-void CodeInjector::insert(size_t Offset, std::string_view NewString) {
+void CodeInjector::insert(size_t Offset, const std::string& NewString) {
   size_t CurOffset = findFirstValidNextTransformed(Offset);
   FileBuffer_.insert(FileBuffer_.begin() + CurOffset, NewString.begin(),
                      NewString.end());
@@ -88,14 +88,14 @@ void CodeInjector::insert(size_t Offset, std::string_view NewString) {
 }
 
 void CodeInjector::substitute(size_t Offset, size_t Count,
-                              std::string_view NewString) {
+                              const std::string& NewString) {
   size_t CurOffset = transform(Offset);
   erase(Offset, Count);
   insert(Offset, NewString);
 }
 
 std::optional<size_t> CodeInjector::findFirstEntryOf(size_t Offset,
-                                                     std::string_view View) {
+                                                     const std::string& View) {
   size_t Result = SourceBuffer_.find(View, Offset);
   if (Result != std::string::npos) {
     return Result;
@@ -112,8 +112,8 @@ std::optional<size_t> CodeInjector::findFirstEntryOf(size_t Offset, char C) {
 }
 
 void CodeInjector::substitute(size_t LineNum, size_t ColNum,
-                              std::string_view SourceFormat,
-                              std::string_view OutputFormat,
+                              const std::string& SourceFormat,
+                              const std::string& OutputFormat,
                               const SubArgs& Args) {
   size_t Offset = 0;
   for (size_t i = 0; i < LineNum - 1; ++i) {
@@ -141,8 +141,8 @@ bool CodeInjector::Substitution::operator<(const Substitution& Other) const {
   return Offset_ < Other.Offset_;
 }
 
-void CodeInjector::substitute(size_t Offset, std::string_view SourceFormat,
-                              std::string_view OutputFormat,
+void CodeInjector::substitute(size_t Offset, const std::string& SourceFormat,
+                              const std::string& OutputFormat,
                               const SubArgs& Args) {
   Substitutions_.push_back({Offset, SourceFormat, OutputFormat, Args});
 }
@@ -160,10 +160,11 @@ void CodeInjector::applySubstitution(const Substitution& Sub) {
 }
 
 void CodeInjector::applySubstitution(size_t Offset,
-                                     std::string_view SourceFormat,
-                                     std::string_view OutputFormat,
+                                     const std::string& SourceFormat,
+                                     const std::string& OutputFormat,
                                      const SubArgs& Args) {
   size_t CurSourceBegin = Offset, CurSourcePos = Offset;
+  size_t CurOutputBegin = 0, CurOutputPos = 0;
   size_t CurArg = 0;
   bool isPrevAny = false;
   for (const auto& C : SourceFormat) {
@@ -174,12 +175,13 @@ void CodeInjector::applySubstitution(size_t Offset,
             Ans.has_value()) {
           CurSourcePos = *Ans;
         } else {
-          // TODO
+          std::cerr << "kek1" << '\n';
         }
-        size_t Res = OutputFormat.find_first_of(C, 0);
-        substitute(CurSourceBegin, CurSourcePos - CurSourceBegin,
-                   OutputFormat.substr(0, Res));
-        OutputFormat.remove_prefix(Res + 1);
+        CurOutputPos = OutputFormat.find_first_of(C, CurOutputPos);
+        substitute(
+            CurSourceBegin, CurSourcePos - CurSourceBegin,
+            OutputFormat.substr(CurOutputBegin, CurOutputPos - CurOutputBegin));
+        CurOutputBegin = ++CurOutputPos;
         CurSourcePos += Args[CurArg++].length();
         CurSourceBegin = CurSourcePos;
         break;
@@ -196,16 +198,19 @@ void CodeInjector::applySubstitution(size_t Offset,
         if (auto Ans = findFirstEntryOf(CurSourcePos, C); Ans.has_value()) {
           CurSourcePos = *Ans;
         } else {
+          std::cerr << "kek2" << '\n';
           // TODO
         }
       } else {
         if (get(CurSourcePos++) != C) {
+          std::cerr << "kek3" << '\n';
           // TODO
         }
       }
     }
   }
-  substitute(CurSourceBegin, CurSourcePos - CurSourceBegin, OutputFormat);
+  substitute(CurSourceBegin, CurSourcePos - CurSourceBegin,
+             OutputFormat.substr(CurOutputBegin));
 }
 } // namespace code_injector
 } // namespace ub_tester

@@ -91,8 +91,8 @@ generateArgumentsForSubstitution(const clang::ASTContext* Context,
 template <typename... Args>
 void ASTFrontendInjector::substitute(const clang::ASTContext* Context,
                                      const clang::SourceLocation& BeginLoc,
-                                     std::string_view SourceFormat,
-                                     std::string_view OutputFormat,
+                                     const std::string& SourceFormat,
+                                     const std::string& OutputFormat,
                                      Args... as) {
   substitute(Context, BeginLoc, SourceFormat, OutputFormat,
              generateArgumentsForSubstitution(Context, as...));

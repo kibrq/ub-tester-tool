@@ -25,15 +25,15 @@ public:
   // substitute(Context, Loc, "%+%", "AssertSum(%, %)", "a", Expr);
   void substitute(const clang::ASTContext* Context,
                   const clang::SourceLocation& BeginLoc,
-                  std::string_view SourceFormat,
-                  std::string_view SubstitutionFormat,
+                  const std::string& SourceFormat,
+                  const std::string& SubstitutionFormat,
                   const code_injector::SubArgs& Args);
 
   template <typename... Args>
   void substitute(const clang::ASTContext* Context,
                   const clang::SourceLocation& BeginLoc,
-                  std::string_view SourceFormat,
-                  std::string_view SubstitutionFormat, Args... as);
+                  const std::string& SourceFormat,
+                  const std::string& SubstitutionFormat, Args... as);
 
 private:
   explicit ASTFrontendInjector() = default;

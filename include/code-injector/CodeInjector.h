@@ -39,14 +39,15 @@ public:
   ~CodeInjector();
   void setOutputFilename(const std::string& Filename);
   void erase(size_t Offeset, size_t Count);
-  void insert(size_t Offset, std::string_view Substr);
-  void substitute(size_t Offset, size_t Count, std::string_view NewString);
-  void substitute(size_t LineNum, size_t ColNum, std::string_view SourceFormat,
-                  std::string_view OutputFormat, const SubArgs& Args);
+  void insert(size_t Offset, const std::string& Substr);
+  void substitute(size_t Offset, size_t Count, const std::string& NewString);
+  void substitute(size_t LineNum, size_t ColNum,
+                  const std::string& SourceFormat,
+                  const std::string& OutputFormat, const SubArgs& Args);
 
 public:
-  void substitute(size_t Offset, std::string_view SourceFormat,
-                  std::string_view OutputFormat, const SubArgs& Args);
+  void substitute(size_t Offset, const std::string& SourceFormat,
+                  const std::string& OutputFormat, const SubArgs& Args);
 
 private:
   inline static constexpr int INVALID = -1e5;
@@ -55,17 +56,18 @@ private:
   struct Substitution {
     bool operator<(const Substitution& Other) const;
     size_t Offset_;
-    std::string_view SourceFormat_;
-    std::string_view OutputFormat_;
+    std::string SourceFormat_;
+    std::string OutputFormat_;
     SubArgs Args_;
   };
   void applySubstitution(const Substitution& Sub);
-  void applySubstitution(size_t Offset, std::string_view SourceFormat,
-                         std::string_view OutputFormat, const SubArgs& Args);
+  void applySubstitution(size_t Offset, const std::string& SourceFormat,
+                         const std::string& OutputFormat, const SubArgs& Args);
   void applyAllSubstitutions();
 
 private:
-  std::optional<size_t> findFirstEntryOf(size_t Offset, std::string_view View);
+  std::optional<size_t> findFirstEntryOf(size_t Offset,
+                                         const std::string& View);
   std::optional<size_t> findFirstEntryOf(size_t Offset, char C);
   char get(size_t Offset) const;
   void updateOffsets(size_t Offset, size_t Value);
