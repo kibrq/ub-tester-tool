@@ -175,7 +175,7 @@ void CodeInjector::applySubstitution(size_t Offset,
             Ans.has_value()) {
           CurSourcePos = *Ans;
         } else {
-          std::cerr << "kek1" << '\n';
+          std::abort();
         }
         CurOutputPos = OutputFormat.find_first_of(C, CurOutputPos);
         substitute(
@@ -198,13 +198,11 @@ void CodeInjector::applySubstitution(size_t Offset,
         if (auto Ans = findFirstEntryOf(CurSourcePos, C); Ans.has_value()) {
           CurSourcePos = *Ans;
         } else {
-          std::cerr << "kek2" << '\n';
-          // TODO
+          std::abort();
         }
       } else {
         if (get(CurSourcePos++) != C) {
-          std::cerr << "kek3" << '\n';
-          // TODO
+          std::abort();
         }
       }
     }
