@@ -9,6 +9,9 @@
 #include <vector>
 
 namespace ub_tester {
+
+using code_injector::SubArgs;
+
 namespace {
 
 inline std::string getArgAsString(const std::string& Arg,

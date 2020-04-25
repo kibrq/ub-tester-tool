@@ -9,8 +9,6 @@
 
 namespace ub_tester {
 
-using SubArgs = std::vector<std::string>;
-
 class ASTFrontendInjector {
 public:
   static ASTFrontendInjector& getInstance();
@@ -28,7 +26,8 @@ public:
   void substitute(const clang::ASTContext* Context,
                   const clang::SourceLocation& BeginLoc,
                   std::string_view SourceFormat,
-                  std::string_view SubstitutionFormat, const SubArgs& Args);
+                  std::string_view SubstitutionFormat,
+                  const code_injector::SubArgs& Args);
 
   template <typename... Args>
   void substitute(const clang::ASTContext* Context,

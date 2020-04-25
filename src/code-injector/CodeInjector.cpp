@@ -116,14 +116,14 @@ void CodeInjector::substitute(size_t LineNum, size_t ColNum,
                               std::string_view OutputFormat,
                               const SubArgs& Args) {
   size_t Offset = 0;
-  for (size_t i = 0; i < LineNum; ++i) {
+  for (size_t i = 0; i < LineNum - 1; ++i) {
     if (auto Ans = findFirstEntryOf(Offset, '\n'); Ans.has_value()) {
       Offset = *Ans + 1;
     } else {
       // TODO
     }
   }
-  substitute(Offset + ColNum, SourceFormat, OutputFormat, Args);
+  substitute(Offset + ColNum - 1, SourceFormat, OutputFormat, Args);
 }
 
 bool CodeInjector::Substitution::operator<(const Substitution& Other) const {
