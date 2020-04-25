@@ -38,13 +38,20 @@ public:
   CodeInjector(const std::string& Filename, const std::string& OutputFilename);
   ~CodeInjector();
   void setOutputFilename(const std::string& Filename);
-  void erase(size_t Offeset, size_t Count);
-  void insert(size_t Offset, std::string_view Substr);
-  void substitute(size_t Offset, size_t Count, std::string_view NewString);
+
   void substitute(size_t LineNum, size_t ColNum, std::string SourceFormat,
                   std::string OutputFormat, const SubArgs& Args);
+
   void substitute(size_t Offset, std::string SourceFormat,
                   std::string OutputFormat, const SubArgs& Args);
+
+private:
+  void erase(size_t Offeset, size_t Count);
+  void eraseAfter(size_t Offeset, size_t Count);
+  void insert(size_t Offset, std::string_view NewString);
+  void insertAfter(size_t Offset, std::string_view NewString);
+  void substitute(size_t Offset, size_t Count, std::string_view NewString);
+  void substituteAfter(size_t Offset, size_t Count, std::string_view NewString);
 
 private:
   inline static constexpr int INVALID = -1e5;

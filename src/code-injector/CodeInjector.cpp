@@ -80,6 +80,14 @@ void CodeInjector::erase(size_t Offset, size_t Count) {
   updateOffsets(Offset + Count, -Count);
 }
 
+void CodeInjector::eraseAfter(size_t Offset, size_t Count) {
+  size_t CurOffset = transform(Offset) + 1;
+  FileBuffer_.erase(FileBuffer_.begin() + CurOffset,
+                    FileBuffer_.begin() + CurOffset + Count);
+  makeInvalid(Offset + 1, Count);
+  updateOffsets(Offset + 1 + Count, -Count);
+}
+
 void CodeInjector::insert(size_t Offset, std::string_view NewString) {
   size_t CurOffset = findFirstValidNextTransformed(Offset);
   FileBuffer_.insert(FileBuffer_.begin() + CurOffset, NewString.begin(),
@@ -87,11 +95,23 @@ void CodeInjector::insert(size_t Offset, std::string_view NewString) {
   updateOffsets(Offset, NewString.length());
 }
 
+void CodeInjector::insertAfter(size_t Offset, std::string_view NewString) {
+  size_t CurOffset = transform(Offset) + 1;
+  FileBuffer_.insert(FileBuffer_.begin() + CurOffset, NewString.begin(),
+                     NewString.end());
+  updateOffsets(Offset + 1, NewString.length());
+}
+
 void CodeInjector::substitute(size_t Offset, size_t Count,
                               std::string_view NewString) {
-  size_t CurOffset = transform(Offset);
   erase(Offset, Count);
   insert(Offset, NewString);
+}
+
+void CodeInjector::substituteAfter(size_t Offset, size_t Count,
+                                   std::string_view NewString) {
+  eraseAfter(Offset, Count);
+  insertAfter(Offset, NewString);
 }
 
 std::optional<size_t> CodeInjector::findFirstEntryOf(size_t Offset,
@@ -205,7 +225,8 @@ void CodeInjector::applySubstitution(size_t Offset,
       }
     }
   }
-  substitute(CurSourceBegin, CurSourcePos - CurSourceBegin, OutputFormat);
+  substituteAfter(CurSourceBegin - 1, CurSourcePos - CurSourceBegin,
+                  OutputFormat);
 }
 } // namespace code_injector
 } // namespace ub_tester
