@@ -1,137 +1,88 @@
 #pragma once
 
 #include <cstddef>
-#include <exception>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ub_tester {
 
-enum class SPECIAL_SYMBOL : char {
-  ARG = '@',
-  ANY = '#',
-  SKIP = '$',
-  NONE = '\0'
-};
+namespace code_injector {
 
-class SpecialSymbolRange {
-  class Iterator {
-  public:
-    Iterator(SPECIAL_SYMBOL Symb);
-    Iterator& operator++();
-    bool operator!=(const Iterator& Other) const;
-    SPECIAL_SYMBOL operator*() const;
+using SubArgs = std::vector<std::string>;
 
-  private:
-    SPECIAL_SYMBOL Symb_;
-  };
+enum class CharacterKind : char { ARG = '@', ALL = '#', NONE = 0 };
 
-public:
-  Iterator begin() const;
-  Iterator end() const;
-  static SpecialSymbolRange& getInstance();
-};
+inline bool isCharacter(char C, CharacterKind Char) {
+  return C == static_cast<char>(Char);
+}
 
-struct SourcePosition {
-  size_t Line_, Col_;
-  bool onTheSameLine(const SourcePosition& Other);
-  size_t diff(const SourcePosition& Other);
-  SourcePosition& operator+=(const SourcePosition& Other);
-  SourcePosition& changeLine(size_t Line);
-  SourcePosition& changeCol(size_t Col);
-  SourcePosition& moveToNextLine();
-  bool operator<(const SourcePosition& Other);
-  bool operator==(const SourcePosition& Other);
-};
+inline bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2) {
+  return isCharacter(C, Char1) || isCharacter(C, Char2);
+}
 
-class IncorrectSubstitutionException : public std::exception {
-public:
-  explicit IncorrectSubstitutionException(const char* Message);
-  const char* what() const noexcept override;
+template <typename... CharacterKinds>
+bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2,
+             CharacterKinds... Chars) {
+  return isCharacter(C, Char1) || isAnyOf(C, Char2, Chars...);
+}
 
-private:
-  const char* Message_;
-};
+inline bool isAnyCharacter(char C) {
+  return isAnyOf(C, CharacterKind::ARG, CharacterKind::ALL);
+}
 
 class CodeInjector {
 public:
-  explicit CodeInjector() = default;
-
-  explicit CodeInjector(const std::string& Filename);
-
-  CodeInjector(const CodeInjector& other) = delete;
-
-  CodeInjector& operator=(const CodeInjector& other) = delete;
-
-  CodeInjector(CodeInjector&& other) = delete;
-
-  CodeInjector& operator=(CodeInjector&& other) = delete;
-
+  CodeInjector(const std::string& Filename);
+  CodeInjector(const std::string& Filename, const std::string& OutputFilename);
   ~CodeInjector();
+  void setOutputFilename(const std::string& Filename);
+  void erase(size_t Offeset, size_t Count);
+  void insert(size_t Offset, const std::string& Substr);
+  void substitute(size_t Offset, size_t Count, const std::string& NewString);
+  void substitute(size_t LineNum, size_t ColNum,
+                  const std::string& SourceFormat,
+                  const std::string& OutputFormat, const SubArgs& Args);
 
-  void setOutputFilename(const std::string& OutputFilename);
+public:
+  void substitute(size_t Offset, const std::string& SourceFormat,
+                  const std::string& OutputFormat, const SubArgs& Args);
 
-  void openFile(const std::string& Filename);
-
-  void closeFile();
-
-  CodeInjector& eraseLine(SourcePosition BeginPos);
-
-  CodeInjector&
-  insertSubstringAfter(SourcePosition Pos, const std::string& Substring);
-
-  CodeInjector&
-  insertSubstringBefore(SourcePosition Pos, const std::string& Substring);
-
-  CodeInjector& insertLineAfter(SourcePosition Pos, const std::string& Line);
-
-  CodeInjector& insertLineBefore(SourcePosition Pos, const std::string& Line);
-
-  CodeInjector& substituteSubstring(
-      SourcePosition BeginPos, SourcePosition EndPos,
-      const std::string& Substring);
-
-  CodeInjector& substitute(
-      SourcePosition Pos, std::string SourceFormat, std::string OutputFormat,
-      const std::vector<std::string>& Args);
+private:
+  inline static constexpr int INVALID = -1e5;
 
 private:
   struct Substitution {
-    SourcePosition BeginPos_;
-    std::string SourceFormat_, OutputFormat_;
-    std::vector<std::string> Args_;
-    bool operator<(const Substitution& Other);
+    bool operator<(const Substitution& Other) const;
+    size_t Offset_;
+    std::string SourceFormat_;
+    std::string OutputFormat_;
+    SubArgs Args_;
   };
+  void applySubstitution(const Substitution& Sub);
+  void applySubstitution(size_t Offset, const std::string& SourceFormat,
+                         const std::string& OutputFormat, const SubArgs& Args);
+  void applyAllSubstitutions();
 
 private:
-  struct OutputPosition {
-    size_t Line_, Col_;
-  };
+  std::optional<size_t> findFirstEntryOf(size_t Offset,
+                                         const std::string& View);
+  std::optional<size_t> findFirstEntryOf(size_t Offset, char C);
+  char get(size_t Offset) const;
+  void updateOffsets(size_t Offset, size_t Value);
+  void makeInvalid(size_t Offset, size_t Count);
+  bool isValid(size_t Offset) const;
+  size_t findFirstValid(size_t Offset) const;
+  size_t findFirstValidNextTransformed(size_t Offset) const;
+  size_t transform(size_t SourceOffset) const;
 
 private:
-  void executeSubstitution(Substitution& Sub);
-  void executeSubstitutions();
-
-private:
-  char& getChar(SourcePosition Pos);
-  std::string& getLine(SourcePosition Pos);
-  OutputPosition transform(SourcePosition Pos);
-  void changeLineOffsets(SourcePosition BeginPos, int Val = 1);
-  void changeColumnOffsets(SourcePosition BeginPos, int Val = 1);
-  size_t getPositionAsOffset(SourcePosition Position);
-  SourcePosition getOffsetAsPosition(size_t Offset);
-  SourcePosition
-  findFirstEntry(SourcePosition BeginPos, const std::string& Substring);
-  SourcePosition findFirstEntry(SourcePosition BeginPos, char Char);
-
-private:
-  bool isClosed_;
+  std::vector<char> FileBuffer_;
+  std::string SourceBuffer_;
+  std::vector<int> Offsets_;
   std::string OutputFilename_;
-  std::vector<std::string> FileBuffer_;
-  std::string SourceFile_;
-  std::vector<int> LineOffsets_;
-  std::vector<std::vector<int>> ColumnOffsets_;
   std::vector<Substitution> Substitutions_;
 };
-
+} // namespace code_injector
 } // namespace ub_tester
