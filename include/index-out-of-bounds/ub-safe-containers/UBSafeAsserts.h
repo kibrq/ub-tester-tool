@@ -22,7 +22,7 @@ T& checkIOB(UBSafeCArray<T>& Array, int Index, const char* Filename,
   try {
     return Array[Index];
   } catch (const std::out_of_range& e) {
-    std::cout << "Index out of bounds!" << e.what() << std::endl
+    std::cout << "Index out of bounds!" << std::endl
               << "On " << Filename << "::" << LineNum << std::endl;
     std::abort();
   }
@@ -34,7 +34,7 @@ const T& checkIOB(const UBSafeCArray<T>& Array, int Index, const char* Filename,
   try {
     return Array[Index];
   } catch (const std::out_of_range& e) {
-    std::cout << "Index out of bounds!" << e.what() << std::endl
+    std::cout << "Index out of bounds!" << std::endl
               << "On " << Filename << "::" << LineNum << std::endl;
     std::abort();
   }
