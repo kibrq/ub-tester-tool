@@ -91,10 +91,10 @@ generateArgumentsForSubstitution(const clang::ASTContext* Context,
 template <typename... Args>
 void ASTFrontendInjector::substitute(const clang::ASTContext* Context,
                                      const clang::SourceLocation& BeginLoc,
-                                     const std::string& SourceFormat,
-                                     const std::string& OutputFormat,
-                                     Args... as) {
-  substitute(Context, BeginLoc, SourceFormat, OutputFormat,
+                                     std::string SourceFormat,
+                                     std::string OutputFormat, Args... as) {
+  substitute(Context, BeginLoc, std::move(SourceFormat),
+             std::move(OutputFormat),
              generateArgumentsForSubstitution(Context, as...));
 }
 } // namespace ub_tester

@@ -46,20 +46,15 @@ void ASTFrontendInjector::addFile(const ASTContext* Context) {
 
 void ASTFrontendInjector::substitute(const ASTContext* Context,
                                      const SourceLocation& Loc,
-                                     const std::string& SourceFormat,
-                                     const std::string& OutputFormat,
+                                     std::string SourceFormat,
+                                     std::string OutputFormat,
                                      const SubArgs& Args) {
   const SourceManager& SM = Context->getSourceManager();
 
-  std::string Filename = SM.getFilename(Loc).str();
   size_t LineNum = getLine(SM, Loc);
   size_t BeginPos = getCol(SM, Loc);
-  llvm::outs() << LineNum << " " << BeginPos << '\n';
-  for (const auto& s : Args) {
-    llvm::outs() << s << " || ";
-  }
-  llvm::outs() << '\n';
-  Injector->substitute(LineNum, BeginPos, SourceFormat, OutputFormat, Args);
+  Injector->substitute(LineNum, BeginPos, std::move(SourceFormat),
+                       std::move(OutputFormat), Args);
 }
 
 } // namespace ub_tester

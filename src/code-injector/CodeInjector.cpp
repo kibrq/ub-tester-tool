@@ -80,7 +80,7 @@ void CodeInjector::erase(size_t Offset, size_t Count) {
   updateOffsets(Offset + Count, -Count);
 }
 
-void CodeInjector::insert(size_t Offset, const std::string& NewString) {
+void CodeInjector::insert(size_t Offset, std::string_view NewString) {
   size_t CurOffset = findFirstValidNextTransformed(Offset);
   FileBuffer_.insert(FileBuffer_.begin() + CurOffset, NewString.begin(),
                      NewString.end());
@@ -88,14 +88,14 @@ void CodeInjector::insert(size_t Offset, const std::string& NewString) {
 }
 
 void CodeInjector::substitute(size_t Offset, size_t Count,
-                              const std::string& NewString) {
+                              std::string_view NewString) {
   size_t CurOffset = transform(Offset);
   erase(Offset, Count);
   insert(Offset, NewString);
 }
 
 std::optional<size_t> CodeInjector::findFirstEntryOf(size_t Offset,
-                                                     const std::string& View) {
+                                                     std::string_view View) {
   size_t Result = SourceBuffer_.find(View, Offset);
   if (Result != std::string::npos) {
     return Result;
@@ -112,9 +112,8 @@ std::optional<size_t> CodeInjector::findFirstEntryOf(size_t Offset, char C) {
 }
 
 void CodeInjector::substitute(size_t LineNum, size_t ColNum,
-                              const std::string& SourceFormat,
-                              const std::string& OutputFormat,
-                              const SubArgs& Args) {
+                              std::string SourceFormat,
+                              std::string OutputFormat, const SubArgs& Args) {
   size_t Offset = 0;
   for (size_t i = 0; i < LineNum - 1; ++i) {
     if (auto Ans = findFirstEntryOf(Offset, '\n'); Ans.has_value()) {
@@ -123,7 +122,8 @@ void CodeInjector::substitute(size_t LineNum, size_t ColNum,
       // TODO
     }
   }
-  substitute(Offset + ColNum - 1, SourceFormat, OutputFormat, Args);
+  substitute(Offset + ColNum - 1, std::move(SourceFormat),
+             std::move(OutputFormat), Args);
 }
 
 bool CodeInjector::Substitution::operator<(const Substitution& Other) const {
@@ -141,10 +141,10 @@ bool CodeInjector::Substitution::operator<(const Substitution& Other) const {
   return Offset_ < Other.Offset_;
 }
 
-void CodeInjector::substitute(size_t Offset, const std::string& SourceFormat,
-                              const std::string& OutputFormat,
-                              const SubArgs& Args) {
-  Substitutions_.push_back({Offset, SourceFormat, OutputFormat, Args});
+void CodeInjector::substitute(size_t Offset, std::string SourceFormat,
+                              std::string OutputFormat, const SubArgs& Args) {
+  Substitutions_.push_back(
+      {Offset, std::move(SourceFormat), std::move(OutputFormat), Args});
 }
 
 void CodeInjector::applyAllSubstitutions() {
@@ -160,11 +160,10 @@ void CodeInjector::applySubstitution(const Substitution& Sub) {
 }
 
 void CodeInjector::applySubstitution(size_t Offset,
-                                     const std::string& SourceFormat,
-                                     const std::string& OutputFormat,
+                                     std::string_view SourceFormat,
+                                     std::string_view OutputFormat,
                                      const SubArgs& Args) {
   size_t CurSourceBegin = Offset, CurSourcePos = Offset;
-  size_t CurOutputBegin = 0, CurOutputPos = 0;
   size_t CurArg = 0;
   bool isPrevAny = false;
   for (const auto& C : SourceFormat) {
@@ -175,13 +174,12 @@ void CodeInjector::applySubstitution(size_t Offset,
             Ans.has_value()) {
           CurSourcePos = *Ans;
         } else {
-          std::abort();
+          // TODO
         }
-        CurOutputPos = OutputFormat.find_first_of(C, CurOutputPos);
-        substitute(
-            CurSourceBegin, CurSourcePos - CurSourceBegin,
-            OutputFormat.substr(CurOutputBegin, CurOutputPos - CurOutputBegin));
-        CurOutputBegin = ++CurOutputPos;
+        size_t Res = OutputFormat.find_first_of(C, 0);
+        substitute(CurSourceBegin, CurSourcePos - CurSourceBegin,
+                   OutputFormat.substr(0, Res));
+        OutputFormat.remove_prefix(Res + 1);
         CurSourcePos += Args[CurArg++].length();
         CurSourceBegin = CurSourcePos;
         break;
@@ -198,17 +196,16 @@ void CodeInjector::applySubstitution(size_t Offset,
         if (auto Ans = findFirstEntryOf(CurSourcePos, C); Ans.has_value()) {
           CurSourcePos = *Ans;
         } else {
-          std::abort();
+          // TODO
         }
       } else {
         if (get(CurSourcePos++) != C) {
-          std::abort();
+          // TODO
         }
       }
     }
   }
-  substitute(CurSourceBegin, CurSourcePos - CurSourceBegin,
-             OutputFormat.substr(CurOutputBegin));
+  substitute(CurSourceBegin, CurSourcePos - CurSourceBegin, OutputFormat);
 }
 } // namespace code_injector
 } // namespace ub_tester
