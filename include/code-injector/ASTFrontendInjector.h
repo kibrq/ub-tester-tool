@@ -4,7 +4,7 @@
 
 #include "code-injector/CodeInjector.h"
 
-#include <unordered_map>
+#include <memory>
 #include <vector>
 
 namespace ub_tester {
@@ -23,47 +23,24 @@ public:
   void addFile(const clang::ASTContext* Context);
   void addFile(const std::string& Filename);
 
-  void insertLineBefore(
-      const clang::ASTContext* Context, const clang::SourceLocation& Loc,
-      const std::string& Line);
-
-  void insertLineAfter(
-      const clang::ASTContext* Context, const clang::SourceLocation& Loc,
-      const std::string& Line);
-
   // Formats must have equal count of %.
   // substitute(Context, Loc, "%+%", "AssertSum(%, %)", "a", Expr);
-  void substitute(
-      const clang::ASTContext* Context, const clang::SourceLocation& BeginLoc,
-      const std::string& SourceFormat, const std::string& SubstitutionFormat,
-      const SubArgs& Args);
+  void substitute(const clang::ASTContext* Context,
+                  const clang::SourceLocation& BeginLoc,
+                  std::string_view SourceFormat,
+                  std::string_view SubstitutionFormat, const SubArgs& Args);
 
   template <typename... Args>
-  void substitute(
-      const clang::ASTContext* Context, const clang::SourceLocation& BeginLoc,
-      const std::string& SourceFormat, const std::string& SubstitutionFormat,
-      Args... as);
-
-  // These functions suppose that this range contains on one Line and you won't
-  // handle this range anymore
-
-  void substituteSubstring(
-      const clang::ASTContext* Context, const clang::SourceLocation& Begin,
-      const clang::SourceLocation& End, const std::string& Substitution);
-
-  void substituteSubstring(
-      const clang::ASTContext* Context, const clang::CharSourceRange& Range,
-      const std::string& Substitution);
-
-  void substituteSubstring(
-      const clang::ASTContext* Context, const clang::SourceRange& Range,
-      const std::string& Substitution);
+  void substitute(const clang::ASTContext* Context,
+                  const clang::SourceLocation& BeginLoc,
+                  std::string_view SourceFormat,
+                  std::string_view SubstitutionFormat, Args... as);
 
 private:
   explicit ASTFrontendInjector() = default;
 
 private:
-  std::unordered_map<std::string, CodeInjector> Files_;
+  std::unique_ptr<code_injector::CodeInjector> Injector;
 };
 
 }; // namespace ub_tester
