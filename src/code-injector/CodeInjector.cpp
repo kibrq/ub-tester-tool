@@ -206,7 +206,7 @@ void CodeInjector::applySubstitution(size_t Offset,
       }
       case CharacterKind::ALL: {
         isPrevAny = true;
-        break;
+        continue;
       }
       case CharacterKind::NONE:
         std::abort();
@@ -224,6 +224,7 @@ void CodeInjector::applySubstitution(size_t Offset,
         }
       }
     }
+    isPrevAny = false;
   }
   substituteAfter(CurSourceBegin - 1, CurSourcePos - CurSourceBegin,
                   OutputFormat);
