@@ -53,7 +53,7 @@ void ASTFrontendInjector::substitute(const ASTContext* Context,
 
   size_t LineNum = getLine(SM, Loc);
   size_t BeginPos = getCol(SM, Loc);
-  Injector->substitute(LineNum, BeginPos, std::move(SourceFormat),
+  Injector->substitute(SM.getFileOffset(Loc), std::move(SourceFormat),
                        std::move(OutputFormat), Args);
 }
 

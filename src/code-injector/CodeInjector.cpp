@@ -214,7 +214,7 @@ void CodeInjector::applySubstitution(size_t Offset,
     } else {
       if (isPrevAny) {
         if (auto Ans = findFirstEntryOf(CurSourcePos, C); Ans.has_value()) {
-          CurSourcePos = *Ans;
+          CurSourcePos = *Ans + 1;
         } else {
           // TODO
         }
