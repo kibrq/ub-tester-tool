@@ -9,32 +9,29 @@
 namespace ub_tester {
 namespace code_injector {
 
-CodeInjector::CodeInjector(const std::string& Filename) {
-  std::ifstream Stream(Filename, std::ios::in);
-  while (Stream.peek() != EOF) {
-    FileBuffer_.push_back(Stream.get());
-  }
+CodeInjector::CodeInjector(const std::string& Filename)
+    : CodeInjector(Filename, "") {}
 
-  Offsets_.resize(FileBuffer_.size());
-  SourceBuffer_.resize(FileBuffer_.size());
-  std::copy(FileBuffer_.begin(), FileBuffer_.end(), SourceBuffer_.begin());
-}
-
-CodeInjector::CodeInjector(const std::string& Filename,
+CodeInjector::CodeInjector(const std::string& InputFilename,
                            const std::string& OutputFilename)
-    : CodeInjector(Filename) {
-  setOutputFilename(OutputFilename);
-}
+    : InputFilename_{InputFilename}, OutputFilename_{OutputFilename} {}
 
 void CodeInjector::setOutputFilename(const std::string& OutputFilename) {
   OutputFilename_.assign(OutputFilename);
 }
 
 CodeInjector::~CodeInjector() {
+  std::ifstream IStream(InputFilename_, std::ios::in);
+  while (IStream.peek() != EOF) {
+    FileBuffer_.emplace_back(IStream.get());
+  }
+  Offsets_.resize(FileBuffer_.size());
+  SourceBuffer_.resize(FileBuffer_.size());
+  std::copy(FileBuffer_.begin(), FileBuffer_.end(), SourceBuffer_.begin());
   applyAllSubstitutions();
-  std::ofstream Stream(OutputFilename_, std::ios::out);
+  std::ofstream OStream(OutputFilename_, std::ios::out);
   std::copy(FileBuffer_.begin(), FileBuffer_.end(),
-            std::ostream_iterator<char>(Stream));
+            std::ostream_iterator<char>(OStream));
 }
 
 void CodeInjector::updateOffsets(size_t Offset, size_t Value) {

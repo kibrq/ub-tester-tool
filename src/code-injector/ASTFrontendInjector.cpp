@@ -39,9 +39,7 @@ void ASTFrontendInjector::addFile(const std::string& Filename) {
 
 void ASTFrontendInjector::addFile(const ASTContext* Context) {
   const SourceManager& SM = Context->getSourceManager();
-  std::string Filename =
-      SM.getFilename(SM.getLocForStartOfFile(SM.getMainFileID())).str();
-  addFile(Filename);
+  addFile(SM.getFileEntryForID(SM.getMainFileID())->getName().str());
 }
 
 void ASTFrontendInjector::substitute(const ASTContext* Context,
@@ -50,9 +48,6 @@ void ASTFrontendInjector::substitute(const ASTContext* Context,
                                      std::string OutputFormat,
                                      const SubArgs& Args) {
   const SourceManager& SM = Context->getSourceManager();
-
-  size_t LineNum = getLine(SM, Loc);
-  size_t BeginPos = getCol(SM, Loc);
   Injector->substitute(SM.getFileOffset(Loc), std::move(SourceFormat),
                        std::move(OutputFormat), Args);
 }

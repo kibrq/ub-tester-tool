@@ -84,6 +84,7 @@ private:
   std::vector<char> FileBuffer_;
   std::string SourceBuffer_;
   std::vector<int> Offsets_;
+  std::string InputFilename_;
   std::string OutputFilename_;
   std::vector<Substitution> Substitutions_;
 };
