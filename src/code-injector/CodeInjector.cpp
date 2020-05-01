@@ -9,18 +9,11 @@
 namespace ub_tester {
 namespace code_injector {
 
-CodeInjector::CodeInjector(const std::string& Filename)
-    : CodeInjector(Filename, "") {}
-
 CodeInjector::CodeInjector(const std::string& InputFilename,
                            const std::string& OutputFilename)
     : InputFilename_{InputFilename}, OutputFilename_{OutputFilename} {}
 
-void CodeInjector::setOutputFilename(const std::string& OutputFilename) {
-  OutputFilename_.assign(OutputFilename);
-}
-
-CodeInjector::~CodeInjector() {
+void CodeInjector::applySubstitutions() {
   std::ifstream IStream(InputFilename_, std::ios::in);
   while (IStream.peek() != EOF) {
     FileBuffer_.emplace_back(IStream.get());
@@ -28,7 +21,11 @@ CodeInjector::~CodeInjector() {
   Offsets_.resize(FileBuffer_.size());
   SourceBuffer_.resize(FileBuffer_.size());
   std::copy(FileBuffer_.begin(), FileBuffer_.end(), SourceBuffer_.begin());
-  applyAllSubstitutions();
+  std::stable_sort(Substitutions_.begin(), Substitutions_.end());
+  for (const Substitution& Sub : Substitutions_) {
+    applySubstitution(Sub);
+  }
+  IStream.close();
   std::ofstream OStream(OutputFilename_, std::ios::out);
   std::copy(FileBuffer_.begin(), FileBuffer_.end(),
             std::ostream_iterator<char>(OStream));
@@ -59,7 +56,7 @@ char CodeInjector::get(size_t Offset) const {
 }
 
 size_t CodeInjector::findFirstValid(size_t Offset) const {
-  while (Offset - 1 > 0 && not isValid(Offset))
+  while (Offset - 1 > 0 && !isValid(Offset))
     --Offset;
   return isValid(Offset) ? Offset : Offset - 1;
 }
@@ -162,13 +159,6 @@ void CodeInjector::substitute(size_t Offset, std::string SourceFormat,
                               std::string OutputFormat, const SubArgs& Args) {
   Substitutions_.push_back(
       {Offset, std::move(SourceFormat), std::move(OutputFormat), Args});
-}
-
-void CodeInjector::applyAllSubstitutions() {
-  std::stable_sort(Substitutions_.begin(), Substitutions_.end());
-  for (const Substitution& Sub : Substitutions_) {
-    applySubstitution(Sub);
-  }
 }
 
 void CodeInjector::applySubstitution(const Substitution& Sub) {

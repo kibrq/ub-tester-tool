@@ -33,13 +33,19 @@ size_t getCol(const SourceManager& SM, const SourceLocation& Loc) {
 } // namespace
 
 void ASTFrontendInjector::addFile(const std::string& Filename) {
-  Injector = std::make_unique<CodeInjector>(Filename,
-                                            generateOutputFilename(Filename));
+  Injectors.emplace_back(std::make_unique<CodeInjector>(
+      Filename, generateOutputFilename(Filename)));
 }
 
 void ASTFrontendInjector::addFile(const ASTContext* Context) {
   const SourceManager& SM = Context->getSourceManager();
   addFile(SM.getFileEntryForID(SM.getMainFileID())->getName().str());
+}
+
+void ASTFrontendInjector::applySubstitutions() {
+  for (auto& Inj : Injectors) {
+    Inj->applySubstitutions();
+  }
 }
 
 void ASTFrontendInjector::substitute(const ASTContext* Context,
@@ -48,8 +54,8 @@ void ASTFrontendInjector::substitute(const ASTContext* Context,
                                      std::string OutputFormat,
                                      const SubArgs& Args) {
   const SourceManager& SM = Context->getSourceManager();
-  Injector->substitute(SM.getFileOffset(Loc), std::move(SourceFormat),
-                       std::move(OutputFormat), Args);
+  Injectors.back()->substitute(SM.getFileOffset(Loc), std::move(SourceFormat),
+                               std::move(OutputFormat), Args);
 }
 
 } // namespace ub_tester

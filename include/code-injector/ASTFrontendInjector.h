@@ -23,6 +23,9 @@ public:
 
   // Formats must have equal count of %.
   // substitute(Context, Loc, "%+%", "AssertSum(%, %)", "a", Expr);
+
+  void applySubstitutions();
+
   void substitute(const clang::ASTContext* Context,
                   const clang::SourceLocation& BeginLoc,
                   std::string SourceFormat, std::string SubstitutionFormat,
@@ -38,7 +41,7 @@ private:
   explicit ASTFrontendInjector() = default;
 
 private:
-  std::unique_ptr<code_injector::CodeInjector> Injector;
+  std::vector<std::unique_ptr<code_injector::CodeInjector>> Injectors;
 };
 
 }; // namespace ub_tester
