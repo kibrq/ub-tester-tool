@@ -39,9 +39,9 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   if (VariableType.getTypePtr()->isFundamentalType() && !(VariableDecl->isLocalVarDeclOrParm() && !VariableDecl->isLocalVarDecl())) {
 
     std::string TypeSubstitution = UB_UninitSafeTypeConsts::TEMPLATE_NAME + "<" + VariableType.getAsString() + "> ";
+    std::string VariableName = VariableDecl->getNameAsString();
 
     if (VariableDecl->hasInit()) {
-      std::string VariableName = VariableDecl->getNameAsString();
 
       Expr* InitializationExpr = dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
       assert(InitializationExpr);
@@ -52,13 +52,9 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@", TypeSubstitution + "@{@}",
                                                     VariableName, getExprAsString(dyn_cast<Expr>(InitializationExpr), Context));
     } else {
-      // std::pair<std::string, std::string> lrlr = LocRangeToStrings(VariableDecl->getSourceRange(), Context->getSourceManager());
-      // std::cout << lrlr.first << '-' << lrlr.second << std::endl;
+      // // note: VarDecl->SourceRange does not include variable name
 
-      // std::cout << LocPairToString(GetLocationPair(VariableDecl->getEndLoc(), Context->getSourceManager())) << std::endl;
-
-      // note: VarDecl->SourceRange does not include variable name
-      ASTFrontendInjector::getInstance().substituteSubstring(Context, VariableDecl->getSourceRange(), TypeSubstitution);
+      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getSourceRange(), TypeSubstitution + VariableName);
     }
   }
   return true;
