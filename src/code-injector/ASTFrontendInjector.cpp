@@ -57,5 +57,20 @@ void ASTFrontendInjector::substitute(const ASTContext* Context,
   Injectors.back()->substitute(SM.getFileOffset(Loc), std::move(SourceFormat),
                                std::move(OutputFormat), Args);
 }
+void ASTFrontendInjector::substitute(const clang::ASTContext* Context,
+                                     const clang::SourceLocation& BeginLoc,
+                                     const clang::SourceLocation& EndLoc,
+                                     std::string NewString) {
+  const SourceManager& SM = Context->getSourceManager();
+  Injectors.back()->substitute(
+      SM.getFileOffset(BeginLoc),
+      SM.getFileOffset(EndLoc) - SM.getFileOffset(BeginLoc) + 1, NewString);
+}
+
+void ASTFrontendInjector::substitute(const clang::ASTContext* Context,
+                                     const clang::SourceRange& Range,
+                                     std::string NewString) {
+  substitute(Context, Range.getBegin(), Range.getEnd(), NewString);
+}
 
 } // namespace ub_tester

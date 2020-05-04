@@ -14,29 +14,36 @@ using SubArgs = std::vector<std::string>;
 
 enum class CharacterKind : char { ARG = '@', ALL = '#', NONE = 0 };
 
-inline bool isCharacter(char C, CharacterKind Char) { return C == static_cast<char>(Char); }
+inline bool isCharacter(char C, CharacterKind Char) {
+  return C == static_cast<char>(Char);
+}
 
 inline bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2) {
   return isCharacter(C, Char1) || isCharacter(C, Char2);
 }
 
 template <typename... CharacterKinds>
-bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2, CharacterKinds... Chars) {
+bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2,
+             CharacterKinds... Chars) {
   return isCharacter(C, Char1) || isAnyOf(C, Char2, Chars...);
 }
 
-inline bool isAnyCharacter(char C) { return isAnyOf(C, CharacterKind::ARG, CharacterKind::ALL); }
+inline bool isAnyCharacter(char C) {
+  return isAnyOf(C, CharacterKind::ARG, CharacterKind::ALL);
+}
 
 class CodeInjector {
 public:
-  CodeInjector(const std::string& InputFilename, const std::string& OutputFilename);
+  CodeInjector(const std::string& InputFilename,
+               const std::string& OutputFilename);
 
-  void substitute(
-      size_t LineNum, size_t ColNum, std::string SourceFormat, std::string OutputFormat,
-      const SubArgs& Args);
+  void substitute(size_t Offset, size_t Count, std::string_view NewString);
 
-  void substitute(
-      size_t Offset, std::string SourceFormat, std::string OutputFormat, const SubArgs& Args);
+  void substitute(size_t LineNum, size_t ColNum, std::string SourceFormat,
+                  std::string OutputFormat, const SubArgs& Args);
+
+  void substitute(size_t Offset, std::string SourceFormat,
+                  std::string OutputFormat, const SubArgs& Args);
 
   void applySubstitutions();
 
@@ -45,7 +52,6 @@ private:
   void eraseAfter(size_t Offeset, size_t Count);
   void insert(size_t Offset, std::string_view NewString);
   void insertAfter(size_t Offset, std::string_view NewString);
-  void substitute(size_t Offset, size_t Count, std::string_view NewString);
   void substituteAfter(size_t Offset, size_t Count, std::string_view NewString);
 
 private:
@@ -60,9 +66,8 @@ private:
     SubArgs Args_;
   };
   void applySubstitution(const Substitution& Sub);
-  void applySubstitution(
-      size_t Offset, std::string_view SourceFormat, std::string_view OutputFormat,
-      const SubArgs& Args);
+  void applySubstitution(size_t Offset, std::string_view SourceFormat,
+                         std::string_view OutputFormat, const SubArgs& Args);
 
 private:
   std::optional<size_t> findFirstEntryOf(size_t Offset, std::string_view View);
