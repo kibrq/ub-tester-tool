@@ -132,6 +132,7 @@ void CodeInjector::substitute(size_t LineNum, size_t ColNum,
   for (size_t i = 0; i < LineNum - 1; ++i) {
     if (auto Ans = findFirstEntryOf(Offset, '\n'); Ans.has_value()) {
       Offset = *Ans + 1;
+
     } else {
       // TODO
     }
@@ -202,6 +203,7 @@ void CodeInjector::applySubstitution(size_t Offset,
       if (isPrevAny) {
         if (auto Ans = findFirstEntryOf(CurSourcePos, C); Ans.has_value()) {
           CurSourcePos = *Ans + 1;
+
         } else {
           // TODO
         }

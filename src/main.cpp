@@ -24,8 +24,8 @@ static cl::extrahelp MoreHelp("\nMore help text...\n");
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler,
-                                                                llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
     ASTFrontendInjector::getInstance().addFile(&Compiler.getASTContext());
 
     std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
@@ -37,7 +37,7 @@ public:
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
-    consumers.emplace_back(std::move(UninitVarsConsumer));
+    // consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
