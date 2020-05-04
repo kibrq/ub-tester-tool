@@ -1,8 +1,8 @@
 #include "clang/Lex/Lexer.h"
 
-#include <sstream>
 #include "UBUtility.h"
 #include <cassert>
+#include <sstream>
 
 using namespace clang;
 
@@ -12,11 +12,11 @@ std::string getExprAsString(const Expr* Ex, const ASTContext* Context) {
   return getRangeAsString(Ex->getSourceRange(), Context);
 }
 
-std::string
-getRangeAsString(const SourceRange& Range, const ASTContext* Context) {
-  return Lexer::getSourceText(
-             CharSourceRange::getTokenRange(Range), Context->getSourceManager(),
-             Context->getLangOpts())
+std::string getRangeAsString(const SourceRange& Range,
+                             const ASTContext* Context) {
+  return Lexer::getSourceText(CharSourceRange::getTokenRange(Range),
+                              Context->getSourceManager(),
+                              Context->getLangOpts())
       .str();
 }
 
