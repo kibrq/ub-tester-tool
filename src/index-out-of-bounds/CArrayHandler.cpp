@@ -32,7 +32,6 @@ CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {
 bool CArrayHandler::shouldVisitImplicitCode() {
   return Array_.shouldVisitImplicitCode_;
 }
-
 bool CArrayHandler::VisitArrayType(ArrayType* Type) {
   if (Array_.shouldVisitNodes_) {
     ++Array_.Dimension_;
@@ -126,6 +125,7 @@ getDeclFormats(bool isStatic, size_t Dimension, bool isConstexprSize,
     OutputFormat << "("
                  << iob_view::generateSafeArrayCtor(
                         Sizes, hasInitList ? std::optional("@") : std::nullopt)
+
                  << ")";
 
   return {SourceFormat.str(), OutputFormat.str()};
