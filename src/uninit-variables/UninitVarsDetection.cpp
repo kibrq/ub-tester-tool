@@ -13,6 +13,7 @@ using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
 
+#include <UBUtility.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -143,6 +144,13 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
               << LocPairToString(substitutionRange.second) << '\n';
   }
 
+  return true;
+}
+
+// dummy
+bool FindSafeTypeDefinitionsVisitor::VisitCallExpr(CallExpr* ce) {
+  FunctionDecl* fd = ce->getDirectCallee();
+  std::cout << fd->getNameAsString() << " = " << func_code_avail::hasFuncAvailCode(fd) << " --- " << fd->hasBody() << std::endl;
   return true;
 }
 
