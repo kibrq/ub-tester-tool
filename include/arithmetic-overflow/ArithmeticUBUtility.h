@@ -34,5 +34,11 @@ bool checkIfFirstTypeIsWider() {
   return false;
 }
 
+template <typename Type>
+bool checkIfTypeHasConvRankGeqThanInt() {
+  /* searching for better way to get conversion rank */
+  return sizeof(Type) >= sizeof(int);
+}
+
 } // namespace arithm_ut
 } // namespace ub_tester

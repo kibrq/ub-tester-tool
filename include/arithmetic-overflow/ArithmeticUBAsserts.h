@@ -36,6 +36,8 @@
   DoIfWarning;
 
 #define ARE_SAME_TYPES(Type1, Type2) assert((std::is_same<Type1, Type2>::value))
+#define HAS_CONV_RANK_GEQ_THAN_INT(Type)                                       \
+  assert((arithm_ut::checkIfTypeHasConvRankGeqThanInt<Type>()));
 // will be removed in future, when class for message-args appears
 #define UNUSED_ASSERT_ARGS(Arg1, Arg2, Arg3, Arg4)                             \
   (void)Arg1;                                                                  \
@@ -68,6 +70,7 @@ LhsType assertSum(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                   const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(LhsType);
   ARE_SAME_TYPES(LhsType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
   switch (arithm_check::checkSum<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
@@ -94,6 +97,7 @@ LhsType assertDiff(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                    const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(LhsType);
   ARE_SAME_TYPES(LhsType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
   switch (arithm_check::checkDiff<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
@@ -120,6 +124,7 @@ LhsType assertMul(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                   const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(LhsType);
   ARE_SAME_TYPES(LhsType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
   switch (arithm_check::checkMul<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
@@ -146,6 +151,7 @@ LhsType assertDiv(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                   const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(LhsType);
   ARE_SAME_TYPES(LhsType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
   // check for flt-point in future: minLim <= (Lhs / 0-approx Rhs) <= maxLim
   switch (arithm_check::checkDiv<LhsType>(Lhs, Rhs)) {
@@ -178,6 +184,7 @@ LhsType assertMod(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                   const char* FileName, int Line) {
   assert(std::numeric_limits<LhsType>::is_integer);
   ARE_SAME_TYPES(LhsType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
   switch (arithm_check::checkMod<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::MOD_UNDEFINED_DIV_OVERFLOWS_MAX:
@@ -213,6 +220,8 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                            const char* FileName, int Line) {
   assert(std::numeric_limits<LhsType>::is_integer);
   assert(std::numeric_limits<RhsType>::is_integer);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
+  HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
   typedef typename std::make_unsigned<LhsType>::type UnsignedLhsType;
 
   switch (arithm_check::checkBitShiftLeft<LhsType, RhsType>(Lhs, Rhs)) {
@@ -263,6 +272,8 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                             const char* FileName, int Line) {
   assert(std::numeric_limits<LhsType>::is_integer);
   assert(std::numeric_limits<RhsType>::is_integer);
+  HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
+  HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
 
   switch (arithm_check::checkBitShiftRight<LhsType, RhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::BITSHIFT_NEGATIVE_RHS:
@@ -295,6 +306,7 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
 template <typename T>
 T assertUnaryNeg(T Expr, const char* TypeName, const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
+  HAS_CONV_RANK_GEQ_THAN_INT(T); // integral promotion is expected
 
   switch (arithm_check::checkUnaryNeg<T>(Expr)) {
   case ArithmCheckRes::OVERFLOW_MAX:
@@ -481,6 +493,8 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
   FLT_POINT_NOT_SUPPORTED(LhsType);
   FLT_POINT_NOT_SUPPORTED(LhsComputationType);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
 
   switch (arithm_check::checkDiff<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -526,6 +540,8 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
   FLT_POINT_NOT_SUPPORTED(LhsType);
   FLT_POINT_NOT_SUPPORTED(LhsComputationType);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
 
   switch (arithm_check::checkMul<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -571,6 +587,8 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
   FLT_POINT_NOT_SUPPORTED(LhsType);
   FLT_POINT_NOT_SUPPORTED(LhsComputationType);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
 
   switch (arithm_check::checkDiv<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -622,6 +640,8 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
   assert(std::numeric_limits<LhsType>::is_integer);
   assert(std::numeric_limits<LhsComputationType>::is_integer);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
 
   switch (arithm_check::checkMod<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -674,6 +694,9 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
   assert(std::numeric_limits<LhsType>::is_integer);
   assert(std::numeric_limits<LhsComputationType>::is_integer);
   assert(std::numeric_limits<RhsType>::is_integer);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType);             // integral promotion is expected
+  HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
   typedef typename std::make_unsigned<LhsComputationType>::type
       UnsignedLhsComputationType;
 
@@ -753,6 +776,9 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
   assert(std::numeric_limits<LhsType>::is_integer);
   assert(std::numeric_limits<LhsComputationType>::is_integer);
   assert(std::numeric_limits<RhsType>::is_integer);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType);             // integral promotion is expected
+  HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
 
   switch (arithm_check::checkBitShiftRight<LhsComputationType, RhsType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
