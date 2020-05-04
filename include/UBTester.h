@@ -7,7 +7,7 @@
 
 #include "arithmetic-overflow/ArithmeticUBAsserts.h"
 
-#include "uninit-variables/UninitVarsDetection.h"
+#include "uninit-variables/UB_UninitSafeType.h"
 
 using namespace ub_tester;
 
