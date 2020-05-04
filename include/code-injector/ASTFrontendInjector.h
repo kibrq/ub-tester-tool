@@ -27,10 +27,6 @@ public:
   void applySubstitutions();
 
   void substitute(const clang::ASTContext* Context,
-                  const clang::SourceLocation& BeginLoc,
-                  const clang::SourceLocation& EndLoc, std::string NewString);
-
-  void substitute(const clang::ASTContext* Context,
                   const clang::SourceRange& Range, std::string NewString);
 
   void substitute(const clang::ASTContext* Context,
