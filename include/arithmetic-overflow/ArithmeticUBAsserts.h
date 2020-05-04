@@ -59,6 +59,8 @@ constexpr int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
 
 constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
 constexpr int IMPL_DEFINED_WARNING_CODE = -7;
+constexpr int UNSAFE_CONV_WARNING_CODE = -8;
+constexpr int IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE = -9;
 
 } // namespace arithm_asserts_exit_codes
 
@@ -440,6 +442,100 @@ bool assertPostfixDecr(bool& Expr, const char* TypeName, const char* FileName,
   assert(0 && "bool postfix decrement is deprecated since C++17");
 }
 
+namespace arithm_asserts_support {
+
+template <typename LhsType, typename LhsComputationType>
+void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
+                                  LhsComputationType ComputedOperationRes,
+                                  const char* InnerOpName,
+                                  const char* LhsTypeName,
+                                  const char* LhsComputationTypeName,
+                                  const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
+
+  switch (
+      type_conv::Conversions<LhsComputationType, LhsType>::checkIntegralConv(
+          ComputedOperationRes)) {
+  case TyCoCheckRes::NEG_VALUE_TO_UNSIGNED_TYPE_CONVERSION:
+    std::cerr << "unsafe conversion while (" << InnerOpName
+              << "=) computation in " << FileName << " Line: " << Line
+              << "\nlog: lhs " << InnerOpName << "= is computed as "
+              << LhsComputationTypeName << " expr;\n     conversion of (lhs "
+              << InnerOpName << " rhs) = (" << +Lhs << " " << InnerOpName << " "
+              << +Rhs << ") = " << +ComputedOperationRes << " from "
+              << LhsComputationTypeName << " to " << LhsTypeName
+              << ";\n     negative value to unsigned type conversion does not "
+                 "safe the value\n";
+    PUSH_WARNING(UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MAX:
+    std::cerr << "unsafe conversion while (" << InnerOpName
+              << "=) computation in " << FileName << " Line: " << Line
+              << "\nlog: lhs " << InnerOpName << "= is computed as "
+              << LhsComputationTypeName << " expr;\n     conversion of (lhs "
+              << InnerOpName << " rhs) = (" << +Lhs << " " << InnerOpName << " "
+              << +Rhs << ") = " << +ComputedOperationRes << " from "
+              << LhsComputationTypeName << " to " << LhsTypeName
+              << ";\n     expr overflows to-type max value: "
+              << +ComputedOperationRes << " > "
+              << +std::numeric_limits<LhsType>::max()
+              << "; conversion does not safe the value\n";
+    PUSH_WARNING(UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MIN:
+    std::cerr << "unsafe conversion while (" << InnerOpName
+              << "=) computation in " << FileName << " Line: " << Line
+              << "\nlog: lhs " << InnerOpName << "= is computed as "
+              << LhsComputationTypeName << " expr;\n     conversion of (lhs "
+              << InnerOpName << " rhs) = (" << +Lhs << " " << InnerOpName << " "
+              << +Rhs << ") = " << +ComputedOperationRes << " from "
+              << LhsComputationTypeName << " to " << LhsTypeName
+              << ";\n     expr overflows to-type min value: "
+              << +ComputedOperationRes << " < "
+              << +std::numeric_limits<LhsType>::lowest()
+              << "; conversion does not safe the value\n";
+    PUSH_WARNING(UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MAX_IMPL_DEFINED:
+    std::cerr
+        << "unsafe conversion while (" << InnerOpName << "=) computation in "
+        << FileName << " Line: " << Line << "\nlog: lhs " << InnerOpName
+        << "= is computed as " << LhsComputationTypeName
+        << " expr;\n     conversion of (lhs " << InnerOpName << " rhs) = ("
+        << +Lhs << " " << InnerOpName << " " << +Rhs
+        << ") = " << +ComputedOperationRes << " from " << LhsComputationTypeName
+        << " to " << LhsTypeName
+        << ";\n     expr overflows to-type max value: " << +ComputedOperationRes
+        << " > " << +std::numeric_limits<LhsType>::max()
+        << "; conversion does not safe the value\n"
+        << "     and is implementation defined because to-type is signed\n";
+    PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MIN_IMPL_DEFINED:
+    std::cerr
+        << "unsafe conversion while (" << InnerOpName << "=) computation in "
+        << FileName << " Line: " << Line << "\nlog: lhs " << InnerOpName
+        << "= is computed as " << LhsComputationTypeName
+        << " expr;\n     conversion of (lhs " << InnerOpName << " rhs) = ("
+        << +Lhs << " " << InnerOpName << " " << +Rhs
+        << ") = " << +ComputedOperationRes << " from " << LhsComputationTypeName
+        << " to " << LhsTypeName
+        << ";\n     expr overflows to-type min value: " << +ComputedOperationRes
+        << " < " << +std::numeric_limits<LhsType>::lowest()
+        << "; conversion does not safe the value\n"
+        << "     and is implementation defined because to-type is signed\n";
+    PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::BOOL_CONVERSION_IS_NOT_CONSIDERED:
+    std::cerr << "to-bool-conversion while (" << InnerOpName
+              << "=) computation in " << FileName << " Line: " << Line
+              << "\nlog: to-bool-conversions are not considered\n";
+
+  case TyCoCheckRes::SAFE_CONVERSION:
+    break;
+  }
+}
+
+} // namespace arithm_asserts_support
+
 template <typename LhsType, typename LhsComputationType, typename RhsType>
 LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
                                const char* LhsTypeName,
@@ -448,6 +544,8 @@ LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
   FLT_POINT_NOT_SUPPORTED(LhsType);
   FLT_POINT_NOT_SUPPORTED(LhsComputationType);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkSum<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -455,8 +553,7 @@ LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " + " << +Rhs << " > "
               << +std::numeric_limits<LhsComputationType>::max()
               << ";\n     lhs += rhs is computed as " << LhsComputationTypeName
@@ -467,8 +564,7 @@ LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " + " << +Rhs << " < "
               << +std::numeric_limits<LhsComputationType>::lowest()
               << ";\n     lhs += rhs is computed as " << LhsComputationTypeName
@@ -480,8 +576,12 @@ LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkSum");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs + Rhs)
+
+  // after (LhsInComputationType + Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType + Rhs, "+", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
   return Lhs += Rhs;
 }
 
@@ -495,6 +595,8 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkDiff<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -502,8 +604,7 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " - " << +Rhs << " > "
               << +std::numeric_limits<LhsComputationType>::max()
               << ";\n     lhs -= rhs is computed as " << LhsComputationTypeName
@@ -514,8 +615,7 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " - " << +Rhs << " < "
               << +std::numeric_limits<LhsComputationType>::lowest()
               << ";\n     lhs -= rhs is computed as " << LhsComputationTypeName
@@ -527,8 +627,13 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkDiff");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs - Rhs)
+
+  // after (LhsInComputationType - Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType - Rhs, "-", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
   return Lhs -= Rhs;
 }
 
@@ -542,6 +647,8 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkMul<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -549,8 +656,7 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " * " << +Rhs << " > "
               << +std::numeric_limits<LhsComputationType>::max()
               << ";\n     lhs *= rhs is computed as " << LhsComputationTypeName
@@ -561,8 +667,7 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " * " << +Rhs << " < "
               << +std::numeric_limits<LhsComputationType>::lowest()
               << ";\n     lhs *= rhs is computed as " << LhsComputationTypeName
@@ -574,8 +679,13 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkMul");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs * Rhs)
+
+  // after (LhsInComputationType * Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType * Rhs, "*", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
   return Lhs *= Rhs;
 }
 
@@ -589,6 +699,8 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkDiv<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -596,8 +708,7 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " / " << +Rhs << " > "
               << +std::numeric_limits<LhsComputationType>::max()
               << ";\n     lhs /= rhs is computed as " << LhsComputationTypeName
@@ -608,8 +719,7 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " / " << +Rhs << " < "
               << +std::numeric_limits<LhsComputationType>::lowest()
               << ";\n     lhs /= rhs is computed as " << LhsComputationTypeName
@@ -627,8 +737,13 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkDiv");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs / Rhs)
+
+  // after (LhsInComputationType / Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType / Rhs, "/", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
   return Lhs /= Rhs;
 }
 
@@ -642,6 +757,8 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkMod<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -650,8 +767,7 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
               << FileName << " Line: " << Line
               << "\nlog: because division is undefined; overflow: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " / " << +Rhs << " > " << +std::numeric_limits<LhsType>::max()
               << ";\n     lhs %= rhs is computed as " << LhsComputationTypeName
               << " expr\n";
@@ -662,8 +778,7 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
               << FileName << " Line: " << Line
               << "\nlog: because division is undefined; overflow: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " / " << +Rhs << " < "
               << +std::numeric_limits<LhsType>::lowest()
               << ";\n     lhs %= rhs is computed as " << LhsComputationTypeName
@@ -681,8 +796,13 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkMod");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs % Rhs)
+
+  // after (LhsInComputationType % Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType % Rhs, "%", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
   return Lhs %= Rhs;
 }
 
@@ -699,6 +819,8 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
   typedef typename std::make_unsigned<LhsComputationType>::type
       UnsignedLhsComputationType;
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkBitShiftLeft<LhsComputationType, RhsType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -725,8 +847,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
               << " bitshift left (<<=) is undefined in " << FileName
               << " Line: " << Line << "\nlog: negative lhs; "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " < 0;\n     lhs <<= rhs is computed as "
               << LhsComputationTypeName << " expr\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
@@ -739,7 +860,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
         << "\nlog: signed lhs is non-negative, but result is not "
            "representable in unsigned version of lhs (computation) type; ("
         << "(" << LhsTypeName << " " << +Lhs << " -> " << LhsComputationTypeName
-        << " " << +static_cast<LhsComputationType>(Lhs) << ")"
+        << " " << +LhsInComputationType << ")"
         << " << " << +Rhs << ") > "
         << std::numeric_limits<UnsignedLhsComputationType>::max()
         << ";\n     lhs <<= rhs is computed as " << LhsComputationTypeName
@@ -750,8 +871,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: "
               << "(" << LhsTypeName << " " << +Lhs << " -> "
-              << LhsComputationTypeName << " "
-              << +static_cast<LhsComputationType>(Lhs) << ")"
+              << LhsComputationTypeName << " " << +LhsInComputationType << ")"
               << " << " << +Rhs << " > "
               << +std::numeric_limits<LhsComputationType>::max()
               << ";\n     lhs <<= rhs is computed as " << LhsComputationTypeName
@@ -763,8 +883,13 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkBitShiftLeft");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs << Rhs)
+
+  // after (LhsInComputationType << Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType << Rhs, "<<", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
   return Lhs <<= Rhs;
 }
 
@@ -779,6 +904,8 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType);             // integral promotion is expected
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
+  LhsComputationType LhsInComputationType =
+      static_cast<LhsComputationType>(Lhs);
 
   switch (arithm_check::checkBitShiftRight<LhsComputationType, RhsType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
@@ -804,7 +931,7 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
     std::cerr << LhsTypeName
               << " bitshift right (>>=) is implementation-defined in "
               << FileName << " Line: " << Line << "\nlog: negative lhs; "
-              << +static_cast<LhsComputationType>(Lhs)
+              << +LhsInComputationType
               << " < 0;\n     lhs >>= rhs is computed as "
               << LhsComputationTypeName << " expr\n";
     PUSH_WARNING(IMPL_DEFINED_WARNING_CODE, break);
@@ -814,8 +941,13 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
   default:
     assert(0 && "Unexpected ArithmCheckRes from checkBitShiftRight");
   }
-  // should check res convertation from LhsComputationType to LhsType
-  // type_conv::checkIntegralConv<LhsType, LhsComputationType>(Lhs >> Rhs)
+
+  // after (LhsInComputationType >> Rhs) is computed, it is converted to LhsType
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, LhsInComputationType >> Rhs, ">>", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
   return Lhs >>= Rhs;
 }
 

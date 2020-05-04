@@ -3,7 +3,6 @@
 #include "ArithmeticUBUtility.h"
 #include <cassert>
 #include <climits>
-#include <iostream>
 #include <limits>
 #include <type_traits>
 
@@ -17,7 +16,8 @@ enum class TyCoCheckRes {
   EXPR_OVERFLOWS_TOTYPE_MIN,
   EXPR_OVERFLOWS_TOTYPE_MAX_IMPL_DEFINED, // until C++20
   EXPR_OVERFLOWS_TOTYPE_MIN_IMPL_DEFINED, // until C++20
-  BOOL_CONVERSION_IS_NOT_CONSIDERED
+  BOOL_CONVERSION_IS_NOT_CONSIDERED       // because it isn't supposed to cause
+                                          // problems for user
 };
 
 namespace type_conv_support {
