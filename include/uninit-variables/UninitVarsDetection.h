@@ -67,8 +67,6 @@ public:
 
   // detect variable usage
   bool VisitBinaryOperator(clang::BinaryOperator* BinOp);
-  // dummy
-  bool VisitCallExpr(clang::CallExpr* ce);
 
 private:
   clang::ASTContext* Context;
