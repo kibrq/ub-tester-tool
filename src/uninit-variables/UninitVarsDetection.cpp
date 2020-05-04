@@ -154,13 +154,6 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
   return true;
 }
 
-// dummy
-bool FindSafeTypeDefinitionsVisitor::VisitCallExpr(CallExpr* ce) {
-  FunctionDecl* fd = ce->getDirectCallee();
-  std::cout << fd->getNameAsString() << " = " << func_code_avail::hasFuncAvailCode(fd) << " --- " << fd->hasBody() << std::endl;
-  return true;
-}
-
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
