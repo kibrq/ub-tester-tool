@@ -13,6 +13,7 @@
 #include "index-out-of-bounds/IOBConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
+#include "utility/UtilityConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -25,20 +26,17 @@ static cl::extrahelp MoreHelp("\nMore help text...\n");
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer>
-  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
     ASTFrontendInjector::getInstance().addFile(&Compiler.getASTContext());
 
-    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
-        std::make_unique<IOBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> UninitVarsConsumer =
-        std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
-        std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> TypeSubstituter =
-        std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> UtilConsumer = std::make_unique<UtilityConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer = std::make_unique<IOBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer = std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> TypeSubstituter = std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
+    consumers.emplace_back(std::move(UtilConsumer));
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
@@ -51,10 +49,8 @@ public:
 
 int main(int argc, const char** argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
-  int ReturnCode =
-      Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
+  ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+  int ReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
   if (!ReturnCode) {
     ub_tester::ASTFrontendInjector::getInstance().applySubstitutions();
   }
