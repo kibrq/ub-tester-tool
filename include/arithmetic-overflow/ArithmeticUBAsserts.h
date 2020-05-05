@@ -58,9 +58,10 @@ constexpr int UNDEFINED_BITSHIFT_LEFT_EXIT_CODE = -4;
 constexpr int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
 
 constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
-constexpr int IMPL_DEFINED_WARNING_CODE = -7;
-constexpr int UNSAFE_CONV_WARNING_CODE = -8;
-constexpr int IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE = -9;
+constexpr int OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE = -7;
+constexpr int IMPL_DEFINED_WARNING_CODE = -8;
+constexpr int UNSAFE_CONV_WARNING_CODE = -9;
+constexpr int IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE = -10;
 
 } // namespace arithm_asserts_exit_codes
 
@@ -240,6 +241,20 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
               << " >= " << +arithm_ut::getTypeSizeInBits<LhsType>() << "\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
+#if __cplusplus > 201703L // only since C++20
+  case ArithmCheckRes::OVERFLOW_MAX_IN_BITSHIFT_LEFT_CXX20:
+    std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: (" << +Lhs << " << " << +Rhs << ") > "
+              << +std::numeric_limits<LhsType>::max() << "\n";
+    PUSH_WARNING(OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE, return Lhs << Rhs);
+
+  case ArithmCheckRes::OVERFLOW_MIN_IN_BITSHIFT_LEFT_CXX20:
+    std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: (" << +Lhs << " << " << +Rhs << ") < "
+              << +std::numeric_limits<LhsType>::min() << "\n";
+    PUSH_WARNING(OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE, return Lhs << Rhs);
+#endif
+
   case ArithmCheckRes::BITSHIFT_LEFT_NEGATIVE_LHS:
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
               << FileName << " Line: " << Line << "\nlog: negative lhs; "
@@ -247,7 +262,7 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
   case ArithmCheckRes::
-      BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS:
+      BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_WITH_NONNEG_SIGNED_LHS:
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
               << FileName << " Line: " << Line
               << "\nlog: signed lhs is non-negative, but result is not "
@@ -842,6 +857,20 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
               << " expr\n";
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
+#if __cplusplus > 201703L // only since C++20
+  case ArithmCheckRes::OVERFLOW_MAX_IN_BITSHIFT_LEFT_CXX20:
+    std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: (" << +Lhs << " <<= " << +Rhs << ") > "
+              << +std::numeric_limits<LhsType>::max() << "\n";
+    PUSH_WARNING(OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE, return Lhs <<= Rhs);
+
+  case ArithmCheckRes::OVERFLOW_MIN_IN_BITSHIFT_LEFT_CXX20:
+    std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
+              << "\nlog: (" << +Lhs << " <<= " << +Rhs << ") < "
+              << +std::numeric_limits<LhsType>::min() << "\n";
+    PUSH_WARNING(OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE, return Lhs <<= Rhs);
+#endif
+
   case ArithmCheckRes::BITSHIFT_LEFT_NEGATIVE_LHS:
     std::cerr << LhsComputationTypeName
               << " bitshift left (<<=) is undefined in " << FileName
@@ -853,7 +882,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
     ASSERT_FAILED(UNDEFINED_BITSHIFT_LEFT_EXIT_CODE);
 
   case ArithmCheckRes::
-      BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS:
+      BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_WITH_NONNEG_SIGNED_LHS:
     std::cerr
         << LhsComputationTypeName << " bitshift left (<<=) is undefined in "
         << FileName << " Line: " << Line

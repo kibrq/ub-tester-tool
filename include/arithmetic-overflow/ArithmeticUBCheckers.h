@@ -12,18 +12,20 @@
 namespace ub_tester {
 namespace arithm_check {
 
-enum class ArithmCheckRes {         // can be used as return from:
-  OVERFLOW_MAX,                     // all operators
-  OVERFLOW_MIN,                     // all operators
-  SAFE_OPERATION,                   // all operators
-  IMPL_DEFINED_OPERATION,           // all operators
-  DIV_BY_0,                         // only / and %
-  MOD_UNDEFINED_DIV_OVERFLOWS_MAX,  // only %
-  MOD_UNDEFINED_DIV_OVERFLOWS_MIN,  // only %
-  BITSHIFT_NEGATIVE_RHS,            // only << and >>
-  BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS, // only << and >>
-  BITSHIFT_LEFT_NEGATIVE_LHS,       // only <<
-  BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS // only <<
+enum class ArithmCheckRes {            // can be used as return from:
+  OVERFLOW_MAX,                        // all operators
+  OVERFLOW_MIN,                        // all operators
+  SAFE_OPERATION,                      // all operators
+  IMPL_DEFINED_OPERATION,              // all operators
+  DIV_BY_0,                            // only / and %
+  MOD_UNDEFINED_DIV_OVERFLOWS_MAX,     // only %
+  MOD_UNDEFINED_DIV_OVERFLOWS_MIN,     // only %
+  BITSHIFT_NEGATIVE_RHS,               // only << and >>
+  BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS,    // only << and >>
+  OVERFLOW_MAX_IN_BITSHIFT_LEFT_CXX20, // only <<
+  OVERFLOW_MIN_IN_BITSHIFT_LEFT_CXX20, // only <<
+  BITSHIFT_LEFT_NEGATIVE_LHS,          // only <<
+  BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_WITH_NONNEG_SIGNED_LHS // only <<
 };
 
 /* ArithmeticUBCheckers only detect problem, then ArithmeticUBAsserts decide
@@ -126,10 +128,19 @@ ArithmCheckRes checkBitShiftLeft(LhsType Lhs, RhsType Rhs) {
   if (Rhs >= static_cast<RhsType>(arithm_ut::getTypeSizeInBits<LhsType>()))
     return ArithmCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS;
 
-// since C++20 all other cases are SAFE_OPERATION
-// but now C++17 is considered
+// since C++20 behaviour in other cases is well-defined
+// but overflow warning can be generated
 #if __cplusplus > 201703L
-  return ArithmCheckRes::SAFE_OPERATION; // TODO: overflow warning
+  switch (checkMul<LhsType>(Lhs, static_cast<LhsType>(1) << Rhs)) {
+  case ArithmCheckRes::OVERFLOW_MAX:
+    return ArithmCheckRes::OVERFLOW_MAX_IN_BITSHIFT_LEFT_CXX20;
+  case ArithmCheckRes::OVERFLOW_MIN:
+    return ArithmCheckRes::OVERFLOW_MIN_IN_BITSHIFT_LEFT_CXX20;
+  case ArithmCheckRes::SAFE_OPERATION:
+    return ArithmCheckRes::SAFE_OPERATION;
+  default:
+    assert(0 && "Unexpected ArithmCheckRes from checkMul");
+  }
 #endif
 
   if (Lhs < 0)
@@ -142,7 +153,7 @@ ArithmCheckRes checkBitShiftLeft(LhsType Lhs, RhsType Rhs) {
       ArithmCheckRes::SAFE_OPERATION) {
     if (std::numeric_limits<LhsType>::is_signed) // for signed res is undefined
       return ArithmCheckRes::
-          BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_FOR_NONNEG_SIGNED_LHS;
+          BITSHIFT_LEFT_RES_OVERFLOWS_UNSIGNED_MAX_WITH_NONNEG_SIGNED_LHS;
     return ArithmCheckRes::OVERFLOW_MAX; // for unsigned occurs overflow
   }
 
