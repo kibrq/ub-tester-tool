@@ -2,12 +2,10 @@
 
 #include "ArithmeticUBUtility.h"
 #include <cassert>
-#include <climits>
-#include <limits>
 #include <type_traits>
 
 #define FLT_POINT_NOT_SUPPORTED(Type)                                          \
-  assert(std::numeric_limits<Type>::is_integer)
+  static_assert(std::numeric_limits<Type>::is_integer)
 
 namespace ub_tester {
 namespace arithm_check {
@@ -103,7 +101,7 @@ ArithmCheckRes checkDiv(T Lhs, T Rhs) {
 
 template <typename T>
 ArithmCheckRes checkMod(T Lhs, T Rhs) {
-  assert(std::numeric_limits<T>::is_integer);
+  static_assert(std::numeric_limits<T>::is_integer);
   if (Rhs == 0)
     return ArithmCheckRes::DIV_BY_0;
   if (!(std::numeric_limits<T>::is_signed && Rhs == static_cast<T>(-1)))
@@ -120,8 +118,8 @@ ArithmCheckRes checkMod(T Lhs, T Rhs) {
 
 template <typename LhsType, typename RhsType>
 ArithmCheckRes checkBitShiftLeft(LhsType Lhs, RhsType Rhs) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<RhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<RhsType>::is_integer);
 
   if (Rhs < 0)
     return ArithmCheckRes::BITSHIFT_NEGATIVE_RHS;
@@ -162,8 +160,8 @@ ArithmCheckRes checkBitShiftLeft(LhsType Lhs, RhsType Rhs) {
 
 template <typename LhsType, typename RhsType>
 ArithmCheckRes checkBitShiftRight(LhsType Lhs, RhsType Rhs) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<RhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<RhsType>::is_integer);
 
   if (Rhs < 0)
     return ArithmCheckRes::BITSHIFT_NEGATIVE_RHS;

@@ -35,9 +35,10 @@
             << " has been generated.\n";                                       \
   DoIfWarning;
 
-#define ARE_SAME_TYPES(Type1, Type2) assert((std::is_same<Type1, Type2>::value))
+#define ARE_SAME_TYPES(Type1, Type2)                                           \
+  static_assert((std::is_same<Type1, Type2>::value))
 #define HAS_CONV_RANK_GEQ_THAN_INT(Type)                                       \
-  assert((arithm_ut::checkIfTypeHasConvRankGeqThanInt<Type>()));
+  static_assert((arithm_ut::checkIfTypeHasConvRankGeqThanInt<Type>()));
 // will be removed in future, when class for message-args appears
 #define UNUSED_ASSERT_ARGS(Arg1, Arg2, Arg3, Arg4)                             \
   (void)Arg1;                                                                  \
@@ -185,7 +186,7 @@ LhsType assertDiv(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
 template <typename LhsType, typename RhsType>
 LhsType assertMod(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                   const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
   ARE_SAME_TYPES(LhsType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
@@ -221,8 +222,8 @@ LhsType assertMod(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
 template <typename LhsType, typename RhsType>
 LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                            const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<RhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<RhsType>::is_integer);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
   typedef typename std::make_unsigned<LhsType>::type UnsignedLhsType;
@@ -287,8 +288,8 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
 template <typename LhsType, typename RhsType>
 LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
                             const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<RhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<RhsType>::is_integer);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
 
@@ -466,8 +467,8 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
                                   const char* LhsTypeName,
                                   const char* LhsComputationTypeName,
                                   const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
@@ -767,8 +768,8 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
                                const char* LhsTypeName,
                                const char* LhsComputationTypeName,
                                const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
@@ -826,9 +827,9 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
                                         const char* LhsTypeName,
                                         const char* LhsComputationTypeName,
                                         const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
-  assert(std::numeric_limits<RhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<RhsType>::is_integer);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType);             // integral promotion is expected
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
@@ -927,9 +928,9 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
                                          const char* LhsTypeName,
                                          const char* LhsComputationTypeName,
                                          const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
-  assert(std::numeric_limits<RhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<RhsType>::is_integer);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType);             // integral promotion is expected
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
@@ -985,8 +986,8 @@ LhsType& assertCompAssignOpLogicAnd(LhsType& Lhs, RhsType Rhs,
                                     const char* LhsTypeName,
                                     const char* LhsComputationTypeName,
                                     const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
@@ -1005,8 +1006,8 @@ LhsType& assertCompAssignOpLogicOr(LhsType& Lhs, RhsType Rhs,
                                    const char* LhsTypeName,
                                    const char* LhsComputationTypeName,
                                    const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected
@@ -1025,8 +1026,8 @@ LhsType& assertCompAssignOpLogicXor(LhsType& Lhs, RhsType Rhs,
                                     const char* LhsTypeName,
                                     const char* LhsComputationTypeName,
                                     const char* FileName, int Line) {
-  assert(std::numeric_limits<LhsType>::is_integer);
-  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  static_assert(std::numeric_limits<LhsType>::is_integer);
+  static_assert(std::numeric_limits<LhsComputationType>::is_integer);
   ARE_SAME_TYPES(LhsComputationType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(
       LhsComputationType); // integral promotion is expected

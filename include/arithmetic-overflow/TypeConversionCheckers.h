@@ -1,10 +1,6 @@
 #pragma once
 
 #include "ArithmeticUBUtility.h"
-#include <cassert>
-#include <climits>
-#include <limits>
-#include <type_traits>
 
 namespace ub_tester {
 namespace type_conv {
@@ -24,10 +20,10 @@ namespace type_conv_support {
 
 template <typename CommonType, typename ToType>
 TyCoCheckRes checkIfExprFitsInTypeLimits(CommonType CommonTypeExpr) {
-  assert((!std::is_same<CommonType, bool>::value));
-  assert((!std::is_same<ToType, bool>::value));
-  assert(std::numeric_limits<CommonType>::is_integer);
-  assert(std::numeric_limits<ToType>::is_integer);
+  static_assert((!std::is_same<CommonType, bool>::value));
+  static_assert((!std::is_same<ToType, bool>::value));
+  static_assert(std::numeric_limits<CommonType>::is_integer);
+  static_assert(std::numeric_limits<ToType>::is_integer);
 
   CommonType ToTypeMax =
       static_cast<CommonType>(std::numeric_limits<ToType>::max());
@@ -60,8 +56,8 @@ TyCoCheckRes checkIfExprFitsInTypeLimits(CommonType CommonTypeExpr) {
 template <typename FromType, typename ToType>
 struct Conversions final {
   static TyCoCheckRes checkIntegralConv(FromType Expr) {
-    assert(std::numeric_limits<FromType>::is_integer);
-    assert(std::numeric_limits<ToType>::is_integer);
+    static_assert(std::numeric_limits<FromType>::is_integer);
+    static_assert(std::numeric_limits<ToType>::is_integer);
 
     bool FromTypeIsSigned = std::numeric_limits<FromType>::is_signed;
     bool ToTypeIsSigned = std::numeric_limits<ToType>::is_signed;
