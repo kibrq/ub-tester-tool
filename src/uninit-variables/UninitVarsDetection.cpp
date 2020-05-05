@@ -61,43 +61,42 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   return true;
 }
 
-// TODO: move to corresponding class
-// bool IsFunctionUndetectable(CallExpr* FuncCallExpr) {
-//   FunctionDecl* FuncDecl = FuncCallExpr->getDirectCallee();
-//   if (FuncDecl == nullptr || !FuncDecl->isDefined()) {
-//     std::cout << "got undetectable function" << std::endl;
-//     return true;
-//   }
-//   return false;
-// }
-
 // detect variable usage; substutute with get OR getIgnore
-bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
-  if (!Context->getSourceManager().isInMainFile(ICE->getBeginLoc()))
+bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
+  if (!Context->getSourceManager().isInMainFile(DRE->getBeginLoc()))
     return true;
 
-  if (ICE->getCastKind() == CastKind::CK_LValueToRValue && ICE->getType().getTypePtr()->isFundamentalType()) {
-    // assuming all fundamental types are already Safe_T
+  if (DRE->getDecl()->getType().getTypePtr()->isFundamentalType()) {
 
-    const DeclRefExpr* UnderlyingDRE = dyn_cast<DeclRefExpr>(ICE->getSubExpr());
-    if (UnderlyingDRE != nullptr) {
-      // LocationRange UnderlyingDRERange = GetLocationRange(UnderlyingDRE->getSourceRange(), Context->getSourceManager());
+    // check value access
+    bool FoundCorrespICE = false;
+    DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
+    do {
+      const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
+      if (DREParentNodeList.empty())
+        break;
 
-      // TODO: ensure unimportance of following line
-      // UnderlyingDRERange.second.second += 1;
+      DREParentIterNode = DREParentNodeList[0];
+      const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
 
-      std::string UnderlyingVarName = UnderlyingDRE->getNameInfo().getName().getAsString();
+      if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue &&
+          ICE->getType().getTypePtr()->isFundamentalType() /* && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE */) {
+        FoundCorrespICE = true;
 
-      ASTFrontendInjector::getInstance().substitute(Context, UnderlyingDRE->getBeginLoc(), "#@",
-                                                    "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()", UnderlyingVarName);
-    }
+        std::string VarName = DRE->getNameInfo().getName().getAsString();
 
-    // ! problems with Parent-related documentation
-    // ? check if a node is an argument in function call ?
-    // ? then in 'bad' function call ?
+        ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
+                                                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()", VarName);
+      }
+    } while (!FoundCorrespICE);
+    if (FoundCorrespICE)
+      return true;
+
+    // then reference access
 
     bool FoundCallingFunction = false;
-    DynTypedNode ParentIterNode = DynTypedNode::create<>(*ICE);
+    bool FoundCodeAvailCallingFunction = false;
+    DynTypedNode ParentIterNode = DynTypedNode::create<>(*DRE);
     do {
       const DynTypedNodeList ParentNodeList = ParentMapContext(*Context).getParents(ParentIterNode);
       if (ParentNodeList.empty())
@@ -107,17 +106,28 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       const CallExpr* CallingFunction = ParentIterNode.get<CallExpr>();
 
       if (CallingFunction) {
-        // THIS FINALLY WORKS
         FoundCallingFunction = true;
 
         if (func_code_avail::hasFuncAvailCode(CallingFunction->getDirectCallee())) {
-          // ! return entire object by value ?????
+          // return entire object - goes by reference
+          // equals 'do nothing with code'
+          FoundCodeAvailCallingFunction = true;
         }
       }
 
     } while (!FoundCallingFunction);
+    if (FoundCodeAvailCallingFunction || !FoundCallingFunction) {
+      // 'good' function
+      return true;
+    } else {
+      // set ignore for 'bad' functions
+      std::string VarName = DRE->getNameInfo().getName().getAsString();
+      ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
+                                                    "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()", VarName);
+      // TODO: send warning
+    }
   }
-
+  // else not relevant DRE at all
   return true;
 }
 

@@ -22,8 +22,9 @@ public:
   T& getIgnore() {
     isIgnored = true;
     return value;
+    // TODO: extra warning if not init yet (?)
   }
-  T& tryInitValue(T t) {
+  T& setValue(T t) {
     value = t;
     isInit = true;
     return value;
