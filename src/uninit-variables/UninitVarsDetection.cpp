@@ -1,17 +1,12 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
 #include "code-injector/ASTFrontendInjector.h"
+#include "uninit-variables/UB_UninitSafeType.h"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
-#include "llvm/Support/CommandLine.h"
-
-// #include "clang/AST/ParentMap.h"
 #include "clang/AST/ParentMapContext.h"
 
 using namespace clang;
@@ -31,7 +26,7 @@ FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : 
 FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
-// TODO: preserve 'static', 'const' (?) and other (?) keywords
+// ? preserve 'static', 'const' (?) and other (?) keywords
 bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   if (!Context->getSourceManager().isInMainFile(VariableDecl->getBeginLoc()))
     return true;
@@ -62,13 +57,6 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
 
   if (DRE->getDecl()->getType().getTypePtr()->isFundamentalType()) {
 
-<<<<<<< HEAD
-    const DeclRefExpr* UnderlyingDRE = dyn_cast<DeclRefExpr>(ICE->getSubExpr());
-    if (UnderlyingDRE != nullptr) {
-      // LocationRange UnderlyingDRERange =
-      // GetLocationRange(UnderlyingDRE->getSourceRange(),
-      // Context->getSourceManager());
-=======
     // check value access
     bool FoundCorrespICE = false;
     DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
@@ -76,7 +64,6 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
       if (DREParentNodeList.empty())
         break;
->>>>>>> Refactor access checking; support 'bad' funcs
 
       DREParentIterNode = DREParentNodeList[0];
       const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
