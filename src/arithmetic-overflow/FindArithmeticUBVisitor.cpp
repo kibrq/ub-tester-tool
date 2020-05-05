@@ -167,6 +167,12 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
     OperationName = "BitShiftLeft";
   else if (CompAssignOpName == ">>=")
     OperationName = "BitShiftRight";
+  else if (CompAssignOpName == "&=")
+    OperationName = "LogicAnd";
+  else if (CompAssignOpName == "|=")
+    OperationName = "LogicOr";
+  else if (CompAssignOpName == "^=")
+    OperationName = "LogicXor";
   else
     return true;
 

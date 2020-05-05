@@ -477,7 +477,7 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
   case TyCoCheckRes::NEG_VALUE_TO_UNSIGNED_TYPE_CONVERSION:
     std::cerr << "unsafe conversion while (" << InnerOpName
               << "=) computation in " << FileName << " Line: " << Line
-              << "\nlog: lhs " << InnerOpName << "= is computed as "
+              << "\nlog: lhs " << InnerOpName << "= rhs is computed as "
               << LhsComputationTypeName << " expr;\n     conversion of (lhs "
               << InnerOpName << " rhs) = (" << +Lhs << " " << InnerOpName << " "
               << +Rhs << ") = " << +ComputedOperationRes << " from "
@@ -488,7 +488,7 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
   case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MAX:
     std::cerr << "unsafe conversion while (" << InnerOpName
               << "=) computation in " << FileName << " Line: " << Line
-              << "\nlog: lhs " << InnerOpName << "= is computed as "
+              << "\nlog: lhs " << InnerOpName << "= rhs is computed as "
               << LhsComputationTypeName << " expr;\n     conversion of (lhs "
               << InnerOpName << " rhs) = (" << +Lhs << " " << InnerOpName << " "
               << +Rhs << ") = " << +ComputedOperationRes << " from "
@@ -501,7 +501,7 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
   case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MIN:
     std::cerr << "unsafe conversion while (" << InnerOpName
               << "=) computation in " << FileName << " Line: " << Line
-              << "\nlog: lhs " << InnerOpName << "= is computed as "
+              << "\nlog: lhs " << InnerOpName << "= rhs is computed as "
               << LhsComputationTypeName << " expr;\n     conversion of (lhs "
               << InnerOpName << " rhs) = (" << +Lhs << " " << InnerOpName << " "
               << +Rhs << ") = " << +ComputedOperationRes << " from "
@@ -515,7 +515,7 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
     std::cerr
         << "unsafe conversion while (" << InnerOpName << "=) computation in "
         << FileName << " Line: " << Line << "\nlog: lhs " << InnerOpName
-        << "= is computed as " << LhsComputationTypeName
+        << "= rhs is computed as " << LhsComputationTypeName
         << " expr;\n     conversion of (lhs " << InnerOpName << " rhs) = ("
         << +Lhs << " " << InnerOpName << " " << +Rhs
         << ") = " << +ComputedOperationRes << " from " << LhsComputationTypeName
@@ -529,7 +529,7 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
     std::cerr
         << "unsafe conversion while (" << InnerOpName << "=) computation in "
         << FileName << " Line: " << Line << "\nlog: lhs " << InnerOpName
-        << "= is computed as " << LhsComputationTypeName
+        << "= rhs is computed as " << LhsComputationTypeName
         << " expr;\n     conversion of (lhs " << InnerOpName << " rhs) = ("
         << +Lhs << " " << InnerOpName << " " << +Rhs
         << ") = " << +ComputedOperationRes << " from " << LhsComputationTypeName
@@ -978,6 +978,66 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
       LhsComputationTypeName, FileName, Line);
 
   return Lhs >>= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpLogicAnd(LhsType& Lhs, RhsType Rhs,
+                                    const char* LhsTypeName,
+                                    const char* LhsComputationTypeName,
+                                    const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
+
+  // (&=) cannot overflow or cause UB, so only conversion check is needed
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, static_cast<LhsComputationType>(Lhs) & Rhs, "&", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
+  return Lhs &= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpLogicOr(LhsType& Lhs, RhsType Rhs,
+                                   const char* LhsTypeName,
+                                   const char* LhsComputationTypeName,
+                                   const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
+
+  // (|=) cannot overflow or cause UB, so only conversion check is needed
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, static_cast<LhsComputationType>(Lhs) | Rhs, "|", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
+  return Lhs |= Rhs;
+}
+
+template <typename LhsType, typename LhsComputationType, typename RhsType>
+LhsType& assertCompAssignOpLogicXor(LhsType& Lhs, RhsType Rhs,
+                                    const char* LhsTypeName,
+                                    const char* LhsComputationTypeName,
+                                    const char* FileName, int Line) {
+  assert(std::numeric_limits<LhsType>::is_integer);
+  assert(std::numeric_limits<LhsComputationType>::is_integer);
+  ARE_SAME_TYPES(LhsComputationType, RhsType);
+  HAS_CONV_RANK_GEQ_THAN_INT(
+      LhsComputationType); // integral promotion is expected
+
+  // (^=) cannot overflow or cause UB, so only conversion check is needed
+  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
+                                                       LhsComputationType>(
+      Lhs, Rhs, static_cast<LhsComputationType>(Lhs) ^ Rhs, "^", LhsTypeName,
+      LhsComputationTypeName, FileName, Line);
+
+  return Lhs ^= Rhs;
 }
 
 } // namespace arithm_asserts
