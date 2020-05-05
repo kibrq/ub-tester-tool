@@ -26,13 +26,9 @@ namespace ub_tester {
 
 // all constructors
 
-FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context)
-    : Context(Context) {}
-FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context)
-    : Context(Context) {}
-FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(
-    ASTContext* Context)
-    : Context(Context) {}
+FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
+FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context(Context) {}
+FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
 // TODO: preserve 'static', 'const' (?) and other (?) keywords
@@ -42,21 +38,18 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
 
   clang::QualType VariableType = VariableDecl->getType().getUnqualifiedType();
   if (VariableType.getTypePtr()->isFundamentalType() &&
-      !(VariableDecl->isLocalVarDeclOrParm() &&
-        !VariableDecl->isLocalVarDecl())) {
+      !(VariableDecl->isLocalVarDeclOrParm() && !VariableDecl->isLocalVarDecl())) {
 
     if (VariableDecl->hasInit()) {
 
-      Expr* InitializationExpr =
-          dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
+      Expr* InitializationExpr = dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
       assert(InitializationExpr);
 
       // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
       // TODO: maybe shift here by 1?
 
-      ASTFrontendInjector::getInstance().substitute(
-          Context, getAfterNameLoc(VariableDecl, Context), "#@", "{@}",
-          InitializationExpr);
+      ASTFrontendInjector::getInstance().substitute(Context, getAfterNameLoc(VariableDecl, Context), "#@", "{@}",
+                                                    InitializationExpr);
     }
   }
   return true;
@@ -77,8 +70,7 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
   if (!Context->getSourceManager().isInMainFile(ICE->getBeginLoc()))
     return true;
 
-  if (ICE->getCastKind() == CastKind::CK_LValueToRValue &&
-      ICE->getType().getTypePtr()->isFundamentalType()) {
+  if (ICE->getCastKind() == CastKind::CK_LValueToRValue && ICE->getType().getTypePtr()->isFundamentalType()) {
     // assuming all fundamental types are already Safe_T
 
     const DeclRefExpr* UnderlyingDRE = dyn_cast<DeclRefExpr>(ICE->getSubExpr());
@@ -90,13 +82,10 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       // TODO: ensure unimportance of following line
       // UnderlyingDRERange.second.second += 1;
 
-      std::string UnderlyingVarName =
-          UnderlyingDRE->getNameInfo().getName().getAsString();
+      std::string UnderlyingVarName = UnderlyingDRE->getNameInfo().getName().getAsString();
 
-      ASTFrontendInjector::getInstance().substitute(
-          Context, UnderlyingDRE->getBeginLoc(), "#@",
-          "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()",
-          UnderlyingVarName);
+      ASTFrontendInjector::getInstance().substitute(Context, UnderlyingDRE->getBeginLoc(), "#@",
+                                                    "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()", UnderlyingVarName);
     }
 
     // ! problems with Parent-related documentation
@@ -106,8 +95,7 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
     bool FoundCallingFunction = false;
     DynTypedNode ParentIterNode = DynTypedNode::create<>(*ICE);
     do {
-      const DynTypedNodeList ParentNodeList =
-          ParentMapContext(*Context).getParents(ParentIterNode);
+      const DynTypedNodeList ParentNodeList = ParentMapContext(*Context).getParents(ParentIterNode);
       if (ParentNodeList.empty())
         break;
 
@@ -117,6 +105,10 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       if (CallingFunction) {
         // THIS FINALLY WORKS
         FoundCallingFunction = true;
+
+        if (func_code_avail::hasFuncAvailCode(CallingFunction->getDirectCallee())) {
+          // ! return entire object by value ?????
+        }
       }
 
     } while (!FoundCallingFunction);
@@ -126,29 +118,17 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
 }
 
 // detect Safe_T assignments; substitute with .init() function
-bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
-    BinaryOperator* BinOp) {
+bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
   if (!Context->getSourceManager().isInMainFile(BinOp->getBeginLoc()))
     return true;
 
-  if (BinOp->isAssignmentOp() &&
-      BinOp->getLHS()->getType().getTypePtr()->isFundamentalType()) {
+  if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType()) {
     // assuming all fundamental types are already Safe_T
     // TODO: replace 'assuming' with assert (?)
 
-    // LocationRange DefinitionExprLocationRange =
-    // GetLocationRange(BinOp->getRHS()->getSourceRange(),
-    // Context->getSourceManager()); std::string substitution = '.' +
-    // UB_UninitSafeTypeConsts::INITMETHOD_NAME + "( [[ file contents from " +
-    //                            LocPairToString(DefinitionExprLocationRange.first)
-    //                            + " to " +
-    //                            LocPairToString(DefinitionExprLocationRange.second)
-    //                            + " ]] )";
-
-    ASTFrontendInjector::getInstance().substitute(
-        Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
-        "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)",
-        BinOp->getLHS(), BinOp->getRHS());
+    ASTFrontendInjector::getInstance().substitute(Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
+                                                  "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
+                                                  BinOp->getRHS());
   }
 
   return true;
@@ -157,11 +137,9 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context),
-      SafeTypeDefinitionsVisitor(Context) {}
+    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context) {}
 
-void AssertUninitVarsConsumer::HandleTranslationUnit(
-    clang::ASTContext& Context) {
+void AssertUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeDefinitionsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeAccessesVisitor.TraverseDecl(Context.getTranslationUnitDecl());

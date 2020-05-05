@@ -80,6 +80,7 @@ SourceLocation getAfterNameLoc(const DeclaratorDecl* Decl, const ASTContext* Con
   }
 }
 std::string getFuncNameWithArgsAsString(const clang::FunctionDecl* FuncDecl) {
+  assert(FuncDecl);
   std::string Ans = FuncDecl->getNameAsString();
   for (ParmVarDecl* PVD : FuncDecl->parameters())
     Ans += PVD->getOriginalType().getAsString();
@@ -91,13 +92,13 @@ namespace func_code_avail {
 
 std::unordered_set<std::string> FuncsWithAvailCode;
 
-bool hasFuncAvailCode(clang::FunctionDecl* FuncDecl) {
+bool hasFuncAvailCode(const clang::FunctionDecl* FuncDecl) {
   if (!FuncDecl)
     return false;
   return FuncsWithAvailCode.find(getFuncNameWithArgsAsString(FuncDecl)) != FuncsWithAvailCode.end();
 }
 
-void setHasFuncAvailCode(clang::FunctionDecl* FuncDecl) { FuncsWithAvailCode.insert(getFuncNameWithArgsAsString(FuncDecl)); }
+void setHasFuncAvailCode(const clang::FunctionDecl* FuncDecl) { FuncsWithAvailCode.insert(getFuncNameWithArgsAsString(FuncDecl)); }
 
 } // namespace func_code_avail
 
