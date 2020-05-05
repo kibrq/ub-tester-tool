@@ -6,6 +6,7 @@
 
 namespace ub_tester {
 
+class TypeSubstituterVisitor;
 class TypeSubstituterConsumer : public clang::ASTConsumer {
 public:
   TypeSubstituterConsumer(clang::ASTContext*);

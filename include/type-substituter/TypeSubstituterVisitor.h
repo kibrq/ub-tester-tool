@@ -13,38 +13,33 @@ public:
 
   bool TraverseBuiltinTypeLoc(clang::BuiltinTypeLoc);
   bool TraverseConstantArrayTypeLoc(clang::ConstantArrayTypeLoc);
+  bool TraverseVariableArrayTypeLoc(clang::VariableArrayTypeLoc);
+  bool TraverseDepedentSizedArrayTypeLoc(clang::DependentSizedArrayTypeLoc);
+  bool TraverseIncompleteArrayTypeLoc(clang::IncompleteArrayTypeLoc);
   bool TraversePointerTypeLoc(clang::PointerTypeLoc);
 
   bool TraverseDecl(clang::Decl*);
 
 private:
   struct TypeInfo_t {
-    TypeInfo_t() { reset(); }
-    void reset() {
-      Name_ = std::nullopt;
-      shouldVisitTypes_ = FirstInit_ = 0;
-    }
-    void init() {
-      FirstInit_ = FirstInit_ == 0 ? 1 : -1;
-      if (!Name_.has_value()) {
-        Name_.emplace();
-      }
-    }
-    std::stringstream& getName() { return *Name_; }
-    const std::stringstream& getName() const { return *Name_; }
-    bool isFirstInit() const { return FirstInit_ == 1; }
-    bool isInited() const { return FirstInit_ != 0; }
-    void shouldVisitTypes(bool flag) { shouldVisitTypes_ = flag; }
-    bool shouldVisitTypes() { return shouldVisitTypes_; }
+    void init();
+    void reset();
+    std::stringstream& getName();
+    const std::stringstream& getName() const;
+    bool isFirstInit() const;
+    bool isInited() const;
+    void shouldVisitTypes(bool flag);
+    bool shouldVisitTypes();
 
   private:
-    std::optional<std::stringstream> Name_;
+    std::optional<std::stringstream> Name_{std::nullopt};
     bool shouldVisitTypes_{false};
-    int FirstInit_ = 0;
+    int FirstInit_{0};
   };
 
 private:
   TypeInfo_t Type_;
   clang::ASTContext* Context_;
 };
+
 } // namespace ub_tester
