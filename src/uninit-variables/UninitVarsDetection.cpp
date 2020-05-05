@@ -109,6 +109,10 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       if (CallingFunction) {
         // THIS FINALLY WORKS
         FoundCallingFunction = true;
+
+        if (func_code_avail::hasFuncAvailCode(CallingFunction->getDirectCallee())) {
+          // ! return entire object by value ?????
+        }
       }
 
     } while (!FoundCallingFunction);
@@ -125,11 +129,6 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
   if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType()) {
     // assuming all fundamental types are already Safe_T
     // TODO: replace 'assuming' with assert (?)
-
-    // LocationRange DefinitionExprLocationRange = GetLocationRange(BinOp->getRHS()->getSourceRange(), Context->getSourceManager());
-    // std::string substitution = '.' + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "( [[ file contents from " +
-    //                            LocPairToString(DefinitionExprLocationRange.first) + " to " +
-    //                            LocPairToString(DefinitionExprLocationRange.second) + " ]] )";
 
     ASTFrontendInjector::getInstance().substitute(Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
                                                   "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),

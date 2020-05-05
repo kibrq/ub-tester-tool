@@ -18,8 +18,8 @@ std::string getFuncNameWithArgsAsString(const clang::FunctionDecl* FuncDecl);
 
 namespace func_code_avail {
 
-bool hasFuncAvailCode(clang::FunctionDecl* FuncDecl);
-void setHasFuncAvailCode(clang::FunctionDecl* FuncDecl);
+bool hasFuncAvailCode(const clang::FunctionDecl* FuncDecl);
+void setHasFuncAvailCode(const clang::FunctionDecl* FuncDecl);
 
 } // namespace func_code_avail
 
