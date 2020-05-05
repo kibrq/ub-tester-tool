@@ -18,6 +18,7 @@ using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
 
+#include <UBUtility.h>
 #include <iostream>
 #include <stdexcept>
 

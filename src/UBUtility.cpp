@@ -1,23 +1,18 @@
 #include "clang/Lex/Lexer.h"
 
-#include <sstream>
 #include "UBUtility.h"
+#include <algorithm>
 #include <cassert>
+#include <sstream>
 
 using namespace clang;
 
 namespace ub_tester {
 
-std::string getExprAsString(const Expr* Ex, const ASTContext* Context) {
-  return getRangeAsString(Ex->getSourceRange(), Context);
-}
+std::string getExprAsString(const Expr* Ex, const ASTContext* Context) { return getRangeAsString(Ex->getSourceRange(), Context); }
 
-std::string
-getRangeAsString(const SourceRange& Range, const ASTContext* Context) {
-  return Lexer::getSourceText(
-             CharSourceRange::getTokenRange(Range), Context->getSourceManager(),
-             Context->getLangOpts())
-      .str();
+std::string getRangeAsString(const SourceRange& Range, const ASTContext* Context) {
+  return Lexer::getSourceText(CharSourceRange::getTokenRange(Range), Context->getSourceManager(), Context->getLangOpts()).str();
 }
 
 std::string getExprLineNCol(const Expr* Expression, const ASTContext* Context) {
@@ -25,8 +20,7 @@ std::string getExprLineNCol(const Expr* Expression, const ASTContext* Context) {
   std::stringstream res;
   if (!FullLocation.isValid())
     return "invalid location";
-  res << FullLocation.getSpellingLineNumber() << ":"
-      << FullLocation.getSpellingColumnNumber();
+  res << FullLocation.getSpellingLineNumber() << ":" << FullLocation.getSpellingColumnNumber();
   return res.str();
 }
 
@@ -39,4 +33,27 @@ QualType getLowestLevelPointeeType(QualType QT) {
   }
   return QT;
 }
+
+std::string getFuncNameWithArgsAsString(const clang::FunctionDecl* FuncDecl) {
+  std::string Ans = FuncDecl->getNameAsString();
+  for (ParmVarDecl* PVD : FuncDecl->parameters())
+    Ans += PVD->getOriginalType().getAsString();
+  std::replace(Ans.begin(), Ans.end(), ' ', '_');
+  return Ans;
+}
+
+namespace func_code_avail {
+
+std::unordered_set<std::string> FuncsWithAvailCode;
+
+bool hasFuncAvailCode(clang::FunctionDecl* FuncDecl) {
+  if (!FuncDecl)
+    return false;
+  return FuncsWithAvailCode.find(getFuncNameWithArgsAsString(FuncDecl)) != FuncsWithAvailCode.end();
+}
+
+void setHasFuncAvailCode(clang::FunctionDecl* FuncDecl) { FuncsWithAvailCode.insert(getFuncNameWithArgsAsString(FuncDecl)); }
+
+} // namespace func_code_avail
+
 } // namespace ub_tester
