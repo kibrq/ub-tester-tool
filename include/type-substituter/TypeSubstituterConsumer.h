@@ -6,7 +6,7 @@
 
 namespace ub_tester {
 
-class TypeSubstituterConsumer {
+class TypeSubstituterConsumer : public clang::ASTConsumer {
 public:
   TypeSubstituterConsumer(clang::ASTContext*);
   virtual void HandleTranslationUnit(clang::ASTContext&);

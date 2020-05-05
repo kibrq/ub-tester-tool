@@ -11,6 +11,7 @@
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
 #include "code-injector/ASTFrontendInjector.h"
 #include "index-out-of-bounds/IOBConsumer.h"
+#include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 
 using namespace clang;
@@ -34,11 +35,14 @@ public:
         std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
         std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> TypeSubstituter =
+        std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
+    consumers.emplace_back(std::move(TypeSubstituter));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }

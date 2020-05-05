@@ -1,5 +1,7 @@
 #include "type-substituter/TypeSubstituterConsumer.h"
 
+using namespace clang;
+
 namespace ub_tester {
 
 TypeSubstituterConsumer::TypeSubstituterConsumer(ASTContext* Context)
