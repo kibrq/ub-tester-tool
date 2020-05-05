@@ -14,7 +14,7 @@ enum class ArithmCheckRes {            // can be used as return from:
   OVERFLOW_MAX,                        // all operators
   OVERFLOW_MIN,                        // all operators
   SAFE_OPERATION,                      // all operators
-  IMPL_DEFINED_OPERATION,              // all operators
+  IMPL_DEFINED_OPERATION,              // only >>
   DIV_BY_0,                            // only / and %
   MOD_UNDEFINED_DIV_OVERFLOWS_MAX,     // only %
   MOD_UNDEFINED_DIV_OVERFLOWS_MIN,     // only %

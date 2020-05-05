@@ -20,8 +20,8 @@ namespace type_conv_support {
 
 template <typename CommonType, typename ToType>
 TyCoCheckRes checkIfExprFitsInTypeLimits(CommonType CommonTypeExpr) {
-  static_assert((!std::is_same<CommonType, bool>::value));
-  static_assert((!std::is_same<ToType, bool>::value));
+  static_assert(!std::is_same<CommonType, bool>::value);
+  static_assert(!std::is_same<ToType, bool>::value);
   static_assert(std::numeric_limits<CommonType>::is_integer);
   static_assert(std::numeric_limits<ToType>::is_integer);
 
