@@ -3,7 +3,8 @@
 
 namespace ub_tester {
 
-class FindArithmeticUBVisitor : public clang::RecursiveASTVisitor<FindArithmeticUBVisitor> {
+class FindArithmeticUBVisitor
+    : public clang::RecursiveASTVisitor<FindArithmeticUBVisitor> {
 public:
   explicit FindArithmeticUBVisitor(clang::ASTContext* Context);
 

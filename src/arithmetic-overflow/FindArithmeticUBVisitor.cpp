@@ -62,6 +62,11 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   // lhs and rhs of bitshift operators can have different integer types
   assert(BinopName == "<<" || BinopName == ">>" || LhsType == RhsType);
 
+  // in binary operators integer promotion is always applied on bool;
+  // so _Bool (bool C-type-alias) won't occur
+  assert((!LhsType.getTypePtr()->isBooleanType()) &&
+         (!RhsType.getTypePtr()->isBooleanType()));
+
   ASTFrontendInjector::getInstance().substitute(
       Context, Binop->getBeginLoc(), "@#" + BinopName + "#@",
       "ASSERT_BINOP(" + OperationName + ", @, @, " + LhsType.getAsString() +
@@ -111,6 +116,10 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   QualType SubExprType =
       SubExpr->getType().getUnqualifiedType().getCanonicalType();
   assert(SubExprType == UnopType);
+
+  // in binary operators integer promotion is always applied on bool;
+  // so _Bool (bool C-type-alias) won't occur
+  assert(!UnopType.getTypePtr()->isBooleanType());
 
   ASTFrontendInjector::getInstance().substitute(
       Context, Unop->getBeginLoc(),
@@ -198,11 +207,15 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
   assert(CompAssignOpName == "<<=" || CompAssignOpName == ">>=" ||
          LhsComputationType == RhsType);
 
+  // to prevent _Bool instead of bool type
+  std::string LhsTypeName =
+      LhsType.getTypePtr()->isBooleanType() ? "bool" : LhsType.getAsString();
+  // other C-type-alias conflicting with C++17 haven't been found yet
+
   ASTFrontendInjector::getInstance().substitute(
       Context, CompAssignOp->getBeginLoc(), "@#" + CompAssignOpName + "#@",
-      "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " +
-          LhsType.getAsString() + ", " + LhsComputationType.getAsString() +
-          ", " + RhsType.getAsString() + ")",
+      "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " + LhsTypeName + ", " +
+          LhsComputationType.getAsString() + ", " + RhsType.getAsString() + ")",
       Lhs, Rhs);
   return true;
 }
