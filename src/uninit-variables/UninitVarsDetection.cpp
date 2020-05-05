@@ -1,17 +1,12 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
 #include "code-injector/ASTFrontendInjector.h"
+#include "uninit-variables/UB_UninitSafeType.h"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
-#include "llvm/Support/CommandLine.h"
-
-// #include "clang/AST/ParentMap.h"
 #include "clang/AST/ParentMapContext.h"
 
 using namespace clang;
@@ -31,7 +26,7 @@ FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : 
 FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
-// TODO: preserve 'static', 'const' (?) and other (?) keywords
+// ? preserve 'static', 'const' (?) and other (?) keywords
 bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   if (!Context->getSourceManager().isInMainFile(VariableDecl->getBeginLoc()))
     return true;
@@ -50,7 +45,8 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
       // TODO: maybe shift here by 1?
 
-      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@", TypeSubstitution + "@{@}",
+      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@",
+                                                    TypeSubstitution + "@{static_cast<" + VariableType.getAsString() + ">(@)}",
                                                     VariableName, getExprAsString(dyn_cast<Expr>(InitializationExpr), Context));
     } else {
       // // note: VarDecl->SourceRange does not include variable name
