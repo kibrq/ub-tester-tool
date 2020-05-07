@@ -67,6 +67,8 @@ size_t CodeInjector::findFirstValidNextTransformed(size_t Offset) const {
 }
 
 void CodeInjector::erase(size_t Offset, size_t Count) {
+  if (Count == 0)
+    return;
   size_t CurOffset = findFirstValidNextTransformed(Offset);
   FileBuffer_.erase(FileBuffer_.begin() + CurOffset,
                     FileBuffer_.begin() + CurOffset + Count);
@@ -75,6 +77,9 @@ void CodeInjector::erase(size_t Offset, size_t Count) {
 }
 
 void CodeInjector::eraseAfter(size_t Offset, size_t Count) {
+  if (Count == 0)
+    return;
+
   size_t CurOffset = transform(Offset) + 1;
   FileBuffer_.erase(FileBuffer_.begin() + CurOffset,
                     FileBuffer_.begin() + CurOffset + Count);
@@ -215,8 +220,12 @@ void CodeInjector::applySubstitution(size_t Offset,
     }
     isPrevAny = false;
   }
-  substituteAfter(CurSourceBegin - 1, CurSourcePos - CurSourceBegin,
-                  OutputFormat);
+  if (SourceFormat.size() == 0) {
+    insert(Offset, OutputFormat);
+  } else {
+    substituteAfter(CurSourceBegin - 1, CurSourcePos - CurSourceBegin,
+                    OutputFormat);
+  }
 }
 } // namespace code_injector
 } // namespace ub_tester
