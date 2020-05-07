@@ -1,106 +1,171 @@
 #pragma once
 #include <cassert>
+#include <cstring>
 
 namespace ub_tester {
 
-template <typename T>
-UBSafeCArray<T>::UBSafeCArray(const std::initializer_list<T>& InitList)
-    : Data_{InitList} {}
+template <typename T, size_t N>
+UBSafeCArray<T, N>::UBSafeCArray() {
+  Data_.resize(N);
+}
 
-template <typename T>
-void UBSafeCArray<T>::setSize(size_t Size) {
+template <typename T, size_t N>
+UBSafeCArray<T, N>::UBSafeCArray(const std::initializer_list<T>& InitList)
+    : Data_{InitList} {
+  if (N != 0) {
+    setSize(N);
+  }
+}
+
+template <typename T, size_t N>
+void UBSafeCArray<T, N>::setSize(size_t Size) {
   Data_.resize(Size);
 }
 
-template <typename T>
-void UBSafeCArray<T>::setSize(const std::vector<size_t>& Sizes, int CurDepth) {
+template <typename T, size_t N>
+void UBSafeCArray<T, N>::setSize(
+    const std::vector<size_t>& Sizes, int CurDepth) {
   setSize(Sizes[CurDepth]);
 }
 
-template <typename T>
-UBSafeCArray<T>::UBSafeCArray(const std::vector<size_t>& Sizes) {
+template <typename T, size_t N>
+UBSafeCArray<T, N>::UBSafeCArray(const std::vector<size_t>& Sizes) {
   setSize(Sizes);
 }
 
-template <typename T>
-UBSafeCArray<T>::UBSafeCArray(const std::vector<int>& Sizes) {
-  std::vector<size_t> Sizes_;
-  for (const auto& Sz : Sizes) {
-    assert(Sz >= 0);
-    Sizes_.push_back(static_cast<size_t>(Sz));
-  }
-  setSize(Sizes_);
-}
-
-template <typename T>
-UBSafeCArray<T>::UBSafeCArray(const std::vector<size_t>& Sizes,
-                              const std::initializer_list<T>& Args)
+template <typename T, size_t N>
+UBSafeCArray<T, N>::UBSafeCArray(
+    std::vector<size_t> Sizes, const std::initializer_list<T>& Args)
     : UBSafeCArray(Args) {
   setSize(Sizes);
 }
 
-template <typename T>
-const T& UBSafeCArray<T>::operator[](int Index) const {
+template <typename T, size_t N>
+const T& UBSafeCArray<T, N>::operator[](int Index) const {
   return Data_.at(Index);
 }
 
-template <typename T>
-T& UBSafeCArray<T>::operator[](int Index) {
+template <typename T, size_t N>
+T& UBSafeCArray<T, N>::operator[](int Index) {
   return Data_.at(Index);
 }
 
-// UBSafeCArray specialization
+// Multi-dimensional specialization
 
-template <typename T>
-UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(
-    const std::initializer_list<UBSafeCArray<T>>& InitList)
-    : Data_{InitList} {}
+template <typename T, size_t N, size_t M>
+UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray() {
+  Data_.resize(M);
+}
 
-template <typename T>
-void UBSafeCArray<UBSafeCArray<T>>::setSize(size_t Size) {
+template <typename T, size_t N, size_t M>
+UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(
+    const std::initializer_list<UBSafeCArray<T, N>>& InitList)
+    : Data_{InitList} {
+  if (M != 0) {
+    setSize(M);
+  }
+}
+
+template <typename T, size_t N, size_t M>
+void UBSafeCArray<UBSafeCArray<T, N>, M>::setSize(size_t Size) {
   Data_.resize(Size);
 }
 
-template <typename T>
-void UBSafeCArray<UBSafeCArray<T>>::setSize(const std::vector<size_t>& Sizes,
-                                            int CurDepth) {
+template <typename T, size_t N, size_t M>
+void UBSafeCArray<UBSafeCArray<T, N>, M>::setSize(
+    const std::vector<size_t>& Sizes, int CurDepth) {
   setSize(Sizes[CurDepth]);
   for (auto& Arr : Data_) {
     Arr.setSize(Sizes, CurDepth + 1);
   }
 }
 
-template <typename T>
-UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(const std::vector<size_t>& Sizes) {
+template <typename T, size_t N, size_t M>
+UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(
+    const std::vector<size_t>& Sizes) {
   setSize(Sizes);
 }
 
-template <typename T>
-UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(const std::vector<int>& Sizes) {
-  std::vector<size_t> Sizes_;
-  for (const auto& Sz : Sizes) {
-    assert(Sz >= 0);
-    Sizes_.push_back(static_cast<size_t>(Sz));
-  }
-  setSize(Sizes_);
-}
-
-template <typename T>
-UBSafeCArray<UBSafeCArray<T>>::UBSafeCArray(
-    const std::vector<size_t>& Sizes,
-    const std::initializer_list<UBSafeCArray<T>>& Args)
+template <typename T, size_t N, size_t M>
+UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(
+    std::vector<size_t> Sizes,
+    const std::initializer_list<UBSafeCArray<T, N>>& Args)
     : Data_{Args} {
   setSize(Sizes);
 }
 
-template <typename T>
-const UBSafeCArray<T>&
-UBSafeCArray<UBSafeCArray<T>>::operator[](int Index) const {
+template <typename T, size_t N, size_t M>
+const UBSafeCArray<T, N>&
+UBSafeCArray<UBSafeCArray<T, N>, M>::operator[](int Index) const {
   return Data_.at(Index);
 }
 
-template <typename T>
-UBSafeCArray<T>& UBSafeCArray<UBSafeCArray<T>>::operator[](int Index) {
+template <typename T, size_t N, size_t M>
+UBSafeCArray<T, N>& UBSafeCArray<UBSafeCArray<T, N>, M>::operator[](int Index) {
+  return Data_.at(Index);
+}
+
+// char specialization
+
+template <size_t N>
+UBSafeCArray<char, N>::UBSafeCArray() {
+  Data_.resize(N);
+}
+
+template <size_t N>
+UBSafeCArray<char, N>::UBSafeCArray(const std::initializer_list<char>& InitList)
+    : Data_{InitList} {
+  if (N != 0) {
+    setSize(N);
+  }
+}
+
+template <size_t N>
+void UBSafeCArray<char, N>::setSize(size_t Size) {
+  Data_.resize(Size);
+}
+
+template <size_t N>
+void UBSafeCArray<char, N>::setSize(
+    const std::vector<size_t>& Sizes, int CurDepth) {
+  setSize(Sizes[CurDepth]);
+}
+
+template <size_t N>
+UBSafeCArray<char, N>::UBSafeCArray(const std::vector<size_t>& Sizes) {
+  setSize(Sizes);
+}
+
+template <size_t N>
+UBSafeCArray<char, N>::UBSafeCArray(
+    std::vector<size_t> Sizes, const std::initializer_list<char>& Args)
+    : UBSafeCArray(Args) {
+  setSize(Sizes);
+}
+
+template <size_t N>
+UBSafeCArray<char, N>::UBSafeCArray(
+    std::vector<size_t> Sizes, const char* StringLiteral)
+    : UBSafeCArray(StringLiteral) {
+  setSize(Sizes);
+}
+
+template <size_t N>
+UBSafeCArray<char, N>::UBSafeCArray(const char* StringLiteral) {
+  setSize(strlen(StringLiteral) + 1);
+  size_t i = 0;
+  while (*StringLiteral != '\0') {
+    Data_[i++] = *StringLiteral;
+  }
+}
+
+template <size_t N>
+const char& UBSafeCArray<char, N>::operator[](int Index) const {
+  return Data_.at(Index);
+}
+
+template <size_t N>
+char& UBSafeCArray<char, N>::operator[](int Index) {
   return Data_.at(Index);
 }
 

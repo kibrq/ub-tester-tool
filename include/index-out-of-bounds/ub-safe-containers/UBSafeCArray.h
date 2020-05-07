@@ -6,18 +6,13 @@
 
 namespace ub_tester {
 
-template <typename T>
+template <typename T, size_t N = 0>
 class UBSafeCArray {
 public:
-  explicit UBSafeCArray() = default;
+  explicit UBSafeCArray();
   UBSafeCArray(const std::initializer_list<T>&);
-
   UBSafeCArray(const std::vector<size_t>& Sizes);
-
-  UBSafeCArray(const std::vector<int>& Sizes);
-
-  UBSafeCArray(const std::vector<size_t>& Sizes,
-               const std::initializer_list<T>&);
+  UBSafeCArray(const std::vector<size_t> Sizes, const std::initializer_list<T>&);
 
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
@@ -29,28 +24,47 @@ private:
   std::vector<T> Data_;
 };
 
-template <typename T>
-class UBSafeCArray<UBSafeCArray<T>> {
+// Multi-dimensional specialization
+
+template <typename T, size_t N, size_t M>
+class UBSafeCArray<UBSafeCArray<T, N>, M> {
 public:
-  explicit UBSafeCArray() = default;
-  UBSafeCArray(const std::initializer_list<UBSafeCArray<T>>&);
-
+  explicit UBSafeCArray();
+  UBSafeCArray(const std::initializer_list<UBSafeCArray<T, N>>&);
   UBSafeCArray(const std::vector<size_t>& Sizes);
-
-  UBSafeCArray(const std::vector<int>& Sizes);
-
-  UBSafeCArray(const std::vector<size_t>& Sizes,
-               const std::initializer_list<UBSafeCArray<T>>&);
+  UBSafeCArray(const std::vector<size_t> Sizes, const std::initializer_list<UBSafeCArray<T, N>>&);
 
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
 
-  UBSafeCArray<T>& operator[](int index);
-  const UBSafeCArray<T>& operator[](int index) const;
+  UBSafeCArray<T, N>& operator[](int index);
+  const UBSafeCArray<T, N>& operator[](int index) const;
 
 private:
-  std::vector<UBSafeCArray<T>> Data_;
-}; // namespace ub_tester
+  std::vector<UBSafeCArray<T, N>> Data_;
+};
+
+// char specialization
+
+template <size_t N>
+class UBSafeCArray<char, N> {
+public:
+  explicit UBSafeCArray();
+  UBSafeCArray(const char* StringLiteral);
+  UBSafeCArray(const std::initializer_list<char>&);
+  UBSafeCArray(const std::vector<size_t>& Sizes);
+  UBSafeCArray(const std::vector<size_t> Sizes, const std::initializer_list<char>&);
+  UBSafeCArray(const std::vector<size_t> Sizes, const char* StringLiteral);
+
+  void setSize(size_t Size);
+  void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
+
+  char& operator[](int index);
+  const char& operator[](int index) const;
+
+private:
+  std::vector<char> Data_;
+};
 
 } // namespace ub_tester
 
