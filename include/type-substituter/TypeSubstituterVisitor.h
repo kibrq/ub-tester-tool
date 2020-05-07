@@ -11,18 +11,23 @@ class TypeSubstituterVisitor
 public:
   explicit TypeSubstituterVisitor(clang::ASTContext*);
 
-  bool TraverseBuiltinTypeLoc(clang::BuiltinTypeLoc);
-  bool TraverseConstantArrayTypeLoc(clang::ConstantArrayTypeLoc);
-  bool TraverseVariableArrayTypeLoc(clang::VariableArrayTypeLoc);
-  bool TraverseDepedentSizedArrayTypeLoc(clang::DependentSizedArrayTypeLoc);
-  bool TraverseIncompleteArrayTypeLoc(clang::IncompleteArrayTypeLoc);
-  bool TraversePointerTypeLoc(clang::PointerTypeLoc);
+  bool TraverseVariableArrayType(clang::VariableArrayType*);
+  bool TraverseDepedentSizedArrayType(clang::DependentSizedArrayType*);
+  bool TraverseIncompleteArrayType(clang::IncompleteArrayType*);
+  bool TraverseRValueReferenceType(clang::RValueReferenceType*);
+  bool TraverseLValueReferenceType(clang::LValueReferenceType*);
+  bool TraverseConstantArrayType(clang::ConstantArrayType*);
+  bool TraversePointerType(clang::PointerType*);
+  bool TraverseBuiltinType(clang::BuiltinType*);
+  bool TraverseType(clang::QualType);
 
   bool TraverseDecl(clang::Decl*);
 
 private:
+  bool TraverseArrayType(clang::ArrayType*);
+
+private:
   struct TypeInfo_t {
-    void init();
     void reset();
     std::stringstream& getName();
     const std::stringstream& getName() const;
@@ -30,6 +35,9 @@ private:
     bool isInited() const;
     void shouldVisitTypes(bool flag);
     bool shouldVisitTypes();
+
+  private:
+    void init();
 
   private:
     std::optional<std::stringstream> Name_{std::nullopt};

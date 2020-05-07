@@ -29,7 +29,7 @@ void TypeSubstituterVisitor::TypeInfo_t::reset() {
 }
 
 std::stringstream& TypeSubstituterVisitor::TypeInfo_t::getName() {
-  assert(Name_.has_value());
+  init();
   return *Name_;
 }
 
@@ -54,80 +54,94 @@ bool TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes() {
   return shouldVisitTypes_;
 }
 
-bool TypeSubstituterVisitor::TraverseBuiltinTypeLoc(BuiltinTypeLoc T) {
-  if (!Type_.shouldVisitTypes()) {
-    return true;
-  }
-  Type_.init();
-  if (Type_.isFirstInit())
-    Type_.getName() << SafeBuiltinVar << "<";
-  Type_.getName() << T.getType().getAsString();
-  if (Type_.isFirstInit())
-    Type_.getName() << ">";
-
-  return true;
-}
-
-bool TypeSubstituterVisitor::TraverseConstantArrayTypeLoc(
-    ConstantArrayTypeLoc T) {
-  if (!Type_.shouldVisitTypes()) {
-    return true;
-  }
-  Type_.init();
+bool TypeSubstituterVisitor::TraverseArrayType(ArrayType* T) {
   Type_.getName() << SafeArray << "<";
-  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseConstantArrayTypeLoc(T);
-  Type_.getName() << ", " << getExprAsString(T.getSizeExpr(), Context_) << ">";
-  return true;
-}
-
-bool TypeSubstituterVisitor::TraverseVariableArrayTypeLoc(
-    VariableArrayTypeLoc T) {
-  if (!Type_.shouldVisitTypes()) {
-    return true;
-  }
-  Type_.init();
-  Type_.getName() << SafeArray << "<";
-  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseVariableArrayTypeLoc(T);
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(
+      T->getElementType());
   Type_.getName() << ">";
   return true;
 }
 
-bool TypeSubstituterVisitor::TraverseDepedentSizedArrayTypeLoc(
-    DependentSizedArrayTypeLoc T) {
-  if (!Type_.shouldVisitTypes()) {
-    return true;
-  }
-  Type_.init();
+bool TypeSubstituterVisitor::TraverseVariableArrayType(VariableArrayType* T) {
+  return TraverseArrayType(T);
+}
+
+bool TypeSubstituterVisitor::TraverseDepedentSizedArrayType(
+    DependentSizedArrayType* T) {
+  return TraverseArrayType(T);
+}
+
+bool TypeSubstituterVisitor::TraverseIncompleteArrayType(
+    IncompleteArrayType* T) {
+  return TraverseArrayType(T);
+}
+
+bool TypeSubstituterVisitor::TraverseConstantArrayType(ConstantArrayType* T) {
   Type_.getName() << SafeArray << "<";
-  RecursiveASTVisitor<
-      TypeSubstituterVisitor>::TraverseDependentSizedArrayTypeLoc(T);
-  Type_.getName() << ">";
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseConstantArrayType(T);
+  Type_.getName() << ", " << T->getSize().toString(10, false) << ">";
   return true;
 }
 
-bool TypeSubstituterVisitor::TraverseIncompleteArrayTypeLoc(
-    IncompleteArrayTypeLoc T) {
-  if (!Type_.shouldVisitTypes()) {
-    return true;
-  }
-  Type_.init();
-  Type_.getName() << SafeArray << "<";
-  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseIncompleteArrayTypeLoc(
-      T);
-  Type_.getName() << ">";
+bool TypeSubstituterVisitor::TraverseRValueReferenceType(
+    RValueReferenceType* T) {
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseRValueReferenceType(T);
+  Type_.getName() << "&&";
   return true;
 }
 
-bool TypeSubstituterVisitor::TraversePointerTypeLoc(PointerTypeLoc T) {
-  if (!Type_.shouldVisitTypes()) {
-    return true;
-  }
-  Type_.init();
+bool TypeSubstituterVisitor::TraverseLValueReferenceType(
+    LValueReferenceType* T) {
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseLValueReferenceType(T);
+  Type_.getName() << "&";
+  return true;
+}
+
+bool TypeSubstituterVisitor::TraversePointerType(PointerType* T) {
   Type_.getName() << SafePointer << "<";
-  RecursiveASTVisitor<TypeSubstituterVisitor>::TraversePointerTypeLoc(T);
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraversePointerType(T);
   Type_.getName() << ">";
   return true;
 }
+
+bool TypeSubstituterVisitor::TraverseBuiltinType(BuiltinType* T) {
+  Type_.getName() << SafeBuiltinVar << "<";
+  Type_.getName() << T->getName(PrintingPolicy{Context_->getLangOpts()}).str();
+  Type_.getName() << ">";
+  return true;
+}
+
+bool TypeSubstituterVisitor::TraverseType(QualType T) {
+  if (T.isConstQualified()) {
+    Type_.getName() << "const ";
+  }
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(T);
+  return true;
+}
+
+namespace {
+
+SourceLocation getEndSubstitutionLoc(SourceLocation BeginLoc,
+                                     std::string_view VarName,
+                                     ASTContext* Context) {
+  auto& SM = Context->getSourceManager();
+  const auto& LO = Context->getLangOpts();
+  while (true) {
+    auto Tok = Lexer::findNextToken(BeginLoc, SM, LO);
+    assert(Tok.hasValue());
+    if (Tok->is(tok::raw_identifier)) {
+      if (Tok->getRawIdentifier().str().compare(VarName) == 0) {
+        return Tok->getEndLoc();
+      }
+    }
+    if (Tok->isOneOf(tok::semi, tok::equal, tok::comma, tok::r_paren)) {
+      return BeginLoc;
+    }
+    BeginLoc = Tok->getLocation();
+  }
+}
+
+} // namespace
 
 bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
   DeclaratorDecl* VDecl = nullptr;
@@ -140,25 +154,41 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
     Type_.shouldVisitTypes(T->isBuiltinType() || T->isPointerType() ||
                            T->isArrayType() || T->isReferenceType());
   }
-  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
+  if (Type_.shouldVisitTypes() && VDecl) {
+    TraverseType(VDecl->getType());
+  } else {
+    RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
+  }
+  if (!VDecl) {
+    return true;
+  }
   if (Type_.isInited()) {
 
-    std::string NewString = (dyn_cast<VarDecl>(VDecl) &&
-                             dyn_cast<VarDecl>(VDecl)->hasGlobalStorage())
-                                ? "static "
-                                : "";
+    std::string NewString{(dyn_cast<VarDecl>(VDecl) &&
+                           dyn_cast<VarDecl>(VDecl)->hasGlobalStorage())
+                              ? "static "
+                              : ""};
+    Type_.getName() << " " << VDecl->getNameAsString();
     NewString += Type_.getName().str();
 
     SourceRange Range{VDecl->getBeginLoc(),
                       VDecl->getTypeSourceInfo()->getTypeLoc().getEndLoc()};
+    getEndSubstitutionLoc(Range.getEnd(), VDecl->getNameAsString(), Context_)
+        .dump(Context_->getSourceManager());
 
-    llvm::outs() << VDecl->getQualifierLoc().hasQualifier();
-    VDecl->getInnerLocStart().dump(Context_->getSourceManager());
+    Range.setEnd(getEndSubstitutionLoc(Range.getEnd(), VDecl->getNameAsString(),
+                                       Context_));
 
     ASTFrontendInjector::getInstance().substitute(Context_, std::move(Range),
                                                   std::move(NewString));
   }
   Type_.reset();
+  if (FunctionDecl* FDecl = dyn_cast<FunctionDecl>(VDecl);
+      FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType()) {
+    TraverseType(FDecl->getReturnType());
+    ASTFrontendInjector::getInstance().substitute(
+        Context_, FDecl->getReturnTypeSourceRange(), Type_.getName().str());
+  }
   return true;
 }
 
