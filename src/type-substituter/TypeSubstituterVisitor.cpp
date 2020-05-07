@@ -10,7 +10,8 @@ using namespace clang;
 namespace ub_tester {
 using namespace types_view;
 
-// TODO add qualifieirs
+// TODO templates
+// TODO constexpr
 
 TypeSubstituterVisitor::TypeSubstituterVisitor(ASTContext* Context)
     : Context_{Context} {}
@@ -129,34 +130,6 @@ bool TypeSubstituterVisitor::TraverseType(QualType T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(T);
   return true;
 }
-
-namespace {
-
-SourceLocation getNameLastLoc(SourceLocation BeginLoc, std::string_view VarName,
-                              ASTContext* Context) {
-  auto& SM = Context->getSourceManager();
-  const auto& LO = Context->getLangOpts();
-  while (true) {
-    auto Tok = Lexer::findNextToken(BeginLoc, SM, LO);
-    assert(Tok.hasValue());
-    if (Tok->is(tok::raw_identifier)) {
-      if (Tok->getRawIdentifier().str().compare(VarName) == 0) {
-        return Tok->getLastLoc();
-      }
-    }
-    if (Tok->isOneOf(tok::semi, tok::equal, tok::comma, tok::r_paren)) {
-      return BeginLoc;
-    }
-    BeginLoc = Tok->getLocation();
-  }
-}
-
-SourceLocation getNameLastLoc(DeclaratorDecl* Decl, ASTContext* Context) {
-  return getNameLastLoc(Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
-                        Decl->getNameAsString(), Context);
-}
-
-} // namespace
 
 void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* VDecl) {
   std::string NewString{
