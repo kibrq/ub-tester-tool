@@ -24,6 +24,8 @@ public:
   bool TraverseDecl(clang::Decl*);
 
 private:
+  void substituteVarDeclType(clang::DeclaratorDecl*);
+  void substituteReturnType(clang::FunctionDecl*);
   bool TraverseArrayType(clang::ArrayType*);
 
 private:
@@ -36,12 +38,15 @@ private:
     void shouldVisitTypes(bool flag);
     bool shouldVisitTypes();
 
+    void addConst();
+
   private:
     void init();
 
   private:
     std::optional<std::stringstream> Name_{std::nullopt};
     bool shouldVisitTypes_{false};
+    bool isQualPrev{false};
     int FirstInit_{0};
   };
 

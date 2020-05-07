@@ -25,17 +25,26 @@ void TypeSubstituterVisitor::TypeInfo_t::init() {
 void TypeSubstituterVisitor::TypeInfo_t::reset() {
   Name_ = std::nullopt;
   FirstInit_ = 0;
-  shouldVisitTypes_ = false;
+  isQualPrev = shouldVisitTypes_ = false;
 }
 
 std::stringstream& TypeSubstituterVisitor::TypeInfo_t::getName() {
   init();
+  isQualPrev = false;
   return *Name_;
 }
 
 const std::stringstream& TypeSubstituterVisitor::TypeInfo_t::getName() const {
   assert(Name_.has_value());
   return *Name_;
+}
+
+void TypeSubstituterVisitor::TypeInfo_t::addConst() {
+  init();
+  if (!isQualPrev) {
+    *Name_ << "const ";
+    isQualPrev = true;
+  }
 }
 
 bool TypeSubstituterVisitor::TypeInfo_t::isFirstInit() const {
@@ -112,8 +121,10 @@ bool TypeSubstituterVisitor::TraverseBuiltinType(BuiltinType* T) {
 }
 
 bool TypeSubstituterVisitor::TraverseType(QualType T) {
+  if (!Type_.shouldVisitTypes())
+    return true;
   if (T.isConstQualified()) {
-    Type_.getName() << "const ";
+    Type_.addConst();
   }
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(T);
   return true;
@@ -121,9 +132,8 @@ bool TypeSubstituterVisitor::TraverseType(QualType T) {
 
 namespace {
 
-SourceLocation getEndSubstitutionLoc(SourceLocation BeginLoc,
-                                     std::string_view VarName,
-                                     ASTContext* Context) {
+SourceLocation getNameLastLoc(SourceLocation BeginLoc, std::string_view VarName,
+                              ASTContext* Context) {
   auto& SM = Context->getSourceManager();
   const auto& LO = Context->getLangOpts();
   while (true) {
@@ -131,7 +141,7 @@ SourceLocation getEndSubstitutionLoc(SourceLocation BeginLoc,
     assert(Tok.hasValue());
     if (Tok->is(tok::raw_identifier)) {
       if (Tok->getRawIdentifier().str().compare(VarName) == 0) {
-        return Tok->getEndLoc();
+        return Tok->getLastLoc();
       }
     }
     if (Tok->isOneOf(tok::semi, tok::equal, tok::comma, tok::r_paren)) {
@@ -141,7 +151,30 @@ SourceLocation getEndSubstitutionLoc(SourceLocation BeginLoc,
   }
 }
 
+SourceLocation getNameLastLoc(DeclaratorDecl* Decl, ASTContext* Context) {
+  return getNameLastLoc(Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
+                        Decl->getNameAsString(), Context);
+}
+
 } // namespace
+
+void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* VDecl) {
+  std::string NewString{
+      (dyn_cast<VarDecl>(VDecl) && dyn_cast<VarDecl>(VDecl)->hasGlobalStorage())
+          ? "static "
+          : ""};
+  Type_.getName() << " " << VDecl->getNameAsString();
+  NewString += Type_.getName().str();
+
+  ASTFrontendInjector::getInstance().substitute(
+      Context_, {VDecl->getBeginLoc(), getNameLastLoc(VDecl, Context_)},
+      std::move(NewString));
+}
+
+void TypeSubstituterVisitor::substituteReturnType(FunctionDecl* FDecl) {
+  ASTFrontendInjector::getInstance().substitute(
+      Context_, FDecl->getReturnTypeSourceRange(), Type_.getName().str());
+}
 
 bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
   DeclaratorDecl* VDecl = nullptr;
@@ -154,42 +187,22 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
     Type_.shouldVisitTypes(T->isBuiltinType() || T->isPointerType() ||
                            T->isArrayType() || T->isReferenceType());
   }
-  if (Type_.shouldVisitTypes() && VDecl) {
-    TraverseType(VDecl->getType());
-  } else {
-    RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
-  }
-  if (!VDecl) {
-    return true;
-  }
-  if (Type_.isInited()) {
 
-    std::string NewString{(dyn_cast<VarDecl>(VDecl) &&
-                           dyn_cast<VarDecl>(VDecl)->hasGlobalStorage())
-                              ? "static "
-                              : ""};
-    Type_.getName() << " " << VDecl->getNameAsString();
-    NewString += Type_.getName().str();
-
-    SourceRange Range{VDecl->getBeginLoc(),
-                      VDecl->getTypeSourceInfo()->getTypeLoc().getEndLoc()};
-    getEndSubstitutionLoc(Range.getEnd(), VDecl->getNameAsString(), Context_)
-        .dump(Context_->getSourceManager());
-
-    Range.setEnd(getEndSubstitutionLoc(Range.getEnd(), VDecl->getNameAsString(),
-                                       Context_));
-
-    ASTFrontendInjector::getInstance().substitute(Context_, std::move(Range),
-                                                  std::move(NewString));
-  }
-  Type_.reset();
-  if (FunctionDecl* FDecl = dyn_cast<FunctionDecl>(VDecl);
-      FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType()) {
-    TraverseType(FDecl->getReturnType());
-    ASTFrontendInjector::getInstance().substitute(
-        Context_, FDecl->getReturnTypeSourceRange(), Type_.getName().str());
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
+  if (VDecl) {
+    if (Type_.shouldVisitTypes()) {
+      TraverseType(VDecl->getType());
+      substituteVarDeclType(VDecl);
+    } else if (FunctionDecl* FDecl = dyn_cast<FunctionDecl>(VDecl);
+               FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType() &&
+               !FDecl->isMain()) {
+      Type_.shouldVisitTypes(true);
+      TraverseType(FDecl->getReturnType());
+      substituteReturnType(FDecl);
+    }
+    Type_.reset();
   }
   return true;
-}
+} // namespace ub_tester
 
 } // namespace ub_tester
