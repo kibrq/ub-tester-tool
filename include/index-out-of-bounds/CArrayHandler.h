@@ -14,8 +14,6 @@ public:
 
   bool shouldVisitImplicitCode();
 
-  bool VisitArrayType(clang::ArrayType*);
-
   bool VisitConstantArrayType(clang::ConstantArrayType*);
 
   bool VisitVariableArrayType(clang::VariableArrayType*);
@@ -26,27 +24,22 @@ public:
 
   bool VisitStringLiteral(clang::StringLiteral*);
 
-  bool TraverseDecl(clang::Decl*);
+  bool TraverseVarDecl(clang::VarDecl*);
 
   bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr*);
 
 private:
-  void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
+  std::pair<std::string, std::string> getCtorFormats();
+  std::pair<std::string, std::string> getSubscriptFormats();
 
-  void executeSubstitutionOfArrayDecl(clang::SourceLocation BeginLoc,
-                                      bool isStatic, bool isConstexprSize,
-                                      bool needCtor);
-  void executeSubstitutionOfArrayDecl(clang::VarDecl* ArrayDecl);
-  void executeSubstitutionOfArrayDecl(clang::FieldDecl* ArrayDecl);
-  void executeSubstitutionOfArrayDecl(clang::ParmVarDecl* ArrayDecl);
-  void executeSubstitutionOfArrayDecl(clang::ValueDecl* ArrayDecl);
+private:
+  void executeSubstitutionOfSubscript(clang::ArraySubscriptExpr*);
+  void executeSubstitutionOfCtor(clang::VarDecl*);
 
 private:
   struct ArrayInfo_t {
     void reset();
-    std::optional<std::string> Name_;
-    std::optional<std::string> Type_, LowestLevelPointeeType_;
-    std::optional<std::string> InitList_;
+    std::optional<std::string> Init_;
     std::vector<std::string> Sizes_;
     size_t Dimension_;
     bool shouldVisitNodes_, isIncompleteType_, shouldVisitImplicitCode_;

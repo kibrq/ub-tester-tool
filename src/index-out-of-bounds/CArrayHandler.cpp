@@ -18,7 +18,7 @@ using namespace clang;
 namespace ub_tester {
 
 void CArrayHandler::ArrayInfo_t::reset() {
-  Name_ = Type_ = LowestLevelPointeeType_ = InitList_ = std::nullopt;
+  Init_ = std::nullopt;
   shouldVisitNodes_ = isIncompleteType_ = false;
   shouldVisitImplicitCode_ = false;
   Dimension_ = 0;
@@ -31,21 +31,6 @@ CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {
 
 bool CArrayHandler::shouldVisitImplicitCode() {
   return Array_.shouldVisitImplicitCode_;
-}
-
-bool CArrayHandler::VisitArrayType(ArrayType* Type) {
-  if (Array_.shouldVisitNodes_) {
-    ++Array_.Dimension_;
-    PrintingPolicy pp(Context_->getLangOpts());
-    if (Type->getElementType()->isPointerType()) {
-      Array_.LowestLevelPointeeType_ =
-          getLowestLevelPointeeType(Type->getElementType()).getAsString(pp);
-    } else {
-      Array_.Type_ =
-          Type->getElementType().getUnqualifiedType().getAsString(pp);
-    }
-  }
-  return true;
 }
 
 bool CArrayHandler::VisitConstantArrayType(ConstantArrayType* Type) {
@@ -84,11 +69,12 @@ bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
     if (Array_.isIncompleteType_) {
       Array_.Sizes_.insert(Array_.Sizes_.begin(),
                            std::to_string(List->getNumInits()));
+      Array_.isIncompleteType_ = false;
     }
 
     // Cause of inner InitLists and StringLiterals
-    Array_.shouldVisitNodes_ = false;
-    Array_.InitList_ = getExprAsString(List, Context_);
+    if (!Array_.Init_.has_value())
+      Array_.Init_ = getExprAsString(List, Context_);
   }
   return true;
 }
@@ -97,126 +83,54 @@ bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
   if (Array_.shouldVisitNodes_ && Array_.isIncompleteType_) {
     Array_.Sizes_.insert(Array_.Sizes_.begin(),
                          std::to_string(Literal->getLength() + 1));
-    Array_.InitList_ = getExprAsString(Literal, Context_);
+    Array_.Init_ = getExprAsString(Literal, Context_);
   }
   return true;
 }
 
-namespace {
-
-std::pair<std::string, std::string>
-getDeclFormats(bool isStatic, size_t Dimension, bool isConstexprSize,
-               const std::vector<std::string>& Sizes, bool needCtor,
-               bool hasInitList) {
-  assert(Dimension > 0);
-  assert(not(isConstexprSize && needCtor));
-
-  std::stringstream SourceFormat, OutputFormat;
-  SourceFormat << "#@#@";
-  for (size_t i = 0; i < Dimension; i++) {
-    SourceFormat << "#[#]";
-  }
-  SourceFormat << (hasInitList && needCtor ? "#@" : "");
-  OutputFormat
-      << (isConstexprSize
-              ? iob_view::generateSafeArrayTypename(isStatic, Sizes, "@")
-              : iob_view::generateSafeArrayTypename(isStatic, Dimension, "@"))
-      << " @";
-  if (needCtor)
-    OutputFormat << "("
-                 << iob_view::generateSafeArrayCtor(
-                        Sizes, hasInitList ? std::optional("@") : std::nullopt)
-                 << ")";
-
-  return {SourceFormat.str(), OutputFormat.str()};
+std::pair<std::string, std::string> CArrayHandler::getCtorFormats() {
+  std::string SourceFormat = Array_.Init_.has_value() ? "#@" : "";
+  std::stringstream OutputFormat;
+  OutputFormat << "("
+               << iob_view::generateSafeArrayCtor(Array_.Sizes_,
+                                                  Array_.Init_.has_value()
+                                                      ? std::optional("@")
+                                                      : std::nullopt)
+               << ")";
+  return {SourceFormat, OutputFormat.str()};
 }
 
-std::string getCuttedPointerTypeAsString(const std::string& PointeeType,
-                                         SourceLocation BeginLoc, ASTContext*);
-
-} // namespace
-
-void CArrayHandler::executeSubstitutionOfArrayDecl(SourceLocation BeginLoc,
-                                                   bool isStatic,
-                                                   bool isConstexprSize,
-                                                   bool needCtor) {
-
-  std::pair<std::string, std::string> Formats =
-      getDeclFormats(isStatic, Array_.Dimension_, isConstexprSize,
-                     Array_.Sizes_, needCtor, Array_.InitList_.has_value());
-
-  if (not Array_.Type_.has_value()) {
-    Array_.Type_ = getCuttedPointerTypeAsString(
-        Array_.LowestLevelPointeeType_.value(), BeginLoc, Context_);
-  }
-
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, BeginLoc, Formats.first, Formats.second, Array_.Type_,
-      Array_.Name_, Array_.InitList_);
+void CArrayHandler::executeSubstitutionOfCtor(VarDecl* D) {
+  SourceLocation Loc = getAfterNameLoc(D, Context_);
+  std::pair<std::string, std::string> Formats = getCtorFormats();
+  ASTFrontendInjector::getInstance().substitute(Context_, Loc, Formats.first,
+                                                Formats.second, Array_.Init_);
 }
 
-void CArrayHandler::executeSubstitutionOfArrayDecl(VarDecl* ArrayDecl) {
-  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(),
-                                 ArrayDecl->isStaticLocal(), false, true);
-}
+bool CArrayHandler::TraverseVarDecl(VarDecl* D) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc()))
+    return true;
 
-void CArrayHandler::executeSubstitutionOfArrayDecl(FieldDecl* ArrayDecl) {
-  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, true, false);
-}
-
-void CArrayHandler::executeSubstitutionOfArrayDecl(ParmVarDecl* ArrayDecl) {
-  executeSubstitutionOfArrayDecl(ArrayDecl->getBeginLoc(), false, false, false);
-}
-
-void CArrayHandler::executeSubstitutionOfArrayDecl(ValueDecl* ArrayDecl) {
-  if (ParmVarDecl* ADecl = dyn_cast<ParmVarDecl>(ArrayDecl)) {
-    executeSubstitutionOfArrayDecl(ADecl);
-    return;
-  }
-  if (VarDecl* ADecl = dyn_cast<VarDecl>(ArrayDecl)) {
-    executeSubstitutionOfArrayDecl(ADecl);
-    return;
-  }
-  if (FieldDecl* ADecl = dyn_cast<FieldDecl>(ArrayDecl)) {
-    executeSubstitutionOfArrayDecl(ADecl);
-    return;
-  }
-}
-
-bool CArrayHandler::TraverseDecl(Decl* D) {
-  const Type* T = nullptr;
-  ValueDecl* VDecl = nullptr;
-  if (D && (VDecl = dyn_cast<ValueDecl>(D))) {
-    if (not Context_->getSourceManager().isWrittenInMainFile(
-            VDecl->getBeginLoc()))
-      return true;
-
-    T = isa<ParmVarDecl>(VDecl)
-            ? dyn_cast<ParmVarDecl>(VDecl)->getOriginalType().getTypePtrOrNull()
-            : VDecl->getType().getTypePtrOrNull();
-    Array_.shouldVisitNodes_ = T && T->isArrayType();
-  }
-  RecursiveASTVisitor<CArrayHandler>::TraverseDecl(D);
-  if (T && T->isArrayType()) {
-    Array_.Name_ = VDecl->getName().str();
-    executeSubstitutionOfArrayDecl(VDecl);
+  Array_.shouldVisitNodes_ =
+      !isa<ParmVarDecl>(D) && D->getType().getTypePtr()->isArrayType();
+  RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(D);
+  if (Array_.shouldVisitNodes_) {
+    executeSubstitutionOfCtor(D);
   }
   Array_.reset();
   return true;
 }
 
-namespace {
-std::pair<std::string, std::string> getSubscriptFormats() {
+std::pair<std::string, std::string> CArrayHandler::getSubscriptFormats() {
   return {"@[@]", iob_view::generateIOBChecker("@", "@")};
 }
-} // namespace
 
 void CArrayHandler::executeSubstitutionOfSubscript(
     ArraySubscriptExpr* SubscriptExpr) {
   SourceLocation BeginLoc = SubscriptExpr->getBeginLoc();
   std::pair<std::string, std::string> Formats = getSubscriptFormats();
   ASTFrontendInjector::getInstance().substitute(
-      Context_, SubscriptExpr->getBeginLoc(), Formats.first, Formats.second,
+      Context_, BeginLoc, Formats.first, Formats.second,
       SubscriptExpr->getLHS(), SubscriptExpr->getRHS());
 }
 
@@ -229,35 +143,4 @@ bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
   return true;
 }
 
-namespace {
-
-std::string getCuttedPointerTypeAsString(const std::string& PointeeType,
-                                         SourceLocation BeginLoc,
-                                         ASTContext* Context) {
-  SourceLocation Begin = BeginLoc, End = BeginLoc, CurLoc = BeginLoc;
-  SourceManager& SM = Context->getSourceManager();
-  const LangOptions& LO = Context->getLangOpts();
-  bool flag = true;
-  while (flag) {
-    auto Tok = Lexer::findNextToken(CurLoc, SM, LO);
-    assert(Tok.hasValue());
-    if (Tok.getValue().is(tok::raw_identifier)) {
-      if (Tok.getValue().getRawIdentifier().str().compare(PointeeType) == 0) {
-        Begin = Tok.getValue().getLocation();
-      }
-    }
-    if (Tok.getValue().is(tok::star)) {
-      End = Tok.getValue().getEndLoc();
-    }
-    if (Tok.getValue().isOneOf(tok::semi, tok::equal)) {
-      flag = false;
-    }
-    CurLoc = Tok.getValue().getLocation();
-  }
-
-  return Lexer::getSourceText(CharSourceRange::getCharRange(Begin, End), SM, LO)
-      .str();
-}
-
-} // namespace
 } // namespace ub_tester

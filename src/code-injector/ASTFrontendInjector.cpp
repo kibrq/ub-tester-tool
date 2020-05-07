@@ -63,7 +63,7 @@ void ASTFrontendInjector::substitute(const clang::ASTContext* Context,
                                      const clang::SourceRange& Range,
                                      std::string NewString) {
   substitute(Context, Range.getBegin(), getRangeAsString(Range, Context),
-             NewString, ub_tester::SubArgs({}));
+             NewString, SubArgs({}));
 }
 
 } // namespace ub_tester
