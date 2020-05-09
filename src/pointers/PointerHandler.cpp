@@ -13,7 +13,7 @@ using namespace clang;
 namespace ub_tester {
 
 PointerHandler::PointerInfo_t::PointerInfo_t(bool shouldVisitNodes)
-    : Init_{std::nullopt}, shouldVisitNodes_{shouldVisitNodes} {}
+    : shouldVisitNodes_{shouldVisitNodes} {}
 
 bool PointerHandler::shouldVisitNodes() {
   return !Pointers_.empty() && Pointers_.back().shouldVisitNodes_;
@@ -22,6 +22,10 @@ bool PointerHandler::shouldVisitNodes() {
 void PointerHandler::reset() {
   if (!Pointers_.empty())
     Pointers_.pop_back();
+}
+
+PointerHandler::PointerInfo_t& PointerHandler::backPointer() {
+  return Pointers_.back();
 }
 
 PointerHandler::PointerHandler(ASTContext* Context) : Context_{Context} {}
@@ -56,21 +60,21 @@ bool PointerHandler::VisitCallExpr(CallExpr* CE) {
     auto Calculator = getSizeCalculationFunc(
         CE->getDirectCallee()->getNameInfo().getAsString());
     if (Calculator) {
-      Pointers_.back().Size_
-          << Calculator.value()(CE, Pointers_.back().PointeeType_, Context_);
+      backPointer().hasSize_ = true;
+      backPointer().Size_ << Calculator.value()(CE, backPointer().PointeeType_,
+                                                Context_);
     }
   }
   return true;
 }
 
 std::pair<std::string, std::string> PointerHandler::getCtorFormats() {
-  std::string SourceFormat = Pointers_.back().Init_.has_value() ? "#@" : "";
+  std::string SourceFormat = backPointer().Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
   OutputFormat << "(" << (Pointers_.back().Init_.has_value() ? "@" : "")
-               << (Pointers_.back().Size_.str().size() > 0 ? ", " : "")
-               << (Pointers_.back().Size_.str().size() > 0
-                       ? Pointers_.back().Size_.str()
-                       : "")
+               << (backPointer().hasSize_ ? ", " : "")
+               << (backPointer().hasSize_ > 0 ? Pointers_.back().Size_.str()
+                                              : "")
                << ")";
   return {SourceFormat, OutputFormat.str()};
 }
@@ -92,7 +96,7 @@ bool PointerHandler::TraverseVarDecl(clang::VarDecl* VDecl) {
 
   Pointers_.emplace_back(VDecl->getType().getTypePtr()->isPointerType());
   if (shouldVisitNodes()) {
-    Pointers_.back().PointeeType_ =
+    backPointer().PointeeType_ =
         dyn_cast<PointerType>(VDecl->getType().getTypePtr())
             ->getPointeeType()
             .getAsString();
@@ -101,7 +105,7 @@ bool PointerHandler::TraverseVarDecl(clang::VarDecl* VDecl) {
   RecursiveASTVisitor<PointerHandler>::TraverseVarDecl(VDecl);
   if (shouldVisitNodes()) {
     if (VDecl->hasInit()) {
-      Pointers_.back().Init_ = getExprAsString(VDecl->getInit(), Context_);
+      backPointer().Init_ = getExprAsString(VDecl->getInit(), Context_);
     }
     executeSubstitutionOfPointerCtor(VDecl);
   }
@@ -112,7 +116,7 @@ bool PointerHandler::TraverseVarDecl(clang::VarDecl* VDecl) {
 std::pair<std::string, std::string> PointerHandler::getAssignFormats() {
   std::string SourceFormat = "@";
   std::stringstream OutputFormat;
-  OutputFormat << "(@).setSize(" << Pointers_.back().Size_.str() << ")";
+  OutputFormat << "(@).setSize(" << backPointer().Size_.str() << ")";
   return {SourceFormat, OutputFormat.str()};
 }
 
@@ -129,7 +133,7 @@ bool PointerHandler::TraverseBinAssign(BinaryOperator* BO,
   NOT_IN_MAINFILE(Context_, BO);
   if (BO->getLHS()->getType().getTypePtr()->isPointerType()) {
     Pointers_.emplace_back(true);
-    Pointers_.back().PointeeType_ =
+    backPointer().PointeeType_ =
         dyn_cast<PointerType>(BO->getLHS()->getType().getTypePtr())
             ->getPointeeType()
             .getAsString();

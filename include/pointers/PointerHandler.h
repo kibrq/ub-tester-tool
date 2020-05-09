@@ -21,7 +21,6 @@ public:
 private:
   std::pair<std::string, std::string> getCtorFormats();
   std::pair<std::string, std::string> getAssignFormats();
-  std::pair<std::string, std::string> getSubscriptFormats();
 
 private:
   void executeSubstitutionOfPointerCtor(clang::VarDecl*);
@@ -30,15 +29,17 @@ private:
 private:
   struct PointerInfo_t {
     PointerInfo_t(bool);
-    std::optional<std::string> Init_;
+    std::optional<std::string> Init_{std::nullopt};
     std::string PointeeType_;
     std::stringstream Size_;
     bool shouldVisitNodes_;
+    bool hasSize_{false};
   };
 
 private:
   bool shouldVisitNodes();
   void reset();
+  PointerInfo_t& backPointer();
 
 private:
   clang::ASTContext* Context_;
