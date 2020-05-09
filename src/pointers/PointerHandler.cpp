@@ -13,8 +13,7 @@ using namespace clang;
 namespace ub_tester {
 
 PointerHandler::PointerInfo_t::PointerInfo_t(bool shouldVisitNodes)
-    : Init_{std::nullopt}, PointeeType_{std::nullopt}, shouldVisitNodes_{
-                                                           shouldVisitNodes} {}
+    : Init_{std::nullopt}, shouldVisitNodes_{shouldVisitNodes} {}
 
 bool PointerHandler::shouldVisitNodes() {
   return !Pointers_.empty() && Pointers_.back().shouldVisitNodes_;
@@ -57,8 +56,8 @@ bool PointerHandler::VisitCallExpr(CallExpr* CE) {
     auto Calculator = getSizeCalculationFunc(
         CE->getDirectCallee()->getNameInfo().getAsString());
     if (Calculator) {
-      Pointers_.back().Size_ << Calculator.value()(
-          CE, Pointers_.back().PointeeType_.value(), Context_);
+      Pointers_.back().Size_
+          << Calculator.value()(CE, Pointers_.back().PointeeType_, Context_);
     }
   }
   return true;
@@ -83,25 +82,63 @@ void PointerHandler::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
       Context_, Loc, Formats.first, Formats.second, Pointers_.back().Init_);
 }
 
-bool PointerHandler::TraverseDecl(Decl* D) {
-  VarDecl* VDecl = nullptr;
-  if (D && (VDecl = dyn_cast<VarDecl>(D))) {
-    if (!Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
-      return true;
-    Pointers_.emplace_back(VDecl->getType().getTypePtr()->isPointerType());
-    if (shouldVisitNodes()) {
-      Pointers_.back().PointeeType_ =
-          dyn_cast<PointerType>(VDecl->getType().getTypePtr())
-              ->getPointeeType()
-              .getAsString();
-    }
+#define NOT_IN_MAINFILE(Context, Node)                                         \
+  if (!Context->getSourceManager().isWrittenInMainFile(Node->getBeginLoc()))   \
+    return true;
+
+bool PointerHandler::TraverseVarDecl(clang::VarDecl* VDecl) {
+
+  NOT_IN_MAINFILE(Context_, VDecl);
+
+  Pointers_.emplace_back(VDecl->getType().getTypePtr()->isPointerType());
+  if (shouldVisitNodes()) {
+    Pointers_.back().PointeeType_ =
+        dyn_cast<PointerType>(VDecl->getType().getTypePtr())
+            ->getPointeeType()
+            .getAsString();
   }
-  RecursiveASTVisitor<PointerHandler>::TraverseDecl(D);
+
+  RecursiveASTVisitor<PointerHandler>::TraverseVarDecl(VDecl);
   if (shouldVisitNodes()) {
     if (VDecl->hasInit()) {
       Pointers_.back().Init_ = getExprAsString(VDecl->getInit(), Context_);
     }
     executeSubstitutionOfPointerCtor(VDecl);
+  }
+  reset();
+  return true;
+}
+
+std::pair<std::string, std::string> PointerHandler::getAssignFormats() {
+  std::string SourceFormat = "@";
+  std::stringstream OutputFormat;
+  OutputFormat << "(@).setSize(" << Pointers_.back().Size_.str() << ")";
+  return {SourceFormat, OutputFormat.str()};
+}
+
+void PointerHandler::executeSubstitutionOfPointerAssignment(
+    BinaryOperator* BO) {
+  SourceLocation Loc = BO->getBeginLoc();
+  auto Formats = getAssignFormats();
+  ASTFrontendInjector::getInstance().substitute(Context_, Loc, Formats.first,
+                                                Formats.second, BO->getLHS());
+}
+
+bool PointerHandler::TraverseBinAssign(BinaryOperator* BO,
+                                       DataRecursionQueue* Queue) {
+  NOT_IN_MAINFILE(Context_, BO);
+  if (BO->getLHS()->getType().getTypePtr()->isPointerType()) {
+    Pointers_.emplace_back(true);
+    Pointers_.back().PointeeType_ =
+        dyn_cast<PointerType>(BO->getLHS()->getType().getTypePtr())
+            ->getPointeeType()
+            .getAsString();
+  }
+
+  RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getLHS(), Queue);
+  RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getRHS());
+  if (shouldVisitNodes()) {
+    executeSubstitutionOfPointerAssignment(BO);
   }
   reset();
   return true;
