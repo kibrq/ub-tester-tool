@@ -2,7 +2,6 @@
 
 #include "clang/AST/RecursiveASTVisitor.h"
 
-#include <optional>
 #include <sstream>
 
 namespace ub_tester {
@@ -19,6 +18,9 @@ public:
   bool TraverseConstantArrayType(clang::ConstantArrayType*);
   bool TraversePointerType(clang::PointerType*);
   bool TraverseBuiltinType(clang::BuiltinType*);
+  bool TraverseRecordType(clang::RecordType*);
+  bool TraverseEnumType(clang::EnumType*);
+  bool TraverseTemplateSpecializationType(clang::TemplateSpecializationType*);
   bool TraverseType(clang::QualType);
 
   bool TraverseDecl(clang::Decl*);
@@ -33,22 +35,21 @@ private:
 private:
   struct TypeInfo_t {
     void reset();
-    std::stringstream& getName();
-    const std::stringstream& getName() const;
-    bool isFirstInit() const;
     bool isInited() const;
     void shouldVisitTypes(bool flag);
     bool shouldVisitTypes();
     void addConst();
+    TypeInfo_t& operator<<(const std::string& Str);
+    std::string getTypeAsString() const;
 
   private:
     void init();
 
   private:
-    std::optional<std::stringstream> Name_{std::nullopt};
+    std::stringstream Buffer_;
     bool shouldVisitTypes_{false};
-    bool isQualPrev{false};
-    int FirstInit_{0};
+    bool isQualPrev_{false};
+    bool isInited_{false};
   };
 
 private:

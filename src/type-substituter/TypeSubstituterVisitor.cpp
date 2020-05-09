@@ -16,45 +16,34 @@ using namespace types_view;
 TypeSubstituterVisitor::TypeSubstituterVisitor(ASTContext* Context)
     : Context_{Context} {}
 
-void TypeSubstituterVisitor::TypeInfo_t::init() {
-  if (!Name_.has_value()) {
-    Name_.emplace();
-  }
-  FirstInit_ = FirstInit_ == 0 ? 1 : -1;
-}
+void TypeSubstituterVisitor::TypeInfo_t::init() { isInited_ = true; }
 
 void TypeSubstituterVisitor::TypeInfo_t::reset() {
-  Name_ = std::nullopt;
-  FirstInit_ = 0;
-  isQualPrev = shouldVisitTypes_ = false;
+  Buffer_.str("");
+  isInited_ = isQualPrev_ = shouldVisitTypes_ = false;
 }
 
-std::stringstream& TypeSubstituterVisitor::TypeInfo_t::getName() {
+TypeSubstituterVisitor::TypeInfo_t&
+TypeSubstituterVisitor::TypeInfo_t::operator<<(const std::string& Str) {
   init();
-  isQualPrev = false;
-  return *Name_;
+  Buffer_ << Str;
+  return *this;
 }
 
-const std::stringstream& TypeSubstituterVisitor::TypeInfo_t::getName() const {
-  assert(Name_.has_value());
-  return *Name_;
+std::string TypeSubstituterVisitor::TypeInfo_t::getTypeAsString() const {
+  return Buffer_.str();
 }
 
+// FIXME
 void TypeSubstituterVisitor::TypeInfo_t::addConst() {
   init();
-  if (!isQualPrev) {
-    *Name_ << "const ";
-    isQualPrev = true;
+  if (!isQualPrev_) {
+    Buffer_ << "const ";
+    isQualPrev_ = true;
   }
 }
 
-bool TypeSubstituterVisitor::TypeInfo_t::isFirstInit() const {
-  return FirstInit_ == 1;
-}
-
-bool TypeSubstituterVisitor::TypeInfo_t::isInited() const {
-  return FirstInit_ != 0;
-}
+bool TypeSubstituterVisitor::TypeInfo_t::isInited() const { return isInited_; }
 
 void TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes(bool flag) {
   shouldVisitTypes_ = flag;
@@ -65,10 +54,10 @@ bool TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes() {
 }
 
 bool TypeSubstituterVisitor::TraverseArrayType(ArrayType* T) {
-  Type_.getName() << SafeArray << "<";
+  Type_ << SafeArray << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(
       T->getElementType());
-  Type_.getName() << ">";
+  Type_ << ">";
   return true;
 }
 
@@ -87,37 +76,75 @@ bool TypeSubstituterVisitor::TraverseIncompleteArrayType(
 }
 
 bool TypeSubstituterVisitor::TraverseConstantArrayType(ConstantArrayType* T) {
-  Type_.getName() << SafeArray << "<";
+  Type_ << SafeArray << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseConstantArrayType(T);
-  Type_.getName() << ", " << T->getSize().toString(10, false) << ">";
+  Type_ << ", " << T->getSize().toString(10, false) << ">";
   return true;
 }
 
 bool TypeSubstituterVisitor::TraverseRValueReferenceType(
     RValueReferenceType* T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseRValueReferenceType(T);
-  Type_.getName() << "&&";
+  Type_ << "&&";
   return true;
 }
 
 bool TypeSubstituterVisitor::TraverseLValueReferenceType(
     LValueReferenceType* T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseLValueReferenceType(T);
-  Type_.getName() << "&";
+  Type_ << "&";
   return true;
 }
 
 bool TypeSubstituterVisitor::TraversePointerType(PointerType* T) {
-  Type_.getName() << SafePointer << "<";
+  Type_ << SafePointer << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraversePointerType(T);
-  Type_.getName() << ">";
+  Type_ << ">";
   return true;
 }
 
 bool TypeSubstituterVisitor::TraverseBuiltinType(BuiltinType* T) {
-  Type_.getName() << SafeBuiltinVar << "<";
-  Type_.getName() << T->getName(PrintingPolicy{Context_->getLangOpts()}).str();
-  Type_.getName() << ">";
+  bool firstInit = !Type_.isInited();
+  if (firstInit)
+    Type_ << SafeBuiltinVar << "<";
+  Type_ << T->getName(PrintingPolicy{Context_->getLangOpts()}).str();
+  if (firstInit)
+    Type_ << ">";
+  return true;
+}
+
+bool TypeSubstituterVisitor::TraverseEnumType(EnumType* T) {
+  if (Type_.isInited()) {
+    Type_ << T->getDecl()->getQualifiedNameAsString();
+  }
+  return true;
+}
+
+bool TypeSubstituterVisitor::TraverseRecordType(RecordType* T) {
+  if (Type_.isInited()) {
+    Type_ << T->getDecl()->getQualifiedNameAsString();
+  }
+  return true;
+}
+
+bool TypeSubstituterVisitor::TraverseTemplateSpecializationType(
+    TemplateSpecializationType* T) {
+
+  Type_ << T->getTemplateName().getAsTemplateDecl()->getQualifiedNameAsString()
+        << "<";
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseTemplateName(
+      T->getTemplateName());
+
+  auto* Args = T->getArgs();
+  unsigned NumArgs = T->getNumArgs();
+  for (unsigned I = 0; I != NumArgs; ++I) {
+    RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseTemplateArgument(
+        Args[I]);
+    if (I != NumArgs - 1)
+      Type_ << ", ";
+  }
+  Type_ << ">";
+
   return true;
 }
 
@@ -132,21 +159,22 @@ bool TypeSubstituterVisitor::TraverseType(QualType T) {
 }
 
 void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* VDecl) {
-  std::string NewString{
-      (dyn_cast<VarDecl>(VDecl) && dyn_cast<VarDecl>(VDecl)->hasGlobalStorage())
-          ? "static "
-          : ""};
-  Type_.getName() << " " << VDecl->getNameAsString();
-  NewString += Type_.getName().str();
+  if (!Type_.isInited())
+    return;
+
+  Type_ << " " << VDecl->getNameAsString();
 
   ASTFrontendInjector::getInstance().substitute(
       Context_, {VDecl->getBeginLoc(), getNameLastLoc(VDecl, Context_)},
-      std::move(NewString));
+      Type_.getTypeAsString());
 }
 
 void TypeSubstituterVisitor::substituteReturnType(FunctionDecl* FDecl) {
+  if (Type_.isInited())
+    return;
+
   ASTFrontendInjector::getInstance().substitute(
-      Context_, FDecl->getReturnTypeSourceRange(), Type_.getName().str());
+      Context_, FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString());
 }
 
 bool TypeSubstituterVisitor::VisitDeclStmt(DeclStmt* DS) {
@@ -162,12 +190,13 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
             VDecl->getBeginLoc()))
       return true;
     T = VDecl->getType().getTypePtrOrNull();
-    Type_.shouldVisitTypes(T->isBuiltinType() || T->isPointerType() ||
-                           T->isArrayType() || T->isReferenceType());
+    Type_.shouldVisitTypes(true);
   }
 
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
+
   if (VDecl) {
+    needSubstitution_ |= isa<FieldDecl>(VDecl);
     if (Type_.shouldVisitTypes() && needSubstitution_) {
       TraverseType(VDecl->getType());
       substituteVarDeclType(VDecl);
