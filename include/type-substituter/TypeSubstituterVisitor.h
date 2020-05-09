@@ -23,6 +23,8 @@ public:
 
   bool TraverseDecl(clang::Decl*);
 
+  bool VisitDeclStmt(clang::DeclStmt*);
+
 private:
   void substituteVarDeclType(clang::DeclaratorDecl*);
   void substituteReturnType(clang::FunctionDecl*);
@@ -37,7 +39,6 @@ private:
     bool isInited() const;
     void shouldVisitTypes(bool flag);
     bool shouldVisitTypes();
-
     void addConst();
 
   private:
@@ -51,6 +52,7 @@ private:
   };
 
 private:
+  bool needSubstitution_{false};
   TypeInfo_t Type_;
   clang::ASTContext* Context_;
 };

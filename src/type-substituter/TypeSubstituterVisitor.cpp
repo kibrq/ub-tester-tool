@@ -149,6 +149,11 @@ void TypeSubstituterVisitor::substituteReturnType(FunctionDecl* FDecl) {
       Context_, FDecl->getReturnTypeSourceRange(), Type_.getName().str());
 }
 
+bool TypeSubstituterVisitor::VisitDeclStmt(DeclStmt* DS) {
+  needSubstitution_ = true;
+  return true;
+}
+
 bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
   DeclaratorDecl* VDecl = nullptr;
   const Type* T = nullptr;
@@ -163,7 +168,7 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
 
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
   if (VDecl) {
-    if (Type_.shouldVisitTypes()) {
+    if (Type_.shouldVisitTypes() && needSubstitution_) {
       TraverseType(VDecl->getType());
       substituteVarDeclType(VDecl);
     } else if (FunctionDecl* FDecl = dyn_cast<FunctionDecl>(VDecl);
@@ -174,8 +179,9 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
       substituteReturnType(FDecl);
     }
     Type_.reset();
+    needSubstitution_ = false;
   }
   return true;
-} // namespace ub_tester
+}
 
 } // namespace ub_tester
