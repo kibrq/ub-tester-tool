@@ -71,7 +71,7 @@ bool PointerHandler::VisitCallExpr(CallExpr* CE) {
 std::pair<std::string, std::string> PointerHandler::getCtorFormats() {
   std::string SourceFormat = backPointer().Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
-  OutputFormat << "(" << (Pointers_.back().Init_.has_value() ? "@" : "")
+  OutputFormat << "(" << (backPointer().Init_.has_value() ? "@" : "")
                << (backPointer().hasSize_ ? ", " : "")
                << (backPointer().hasSize_ > 0 ? Pointers_.back().Size_.str()
                                               : "")
