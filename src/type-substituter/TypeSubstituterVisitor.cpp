@@ -51,7 +51,7 @@ bool TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes() {
   return shouldVisitTypes_;
 }
 
-bool TypeSubstituterVisitor::TraverseArrayType(ArrayType* T) {
+bool TypeSubstituterVisitor::HelperTraverseArrayType(ArrayType* T) {
 
   Type_ << SafeArray << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(
@@ -61,7 +61,7 @@ bool TypeSubstituterVisitor::TraverseArrayType(ArrayType* T) {
 }
 
 bool TypeSubstituterVisitor::TraverseVariableArrayType(VariableArrayType* T) {
-  return TraverseArrayType(T);
+  return HelperTraverseArrayType(T);
 }
 
 bool TypeSubstituterVisitor::TraverseDependentSizedArrayType(
@@ -78,7 +78,7 @@ bool TypeSubstituterVisitor::TraverseDependentSizedArrayType(
 
 bool TypeSubstituterVisitor::TraverseIncompleteArrayType(
     IncompleteArrayType* T) {
-  return TraverseArrayType(T);
+  return HelperTraverseArrayType(T);
 }
 
 bool TypeSubstituterVisitor::TraverseConstantArrayType(ConstantArrayType* T) {
@@ -182,57 +182,7 @@ bool TypeSubstituterVisitor::TraverseDeclStmt(DeclStmt* DS,
   return true;
 }
 
-namespace {
-enum class TargetKind {
-  FunctionDecl,
-  ParmVarDecl,
-  FieldDecl,
-  VarDecl,
-  TypedefDecl,
-  TypeAliasDecl,
-  None
-};
-
-std::vector<TargetKind> TargetStack;
-
-bool isTargetFunction(FunctionDecl* FDecl) {
-  return FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType() &&
-         !FDecl->isMain();
-}
-} // namespace
-
-bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl*) {
-  TargetStack.back() = TargetKind::FunctionDecl;
-  return true;
-}
-
-bool TypeSubstituterVisitor::VisitParmVarDecl(ParmVarDecl*) {
-  TargetStack.back() = TargetKind::ParmVarDecl;
-  return true;
-}
-
-bool TypeSubstituterVisitor::VisitVarDecl(VarDecl*) {
-  if (TargetStack.back() == TargetKind::None)
-    TargetStack.back() = TargetKind::VarDecl;
-  return true;
-}
-
-bool TypeSubstituterVisitor::VisitFieldDecl(FieldDecl*) {
-  TargetStack.back() = TargetKind::FieldDecl;
-  return true;
-}
-
-bool TypeSubstituterVisitor::VisitTypedefDecl(TypedefDecl*) {
-  TargetStack.back() = TargetKind::TypedefDecl;
-  return true;
-}
-
-bool TypeSubstituterVisitor::VisitTypeAliasDecl(TypeAliasDecl*) {
-  TargetStack.back() = TargetKind::TypeAliasDecl;
-  return true;
-}
-
-void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* DDecl) {
+void TypeSubstituterVisitor::substituteTypeOfVariable(DeclaratorDecl* DDecl) {
   if (!Type_.isInited())
     return;
 
@@ -241,11 +191,9 @@ void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* DDecl) {
     if (VDecl->isInline()) {
       NewDeclaration << "inline ";
     }
-
     if (VDecl->isConstexpr()) {
       NewDeclaration << "constexpr ";
     }
-
     if (VDecl->hasGlobalStorage()) {
       NewDeclaration << "static ";
     }
@@ -258,7 +206,7 @@ void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* DDecl) {
       NewDeclaration.str());
 }
 
-void TypeSubstituterVisitor::substituteReturnType(FunctionDecl* FDecl) {
+void TypeSubstituterVisitor::substituteTypeOfReturn(FunctionDecl* FDecl) {
   if (!Type_.isInited())
     return;
 
@@ -266,7 +214,7 @@ void TypeSubstituterVisitor::substituteReturnType(FunctionDecl* FDecl) {
       Context_, FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString());
 }
 
-void TypeSubstituterVisitor::substituteTypedefNameDecl(TypedefNameDecl* TDecl) {
+void TypeSubstituterVisitor::substituteTypeOfTypedef(TypedefNameDecl* TDecl) {
   if (!Type_.isInited())
     return;
 
@@ -275,57 +223,57 @@ void TypeSubstituterVisitor::substituteTypedefNameDecl(TypedefNameDecl* TDecl) {
       Type_.getTypeAsString());
 }
 
-void TypeSubstituterVisitor::endTraversingSubtree() {
-  Type_.reset();
-  needSubstitution_ = false;
-  TargetStack.pop_back();
+bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl* FDecl) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(FDecl->getBeginLoc()))
+    return true;
+
+  if (FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType() &&
+      !FDecl->isMain()) {
+    Type_.shouldVisitTypes(true);
+    TraverseType(FDecl->getReturnType());
+    substituteTypeOfReturn(FDecl);
+  }
+  return true;
+}
+
+bool TypeSubstituterVisitor::HelperVisitDeclaratorDecl(DeclaratorDecl* D) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc()))
+    return true;
+  Type_.shouldVisitTypes(true);
+  TraverseType(D->getType());
+  substituteTypeOfVariable(D);
+  return true;
+} // namespace
+
+bool TypeSubstituterVisitor::VisitParmVarDecl(ParmVarDecl* PVD) {
+  return HelperVisitDeclaratorDecl(PVD);
+}
+
+bool TypeSubstituterVisitor::VisitVarDecl(VarDecl* VDecl) {
+  if (!isa<ParmVarDecl>(VDecl) &&
+      (!isDeclStmtParent_ || (isDeclStmtParent_ && needSubstitution_))) {
+    HelperVisitDeclaratorDecl(VDecl);
+    needSubstitution_ = false;
+  }
+  return true;
+}
+
+bool TypeSubstituterVisitor::VisitFieldDecl(FieldDecl* FD) {
+  return HelperVisitDeclaratorDecl(FD);
+}
+
+bool TypeSubstituterVisitor::VisitTypedefNameDecl(TypedefNameDecl* TDecl) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(TDecl->getBeginLoc()))
+    return true;
+  Type_.shouldVisitTypes(true);
+  TraverseType(TDecl->getTypeSourceInfo()->getType());
+  substituteTypeOfTypedef(TDecl);
+  return true;
 }
 
 bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
-
-  TargetStack.push_back(TargetKind::None);
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
-  assert(!TargetStack.empty());
-  if (D && TargetStack.back() != TargetKind::None &&
-      Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc())) {
-
-    switch (TargetStack.back()) {
-    case TargetKind::ParmVarDecl:
-    case TargetKind::FieldDecl:
-    case TargetKind::VarDecl: {
-      DeclaratorDecl* DDecl = dyn_cast<DeclaratorDecl>(D);
-      assert(DDecl);
-      if (!isDeclStmtParent_ || (isDeclStmtParent_ && needSubstitution_)) {
-        Type_.shouldVisitTypes(true);
-        TraverseType(DDecl->getType());
-        substituteVarDeclType(DDecl);
-      }
-      break;
-    }
-    case TargetKind::FunctionDecl: {
-      if (FunctionDecl* FDecl = dyn_cast<FunctionDecl>(D);
-          isTargetFunction(FDecl)) {
-        Type_.shouldVisitTypes(true);
-        TraverseType(FDecl->getReturnType());
-        substituteReturnType(FDecl);
-      }
-      break;
-    }
-    case TargetKind::TypedefDecl:
-    case TargetKind::TypeAliasDecl: {
-      TypedefNameDecl* TDecl = dyn_cast<TypedefNameDecl>(D);
-      assert(TDecl);
-      Type_.shouldVisitTypes(true);
-      TraverseType(TDecl->getTypeSourceInfo()->getType());
-      substituteTypedefNameDecl(TDecl);
-      break;
-    }
-    case TargetKind::None:
-      assert(false);
-      break;
-    }
-  }
-  endTraversingSubtree();
+  Type_.reset();
   return true;
 }
 } // namespace ub_tester

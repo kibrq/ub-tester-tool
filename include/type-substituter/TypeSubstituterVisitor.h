@@ -30,17 +30,19 @@ public:
   bool VisitVarDecl(clang::VarDecl*);
   bool VisitFunctionDecl(clang::FunctionDecl*);
   bool VisitFieldDecl(clang::FieldDecl*);
-  bool VisitTypedefDecl(clang::TypedefDecl*);
-  bool VisitTypeAliasDecl(clang::TypeAliasDecl*);
+  bool VisitTypedefNameDecl(clang::TypedefNameDecl*);
+  // bool VisitTypedefDecl(clang::TypedefDecl*);
+  // bool VisitTypeAliasDecl(clang::TypeAliasDecl*);
   bool TraverseDecl(clang::Decl*);
 
 private:
-  bool TraverseArrayType(clang::ArrayType*);
+  bool HelperTraverseArrayType(clang::ArrayType*);
+  bool HelperVisitDeclaratorDecl(clang::DeclaratorDecl*);
 
 private:
-  void substituteTypedefNameDecl(clang::TypedefNameDecl*);
-  void substituteVarDeclType(clang::DeclaratorDecl*);
-  void substituteReturnType(clang::FunctionDecl*);
+  void substituteTypeOfTypedef(clang::TypedefNameDecl*);
+  void substituteTypeOfVariable(clang::DeclaratorDecl*);
+  void substituteTypeOfReturn(clang::FunctionDecl*);
 
 private:
   struct TypeInfo_t {
@@ -61,9 +63,6 @@ private:
     bool shouldVisitTypes_{false};
     bool isInited_{false};
   };
-
-private:
-  void endTraversingSubtree();
 
 private:
   bool isDeclStmtParent_{false};
