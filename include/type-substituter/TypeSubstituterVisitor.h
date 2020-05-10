@@ -23,14 +23,22 @@ public:
   bool TraverseTemplateSpecializationType(clang::TemplateSpecializationType*);
   bool TraverseType(clang::QualType);
 
-  bool TraverseDecl(clang::Decl*);
-
   bool VisitDeclStmt(clang::DeclStmt*);
 
+  bool VisitVarDecl(clang::VarDecl*);
+  bool VisitFunctionDecl(clang::FunctionDecl*);
+  bool VisitFieldDecl(clang::FieldDecl*);
+  bool VisitTypedefDecl(clang::TypedefDecl*);
+  bool VisitTypeAliasDecl(clang::TypeAliasDecl*);
+  bool TraverseDecl(clang::Decl*);
+
 private:
+  bool TraverseArrayType(clang::ArrayType*);
+
+private:
+  void substituteTypedefNameDecl(clang::TypedefNameDecl*);
   void substituteVarDeclType(clang::DeclaratorDecl*);
   void substituteReturnType(clang::FunctionDecl*);
-  bool TraverseArrayType(clang::ArrayType*);
 
 private:
   struct TypeInfo_t {
@@ -51,6 +59,9 @@ private:
     bool isQualPrev_{false};
     bool isInited_{false};
   };
+
+private:
+  void endTraversingSubtree();
 
 private:
   bool needSubstitution_{false};
