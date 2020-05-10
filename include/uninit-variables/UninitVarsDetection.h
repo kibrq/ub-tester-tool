@@ -31,8 +31,19 @@ class FindSafeTypeDefinitionsVisitor : public clang::RecursiveASTVisitor<FindSaf
 public:
   explicit FindSafeTypeDefinitionsVisitor(clang::ASTContext* Context);
 
-  // detect variable usage
+  // detect variable assignment
   bool VisitBinaryOperator(clang::BinaryOperator* BinOp);
+
+private:
+  clang::ASTContext* Context;
+};
+
+class ChangeTypesInFuncDeclVisitor : public clang::RecursiveASTVisitor<ChangeTypesInFuncDeclVisitor> {
+public:
+  explicit ChangeTypesInFuncDeclVisitor(clang::ASTContext* Context);
+
+  // detect variable assignment
+  bool VisitFunctionDecl(clang::FunctionDecl* FuncDecl);
 
 private:
   clang::ASTContext* Context;
@@ -48,6 +59,7 @@ private:
   FindFundTypeVarDeclVisitor FundamentalTypeVarDeclVisitor;
   FindSafeTypeAccessesVisitor SafeTypeAccessesVisitor;
   FindSafeTypeDefinitionsVisitor SafeTypeDefinitionsVisitor;
+  ChangeTypesInFuncDeclVisitor TypesInFuncDeclVisitor;
 };
 
 } // namespace ub_tester

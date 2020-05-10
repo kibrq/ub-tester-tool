@@ -18,6 +18,9 @@ namespace ub_tester {
 GetFuncCodeAvailVisitor::GetFuncCodeAvailVisitor(clang::ASTContext* Context) : Context(Context) {}
 
 bool GetFuncCodeAvailVisitor::VisitFunctionDecl(FunctionDecl* FuncDecl) {
+  if (!Context->getSourceManager().isInMainFile(FuncDecl->getBeginLoc()))
+    return true;
+
   if (FuncDecl->doesThisDeclarationHaveABody())
     func_code_avail::setHasFuncAvailCode(FuncDecl);
   return true;
