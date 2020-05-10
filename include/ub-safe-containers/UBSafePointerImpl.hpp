@@ -1,89 +1,86 @@
 #pragma once
-#include <algorithm>
-
-namespace ub_tester {
 
 template <typename T>
-UBSafePointer<T>::UBSafePointer() : data_(nullptr), size_(0) {}
+UBSafePointer<T>::UBSafePointer(nullptr_t) : Inited_{true} {}
 
 template <typename T>
-UBSafePointer<T>::UBSafePointer(const T*& data) : data_(data), size_(0) {}
+UBSafePointer<T>::UBSafePointer(T* Data, size_t Size) : Data_{Data}, Size_{Size}, Inited_{true} {}
 
 template <typename T>
-UBSafePointer<T>::UBSafePointer(T*&& data) : data_(data), size_(0) {
-  data = nullptr;
+UBSafePointer<T>& UBSafePointer<T>::operator=(T* Data) {
+  Data_ = Data;
 }
 
 template <typename T>
-UBSafePointer<T>& UBSafePointer<T>::operator=(const T*& data) noexcept {
-  data_ = data;
+UBSafePointer<T>& UBSafePointer<T>::operator+=(int Val) {
+  Data_ += Val;
   return *this;
 }
 
 template <typename T>
-UBSafePointer<T>& UBSafePointer<T>::operator=(T*&& data) noexcept {
-  data_ = data;
-  data = nullptr;
+UBSafePointer<T>& UBSafePointer<T>::operator++() {
+  ++Data_;
   return *this;
 }
 
 template <typename T>
-T& UBSafePointer<T>::operator*() noexcept {
-  if (data_)
-    return *data_;
-  else
-    exit(0);
+UBSafePointer<T> UBSafePointer<T>::operator++(int) {
+  UBSafePointer<T> Copy{*this};
+  ++Data_;
+  return Copy;
 }
 
 template <typename T>
-T* UBSafePointer<T>::operator->() noexcept {
-  if (data_)
-    return data_;
-  else
-    exit(0);
+const T& UBSafePointer<T>::operator*() const {
+  return *Data_;
 }
 
 template <typename T>
-T& UBSafePointer<T>::operator[](int index) noexcept {
-  if (index >= size_) {
-    exit(0);
-  }
-  return data_[index];
+T& UBSafePointer<T>::operator*() {
+  return *Data_;
 }
 
 template <typename T>
-
-const T& UBSafePointer<T>::operator[](int index) const noexcept {
-  if (index >= size_) {
-    exit(0);
-  }
-  return data_[index];
+const T& UBSafePointer<T>::operator->() const {
+  return *Data_;
 }
 
 template <typename T>
-UBSafePointer<T>::operator T*() noexcept {
-  return data_;
+T& UBSafePointer<T>::operator->() {
+  return *Data_;
 }
 
 template <typename T>
-UBSafePointer<T>::operator bool() noexcept {
-  return data_ == nullptr;
+const T& UBSafePointer<T>::operator[](int Val) const {
+  return Data_[Val];
 }
 
 template <typename T>
-void UBSafePointer<T>::setSize(size_t size) noexcept {
-  size_ = size;
+T& UBSafePointer<T>::operator[](int Val) {
+  return Data_[Val];
 }
 
 template <typename T>
-void UBSafePointer<T>::setRawData(T* data) noexcept {
-  data_ = data;
-  size_ = 0;
+UBSafePointer<T>::operator T*() {
+  return Data_;
 }
 
 template <typename T>
-size_t UBSafePointer<T>::getSize() const noexcept {
-  return size_;
+UBSafePointer<T>& UBSafePointer<T>::setSize(size_t NewSize) {
+  Size_ = NewSize;
+  return *this;
 }
 
-} // namespace ub_tester
+template <typename T>
+UBSafePointer<T> operator+(const UBSafePointer<T>& P, int Val) {
+  UBSafePointer<T> Res{P};
+  Res += Val;
+  return Res;
+}
+
+template <typename T>
+UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& P) {
+  UBSafePointer<T> Res{P};
+  Res += Val;
+  return Res;
+}

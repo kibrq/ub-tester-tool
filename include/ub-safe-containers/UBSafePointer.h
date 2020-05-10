@@ -1,39 +1,42 @@
 #pragma once
 
 #include <cstddef>
-#include <initializer_list>
 
 namespace ub_tester {
 
 template <typename T>
 class UBSafePointer {
 public:
-  UBSafePointer();
-  UBSafePointer(const T*&);
-  UBSafePointer(T*&&);
+  UBSafePointer() = default;
+  UBSafePointer(nullptr_t);
+  explicit UBSafePointer(T* Data, size_t Size = 1);
 
-  UBSafePointer& operator=(const T*&) noexcept;
-  UBSafePointer& operator=(T*&&) noexcept;
+  UBSafePointer<T>& operator=(T* Data);
+  UBSafePointer<T>& operator+=(int Val);
+  UBSafePointer<T>& operator++();
+  UBSafePointer<T> operator++(int);
 
-  T& operator*() noexcept;
-  T* operator->() noexcept;
+  const T& operator*() const;
+  T& operator*();
+  const T& operator->() const;
+  T& operator->();
+  const T& operator[](int Val) const;
+  T& operator[](int Val);
 
-  T& operator[](int index) noexcept;
-  const T& operator[](int index) const noexcept;
+  operator T*();
 
-  operator T*() noexcept;
-
-  operator bool() noexcept;
-
-  void setSize(size_t size) noexcept;
-  void setRawData(T* data) noexcept;
-  size_t getSize() const noexcept;
+  UBSafePointer<T>& setSize(size_t NewSize);
 
 private:
-  T* data_;
-  size_t size_;
+  T* Data_{nullptr};
+  size_t Size_{0};
+  bool Inited_{false};
 };
+template <typename T>
+UBSafePointer<T> operator+(const UBSafePointer<T>& P, int Val);
 
-}; // namespace ub_tester
+template <typename T>
+UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& P);
 
 #include "UBSafePointerImpl.hpp"
+} // namespace ub_tester
