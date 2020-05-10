@@ -20,7 +20,7 @@ void TypeSubstituterVisitor::TypeInfo_t::init() { isInited_ = true; }
 
 void TypeSubstituterVisitor::TypeInfo_t::reset() {
   Buffer_.str("");
-  isInited_ = isQualPrev_ = shouldVisitTypes_ = false;
+  isInited_ = shouldVisitTypes_ = false;
 }
 
 TypeSubstituterVisitor::TypeInfo_t&
@@ -34,12 +34,11 @@ std::string TypeSubstituterVisitor::TypeInfo_t::getTypeAsString() const {
   return Buffer_.str();
 }
 
-// FIXME
-void TypeSubstituterVisitor::TypeInfo_t::addConst() {
-  init();
-  if (!isQualPrev_) {
-    Buffer_ << "const ";
-    isQualPrev_ = true;
+void TypeSubstituterVisitor::TypeInfo_t::addQuals(Qualifiers Quals,
+                                                  const PrintingPolicy& PP) {
+  Buffer_ << Quals.getAsString(PP);
+  if (!Quals.isEmptyWhenPrinted(PP)) {
+    Buffer_ << " ";
   }
 }
 
@@ -92,7 +91,9 @@ bool TypeSubstituterVisitor::TraverseRValueReferenceType(
 bool TypeSubstituterVisitor::TraverseLValueReferenceType(
     LValueReferenceType* T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseLValueReferenceType(T);
-  Type_ << "&";
+  if (Type_.isInited())
+    Type_ << "&";
+
   return true;
 }
 
@@ -151,21 +152,25 @@ bool TypeSubstituterVisitor::TraverseTemplateSpecializationType(
 bool TypeSubstituterVisitor::TraverseType(QualType T) {
   if (!Type_.shouldVisitTypes())
     return true;
-  if (T.isConstQualified()) {
-    Type_.addConst();
-  }
+  Type_.addQuals(T.getLocalQualifiers(),
+                 PrintingPolicy{Context_->getLangOpts()});
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(T);
   return true;
 }
 
-bool TypeSubstituterVisitor::VisitDeclStmt(DeclStmt* DS) {
+bool TypeSubstituterVisitor::TraverseDeclStmt(DeclStmt* DS,
+                                              DataRecursionQueue* Queue) {
+  isDeclStmtParent_ = true;
   needSubstitution_ = true;
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDeclStmt(DS, Queue);
+  isDeclStmtParent_ = false;
   return true;
 }
 
 namespace {
 enum class TargetKind {
   FunctionDecl,
+  ParmVarDecl,
   FieldDecl,
   VarDecl,
   TypedefDecl,
@@ -186,8 +191,14 @@ bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl*) {
   return true;
 }
 
+bool TypeSubstituterVisitor::VisitParmVarDecl(ParmVarDecl*) {
+  TargetStack.back() = TargetKind::ParmVarDecl;
+  return true;
+}
+
 bool TypeSubstituterVisitor::VisitVarDecl(VarDecl*) {
-  TargetStack.back() = TargetKind::VarDecl;
+  if (TargetStack.back() == TargetKind::None)
+    TargetStack.back() = TargetKind::VarDecl;
   return true;
 }
 
@@ -206,19 +217,34 @@ bool TypeSubstituterVisitor::VisitTypeAliasDecl(TypeAliasDecl*) {
   return true;
 }
 
-void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* VDecl) {
+void TypeSubstituterVisitor::substituteVarDeclType(DeclaratorDecl* DDecl) {
   if (!Type_.isInited())
     return;
 
-  Type_ << " " << VDecl->getNameAsString();
+  std::stringstream NewDeclaration;
+  if (VarDecl* VDecl = dyn_cast<VarDecl>(DDecl)) {
+    if (VDecl->isInline()) {
+      NewDeclaration << "inline ";
+    }
+
+    if (VDecl->isConstexpr()) {
+      NewDeclaration << "constexpr ";
+    }
+
+    if (VDecl->hasGlobalStorage()) {
+      NewDeclaration << "static ";
+    }
+  }
+
+  NewDeclaration << Type_.getTypeAsString() << " " << DDecl->getNameAsString();
 
   ASTFrontendInjector::getInstance().substitute(
-      Context_, {VDecl->getBeginLoc(), getNameLastLoc(VDecl, Context_)},
-      Type_.getTypeAsString());
+      Context_, {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
+      NewDeclaration.str());
 }
 
 void TypeSubstituterVisitor::substituteReturnType(FunctionDecl* FDecl) {
-  if (Type_.isInited())
+  if (!Type_.isInited())
     return;
 
   ASTFrontendInjector::getInstance().substitute(
@@ -244,20 +270,20 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
 
   TargetStack.push_back(TargetKind::None);
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
-
+  assert(!TargetStack.empty());
   if (D && TargetStack.back() != TargetKind::None &&
       Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc())) {
 
     switch (TargetStack.back()) {
+    case TargetKind::ParmVarDecl:
     case TargetKind::FieldDecl:
-      needSubstitution_ = true;
     case TargetKind::VarDecl: {
-      DeclaratorDecl* VDecl = dyn_cast<DeclaratorDecl>(D);
-      assert(VDecl);
-      if (needSubstitution_) {
+      DeclaratorDecl* DDecl = dyn_cast<DeclaratorDecl>(D);
+      assert(DDecl);
+      if (!isDeclStmtParent_ || (isDeclStmtParent_ && needSubstitution_)) {
         Type_.shouldVisitTypes(true);
-        TraverseType(VDecl->getType());
-        substituteVarDeclType(VDecl);
+        TraverseType(DDecl->getType());
+        substituteVarDeclType(DDecl);
       }
       break;
     }
@@ -268,7 +294,7 @@ bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
         TraverseType(FDecl->getReturnType());
         substituteReturnType(FDecl);
       }
-      return true;
+      break;
     }
     case TargetKind::TypedefDecl:
     case TargetKind::TypeAliasDecl: {

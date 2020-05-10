@@ -23,8 +23,9 @@ public:
   bool TraverseTemplateSpecializationType(clang::TemplateSpecializationType*);
   bool TraverseType(clang::QualType);
 
-  bool VisitDeclStmt(clang::DeclStmt*);
+  bool TraverseDeclStmt(clang::DeclStmt*, DataRecursionQueue* = nullptr);
 
+  bool VisitParmVarDecl(clang::ParmVarDecl*);
   bool VisitVarDecl(clang::VarDecl*);
   bool VisitFunctionDecl(clang::FunctionDecl*);
   bool VisitFieldDecl(clang::FieldDecl*);
@@ -46,7 +47,7 @@ private:
     bool isInited() const;
     void shouldVisitTypes(bool flag);
     bool shouldVisitTypes();
-    void addConst();
+    void addQuals(clang::Qualifiers, const clang::PrintingPolicy&);
     TypeInfo_t& operator<<(const std::string& Str);
     std::string getTypeAsString() const;
 
@@ -55,8 +56,8 @@ private:
 
   private:
     std::stringstream Buffer_;
+    std::optional<std::string> PrevQual_;
     bool shouldVisitTypes_{false};
-    bool isQualPrev_{false};
     bool isInited_{false};
   };
 
@@ -64,6 +65,7 @@ private:
   void endTraversingSubtree();
 
 private:
+  bool isDeclStmtParent_{false};
   bool needSubstitution_{false};
   TypeInfo_t Type_;
   clang::ASTContext* Context_;
