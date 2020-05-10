@@ -91,15 +91,16 @@ bool TypeSubstituterVisitor::TraverseConstantArrayType(ConstantArrayType* T) {
 bool TypeSubstituterVisitor::TraverseRValueReferenceType(
     RValueReferenceType* T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseRValueReferenceType(T);
-  Type_ << "&&";
+  if (Type_.isInited())
+    Type_ << "&&";
   return true;
 }
 
 bool TypeSubstituterVisitor::TraverseLValueReferenceType(
     LValueReferenceType* T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseLValueReferenceType(T);
-  Type_ << "&";
-
+  if (Type_.isInited())
+    Type_ << "&";
   return true;
 }
 
