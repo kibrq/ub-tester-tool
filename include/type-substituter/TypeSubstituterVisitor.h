@@ -11,15 +11,16 @@ public:
   explicit TypeSubstituterVisitor(clang::ASTContext*);
 
   bool TraverseVariableArrayType(clang::VariableArrayType*);
-  bool TraverseDepedentSizedArrayType(clang::DependentSizedArrayType*);
+  bool TraverseDependentSizedArrayType(clang::DependentSizedArrayType*);
   bool TraverseIncompleteArrayType(clang::IncompleteArrayType*);
+  bool TraverseConstantArrayType(clang::ConstantArrayType*);
   bool TraverseRValueReferenceType(clang::RValueReferenceType*);
   bool TraverseLValueReferenceType(clang::LValueReferenceType*);
-  bool TraverseConstantArrayType(clang::ConstantArrayType*);
   bool TraversePointerType(clang::PointerType*);
   bool TraverseBuiltinType(clang::BuiltinType*);
   bool TraverseRecordType(clang::RecordType*);
   bool TraverseEnumType(clang::EnumType*);
+  bool TraverseTemplateTypeParmType(clang::TemplateTypeParmType*);
   bool TraverseTemplateSpecializationType(clang::TemplateSpecializationType*);
   bool TraverseType(clang::QualType);
 

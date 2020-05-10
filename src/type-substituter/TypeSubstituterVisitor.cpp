@@ -11,7 +11,6 @@ namespace ub_tester {
 using namespace types_view;
 
 // TODO templates
-// TODO constexpr
 
 TypeSubstituterVisitor::TypeSubstituterVisitor(ASTContext* Context)
     : Context_{Context} {}
@@ -53,6 +52,7 @@ bool TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes() {
 }
 
 bool TypeSubstituterVisitor::TraverseArrayType(ArrayType* T) {
+
   Type_ << SafeArray << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(
       T->getElementType());
@@ -64,9 +64,16 @@ bool TypeSubstituterVisitor::TraverseVariableArrayType(VariableArrayType* T) {
   return TraverseArrayType(T);
 }
 
-bool TypeSubstituterVisitor::TraverseDepedentSizedArrayType(
+bool TypeSubstituterVisitor::TraverseDependentSizedArrayType(
     DependentSizedArrayType* T) {
-  return TraverseArrayType(T);
+  Type_ << SafeArray << "<";
+  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDependentSizedArrayType(
+      T);
+  if (T->getSizeExpr()) {
+    Type_ << ", " << getExprAsString(T->getSizeExpr(), Context_);
+  }
+  Type_ << ">";
+  return true;
 }
 
 bool TypeSubstituterVisitor::TraverseIncompleteArrayType(
@@ -91,8 +98,7 @@ bool TypeSubstituterVisitor::TraverseRValueReferenceType(
 bool TypeSubstituterVisitor::TraverseLValueReferenceType(
     LValueReferenceType* T) {
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseLValueReferenceType(T);
-  if (Type_.isInited())
-    Type_ << "&";
+  Type_ << "&";
 
   return true;
 }
@@ -124,6 +130,14 @@ bool TypeSubstituterVisitor::TraverseEnumType(EnumType* T) {
 bool TypeSubstituterVisitor::TraverseRecordType(RecordType* T) {
   if (Type_.isInited()) {
     Type_ << T->getDecl()->getQualifiedNameAsString();
+  }
+  return true;
+}
+
+bool TypeSubstituterVisitor::TraverseTemplateTypeParmType(
+    TemplateTypeParmType* T) {
+  if (Type_.isInited()) {
+    Type_ << T->desugar().getAsString();
   }
   return true;
 }
