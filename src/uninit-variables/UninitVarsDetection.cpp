@@ -24,6 +24,7 @@ namespace ub_tester {
 FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
 FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context(Context) {}
 FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
+ChangeTypesInFuncDeclVisitor::ChangeTypesInFuncDeclVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
 // ? preserve 'static', 'const' (?) and other (?) keywords
@@ -75,8 +76,9 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       DREParentIterNode = DREParentNodeList[0];
       const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
 
-      if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue &&
-          ICE->getType().getTypePtr()->isFundamentalType() /* && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE */) {
+      if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
+          ICE->getType().getTypePtr()->isFundamentalType()*/
+          && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {
         FoundCorrespICE = true;
 
         std::string VarName = DRE->getNameInfo().getName().getAsString();
@@ -144,15 +146,33 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
   return true;
 }
 
+bool ChangeTypesInFuncDeclVisitor::VisitFunctionDecl(FunctionDecl* FD) {
+  if (!func_code_avail::hasFuncAvailCode(FD))
+    return true;
+
+  for (const ParmVarDecl* PVD : FD->parameters()) {
+    QualType VariableType = PVD->getType().getNonReferenceType();
+    if (VariableType.getTypePtr()->isFundamentalType()) {
+
+      std::string TypeSubstitution = UB_UninitSafeTypeConsts::TEMPLATE_NAME + "<" + VariableType.getAsString() + "> ";
+      ASTFrontendInjector::getInstance().substitute(Context, PVD->getSourceRange(), TypeSubstitution + PVD->getNameAsString());
+    }
+  }
+
+  return true;
+}
+
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context) {}
+    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context),
+      TypesInFuncDeclVisitor(Context) {}
 
 void AssertUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeDefinitionsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeAccessesVisitor.TraverseDecl(Context.getTranslationUnitDecl());
+  TypesInFuncDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
 }
 
 } // namespace ub_tester
