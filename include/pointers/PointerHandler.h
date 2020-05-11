@@ -18,6 +18,8 @@ public:
   bool TraverseVarDecl(clang::VarDecl*);
   bool TraverseBinAssign(clang::BinaryOperator*, DataRecursionQueue* = nullptr);
 
+  bool VisitUnaryOperator(clang::UnaryOperator*);
+
 private:
   std::pair<std::string, std::string> getCtorFormats();
   std::pair<std::string, std::string> getAssignFormats();
@@ -25,6 +27,7 @@ private:
 private:
   void executeSubstitutionOfPointerCtor(clang::VarDecl*);
   void executeSubstitutionOfPointerAssignment(clang::BinaryOperator*);
+  void executeSubstitutionOfStarOperator(clang::UnaryOperator*);
 
 private:
   struct PointerInfo_t {

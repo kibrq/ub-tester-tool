@@ -1,6 +1,7 @@
 #include "pointers/PointerHandler.h"
 #include "UBUtility.h"
 #include "code-injector/ASTFrontendInjector.h"
+#include "pointers/PointersAssertsView.h"
 
 #include "clang/Basic/SourceManager.h"
 
@@ -139,12 +140,30 @@ bool PointerHandler::TraverseBinAssign(BinaryOperator* BO,
             .getAsString();
   }
 
-  RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getLHS(), Queue);
+  RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getLHS());
   RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getRHS());
   if (shouldVisitNodes()) {
     executeSubstitutionOfPointerAssignment(BO);
   }
   reset();
+  return true;
+}
+
+void PointerHandler::executeSubstitutionOfStarOperator(UnaryOperator* UO) {
+  SourceLocation Loc = UO->getBeginLoc();
+  std::string SourceFormat = "*@";
+  std::string OutputFormat = ptr::view::getAssertStarOpeartorAsString("@");
+  ASTFrontendInjector::getInstance().substitute(Context_, Loc, SourceFormat,
+                                                OutputFormat, UO->getSubExpr());
+}
+
+bool PointerHandler::VisitUnaryOperator(UnaryOperator* UO) {
+  NOT_IN_MAINFILE(Context_, UO);
+
+  if (UO->getOpcode() == UnaryOperator::Opcode::UO_Deref &&
+      UO->getSubExpr()->getType()->isPointerType()) {
+    executeSubstitutionOfStarOperator(UO);
+  }
   return true;
 }
 
