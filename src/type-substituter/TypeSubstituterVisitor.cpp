@@ -182,6 +182,8 @@ bool TypeSubstituterVisitor::TraverseDeclStmt(DeclStmt* DS,
   return true;
 }
 
+// FIXME static NEQ hasGlobalStorage()
+
 void TypeSubstituterVisitor::substituteTypeOfVariable(DeclaratorDecl* DDecl) {
   if (!Type_.isInited())
     return;

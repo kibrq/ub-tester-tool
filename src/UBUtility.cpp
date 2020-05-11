@@ -65,30 +65,31 @@ SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc,
 
 SourceLocation getNameLastLoc(const DeclaratorDecl* Decl,
                               const ASTContext* Context) {
+  SourceLocation BeginLoc, EndLoc;
   const auto& SM = Context->getSourceManager();
   const auto& LO = Context->getLangOpts();
-  SourceLocation Res =
-      getBeforeNameLoc(Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
-                       Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
-  if (SM.isBeforeInTranslationUnit(Res, Decl->getEndLoc())) {
+  SourceLocation Res = getBeforeNameLoc(
+      BeginLoc = Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
+      EndLoc = Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
+  if (SM.isBeforeInTranslationUnit(Res, EndLoc)) {
     return Lexer::findNextToken(Res, SM, LO)->getLastLoc();
   } else {
-    return Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc();
+    return BeginLoc;
   }
 }
 
-// FIXME delete whitespace
-
 SourceLocation getAfterNameLoc(const DeclaratorDecl* Decl,
                                const ASTContext* Context) {
-  SourceLocation Res = getNameLastLoc(Decl, Context);
-  if (Context->getSourceManager().isBeforeInTranslationUnit(Res,
-                                                            Decl->getEndLoc()))
-    return Lexer::findNextToken(Res, Context->getSourceManager(),
-                                Context->getLangOpts())
-        ->getLocation();
-  else {
-    return Res.getLocWithOffset(1);
+  SourceLocation BeginLoc, EndLoc;
+  const auto& SM = Context->getSourceManager();
+  const auto& LO = Context->getLangOpts();
+  SourceLocation Res = getBeforeNameLoc(
+      BeginLoc = Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
+      EndLoc = Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
+  if (SM.isBeforeInTranslationUnit(Res, EndLoc)) {
+    return Lexer::findNextToken(Res, SM, LO)->getEndLoc();
+  } else {
+    return BeginLoc.getLocWithOffset(1);
   }
 }
 } // namespace ub_tester
