@@ -63,11 +63,16 @@ SourceLocation getNameLastLoc(SourceLocation BeginLoc, std::string_view VarName,
   }
 }
 } // namespace
+
+// FIXME comma
+
 SourceLocation getNameLastLoc(const DeclaratorDecl* Decl,
                               const ASTContext* Context) {
   return getNameLastLoc(Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
                         Decl->getNameAsString(), Context);
 }
+
+// FIXME delete whitespace
 
 SourceLocation getAfterNameLoc(const DeclaratorDecl* Decl,
                                const ASTContext* Context) {
