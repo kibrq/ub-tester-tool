@@ -1,10 +1,11 @@
 #pragma once
 
 template <typename T>
-UBSafePointer<T>::UBSafePointer(nullptr_t) : Inited_{true} {}
+UBSafePointer<T>::UBSafePointer(std::nullptr_t) : Inited_{true} {}
 
 template <typename T>
-UBSafePointer<T>::UBSafePointer(T* Data, size_t Size) : Data_{Data}, Size_{Size}, Inited_{true} {}
+UBSafePointer<T>::UBSafePointer(T* Data, size_t Size)
+    : Data_{Data}, Size_{Size}, Inited_{true} {}
 
 template <typename T>
 UBSafePointer<T>& UBSafePointer<T>::operator=(T* Data) {

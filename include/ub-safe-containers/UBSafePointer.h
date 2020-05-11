@@ -8,7 +8,7 @@ template <typename T>
 class UBSafePointer {
 public:
   UBSafePointer() = default;
-  UBSafePointer(nullptr_t);
+  UBSafePointer(std::nullptr_t);
   explicit UBSafePointer(T* Data, size_t Size = 1);
 
   UBSafePointer<T>& operator=(T* Data);
