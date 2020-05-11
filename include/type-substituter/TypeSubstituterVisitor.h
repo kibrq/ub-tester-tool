@@ -33,7 +33,7 @@ public:
   bool VisitTypedefNameDecl(clang::TypedefNameDecl*);
   // bool VisitTypedefDecl(clang::TypedefDecl*);
   // bool VisitTypeAliasDecl(clang::TypeAliasDecl*);
-  bool TraverseDecl(clang::Decl*);
+  // bool TraverseDecl(clang::Decl*);
 
 private:
   bool HelperTraverseArrayType(clang::ArrayType*);

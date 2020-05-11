@@ -204,6 +204,7 @@ void TypeSubstituterVisitor::substituteTypeOfVariable(DeclaratorDecl* DDecl) {
   ASTFrontendInjector::getInstance().substitute(
       Context_, {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
       NewDeclaration.str());
+  Type_.reset();
 }
 
 void TypeSubstituterVisitor::substituteTypeOfReturn(FunctionDecl* FDecl) {
@@ -212,6 +213,7 @@ void TypeSubstituterVisitor::substituteTypeOfReturn(FunctionDecl* FDecl) {
 
   ASTFrontendInjector::getInstance().substitute(
       Context_, FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString());
+  Type_.reset();
 }
 
 void TypeSubstituterVisitor::substituteTypeOfTypedef(TypedefNameDecl* TDecl) {
@@ -221,6 +223,7 @@ void TypeSubstituterVisitor::substituteTypeOfTypedef(TypedefNameDecl* TDecl) {
   ASTFrontendInjector::getInstance().substitute(
       Context_, TDecl->getTypeSourceInfo()->getTypeLoc().getSourceRange(),
       Type_.getTypeAsString());
+  Type_.reset();
 }
 
 bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl* FDecl) {
@@ -271,9 +274,4 @@ bool TypeSubstituterVisitor::VisitTypedefNameDecl(TypedefNameDecl* TDecl) {
   return true;
 }
 
-bool TypeSubstituterVisitor::TraverseDecl(Decl* D) {
-  RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDecl(D);
-  Type_.reset();
-  return true;
-}
 } // namespace ub_tester
