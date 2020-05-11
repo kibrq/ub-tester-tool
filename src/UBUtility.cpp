@@ -1,4 +1,5 @@
 #include "clang/AST/TypeLoc.h"
+#include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
 
 #include "UBUtility.h"
@@ -44,41 +45,50 @@ QualType getLowestLevelPointeeType(QualType QT) {
 
 namespace {
 
-SourceLocation getNameLastLoc(SourceLocation BeginLoc, std::string_view VarName,
-                              const ASTContext* Context) {
-  const auto& SM = Context->getSourceManager();
-  const auto& LO = Context->getLangOpts();
-  while (true) {
+SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc,
+                                std::string_view VarName,
+                                const SourceManager& SM,
+                                const LangOptions& LO) {
+  while (SM.isBeforeInTranslationUnit(BeginLoc, EndLoc)) {
     auto Tok = Lexer::findNextToken(BeginLoc, SM, LO);
     assert(Tok.hasValue());
-    if (Tok->is(tok::raw_identifier)) {
-      if (Tok->getRawIdentifier().str().compare(VarName) == 0) {
-        return Tok->getLastLoc();
-      }
-    }
-    if (Tok->isOneOf(tok::semi, tok::equal, tok::comma, tok::r_paren)) {
+    if (Tok->isAnyIdentifier() &&
+        Tok->getRawIdentifier().str().compare(VarName) == 0) {
       return BeginLoc;
     }
     BeginLoc = Tok->getLocation();
   }
+  return EndLoc;
 }
-} // namespace
 
-// FIXME comma
+} // namespace
 
 SourceLocation getNameLastLoc(const DeclaratorDecl* Decl,
                               const ASTContext* Context) {
-  return getNameLastLoc(Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
-                        Decl->getNameAsString(), Context);
+  const auto& SM = Context->getSourceManager();
+  const auto& LO = Context->getLangOpts();
+  SourceLocation Res =
+      getBeforeNameLoc(Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
+                       Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
+  if (SM.isBeforeInTranslationUnit(Res, Decl->getEndLoc())) {
+    return Lexer::findNextToken(Res, SM, LO)->getLastLoc();
+  } else {
+    return Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc();
+  }
 }
 
 // FIXME delete whitespace
 
 SourceLocation getAfterNameLoc(const DeclaratorDecl* Decl,
                                const ASTContext* Context) {
-  return Lexer::findNextToken(getNameLastLoc(Decl, Context),
-                              Context->getSourceManager(),
-                              Context->getLangOpts())
-      ->getLocation();
+  SourceLocation Res = getNameLastLoc(Decl, Context);
+  if (Context->getSourceManager().isBeforeInTranslationUnit(Res,
+                                                            Decl->getEndLoc()))
+    return Lexer::findNextToken(Res, Context->getSourceManager(),
+                                Context->getLangOpts())
+        ->getLocation();
+  else {
+    return Res.getLocWithOffset(1);
+  }
 }
 } // namespace ub_tester
