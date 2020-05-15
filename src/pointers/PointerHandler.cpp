@@ -167,4 +167,21 @@ bool PointerHandler::VisitUnaryOperator(UnaryOperator* UO) {
   return true;
 }
 
+void PointerHandler::executeSubstitutionOfMemberExpr(MemberExpr* ME) {
+  SourceLocation Loc = ME->getBeginLoc();
+  std::string SourceFormat = "@#@";
+  std::string OutputFormat = ptr::view::getAssertMemberExprAsString("@", "@");
+  ASTFrontendInjector::getInstance().substitute(
+      Context_, Loc, SourceFormat, OutputFormat, ME->getBase(),
+      SourceRange{ME->getMemberLoc(), ME->getEndLoc()});
+}
+
+bool PointerHandler::VisitMemberExpr(MemberExpr* ME) {
+  NOT_IN_MAINFILE(Context_, ME);
+  if (ME->isArrow()) {
+    executeSubstitutionOfMemberExpr(ME);
+  }
+  return true;
+}
+
 } // namespace ub_tester
