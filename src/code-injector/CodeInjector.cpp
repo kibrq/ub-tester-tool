@@ -1,10 +1,12 @@
 #include "code-injector/CodeInjector.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <string_view>
 
 namespace ub_tester::code_injector {
 
@@ -13,8 +15,26 @@ CodeInjector::CodeInjector(const std::string& InputFilename,
     : InputFilename_{InputFilename}, OutputFilename_{OutputFilename} {}
 
 void CodeInjector::applySubstitutions() {
-  std::ifstream IStream(InputFilename_, std::ios::in | std::ios::binary);
-  std::ofstream OStream(OutputFilename_, std::ios::out | std::ios::binary);
+  assert(InputFilename_.has_value() && OutputFilename_.has_value());
+  std::ifstream IStream(*InputFilename_, std::ios::in | std::ios::binary);
+  std::ofstream OStream(*OutputFilename_, std::ios::out | std::ios::binary);
+  applySubstitutions(IStream, OStream);
+}
+
+void CodeInjector::applySubstitutions(std::istream& IStream,
+                                      const std::string& OutputFilename) {
+  std::ofstream OStream(OutputFilename, std::ios::out | std::ios::binary);
+  applySubstitutions(IStream, OStream);
+}
+
+void CodeInjector::applySubstitutions(const std::string& InputFilename,
+                                      std::ostream& OStream) {
+  std::ifstream IStream(InputFilename, std::ios::in | std::ios::binary);
+  applySubstitutions(IStream, OStream);
+}
+
+void CodeInjector::applySubstitutions(std::istream& IStream,
+                                      std::ostream& OStream) {
   std::sort(Substitutions_.begin(), Substitutions_.end());
   while (IStream.peek() != EOF) {
     if (!maybeFrontSubstitution(IStream, OStream))
@@ -68,12 +88,12 @@ void findEntryOf(std::istream& IStream, char Char) {
 
 bool CodeInjector::maybeFrontSubstitution(std::istream& IStream,
                                           std::ostream& OStream) {
-  unsigned Pos = IStream.tellg();
   if (!Substitutions_.empty() &&
       Substitutions_.front().Offset_ == IStream.tellg()) {
     applyFrontSubstitution(IStream, OStream);
     return true;
   }
+  assert(Substitutions_.front().Offset_ > IStream.tellg());
   return false;
 }
 
