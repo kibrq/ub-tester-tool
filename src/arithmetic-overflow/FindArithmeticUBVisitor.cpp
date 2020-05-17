@@ -277,11 +277,13 @@ bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
   llvm::outs() << getExprLineNCol(ImplicitCast, Context) << " "
                << ImplicitCastType.getAsString() << " <- "
                << SubExprType.getAsString() << "\n";
+  llvm::outs() << "on subexpr: " << getExprAsString(ImplicitCast, Context)
+               << "\n";
 
   ASTFrontendInjector::getInstance().substitute(
       Context, ImplicitCast->getBeginLoc(), "#@",
-      "IMPLICIT_CAST(@, " + ImplicitCastTypeAsString + ", " +
-          SubExprTypeAsString + ")",
+      "IMPLICIT_CAST(@, " + SubExprTypeAsString + ", " +
+          ImplicitCastTypeAsString + ")",
       ImplicitCast);
 
   return true;

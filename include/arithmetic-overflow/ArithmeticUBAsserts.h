@@ -21,9 +21,9 @@
                                                  RhsType>(                     \
       (Lhs), (Rhs), #LhsType, #LhsComputationType, __FILE__, __LINE__)
 
-#define IMPLICIT_CAST(SubExpr, ToType, FromType)                               \
-  arithm::asserts::casts::assertIntegralCast<ToType, FromType>(                \
-      (SubExpr), #ToType, #FromType, __FILE__, __LINE__)
+#define IMPLICIT_CAST(SubExpr, FromType, ToType)                               \
+  arithm::asserts::casts::assertIntegralCast<FromType, ToType>(                \
+      (SubExpr), #FromType, #ToType, __FILE__, __LINE__)
 
 #define OVERFLOW_ASSERT_FAILED(Type, DoIfWarning)                              \
   if (!std::numeric_limits<Type>::is_signed) {                                 \
@@ -75,12 +75,12 @@ using type_conv::TyCoCheckRes;
 
 namespace casts {
 
-template <typename ToType, typename FromType>
-ToType assertIntegralCast(FromType SubExpr, const char* ToTypeName,
-                          const char* FromTypeName, const char* FileName,
+template <typename FromType, typename ToType>
+ToType assertIntegralCast(FromType SubExpr, const char* FromTypeName,
+                          const char* ToTypeName, const char* FileName,
                           int Line) {
-  static_assert(std::numeric_limits<ToType>::is_integer);
   static_assert(std::numeric_limits<FromType>::is_integer);
+  static_assert(std::numeric_limits<ToType>::is_integer);
   ToType SubExprInToType = static_cast<ToType>(SubExpr);
 
   switch (
