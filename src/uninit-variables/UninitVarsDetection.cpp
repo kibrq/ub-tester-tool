@@ -24,7 +24,6 @@ namespace ub_tester {
 FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
 FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context(Context) {}
 FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
-ChangeTypesInFuncDeclVisitor::ChangeTypesInFuncDeclVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
 // ? preserve 'static', 'const' (?) and other (?) keywords
@@ -139,33 +138,15 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
   return true;
 }
 
-bool ChangeTypesInFuncDeclVisitor::VisitFunctionDecl(FunctionDecl* FD) {
-  if (!func_code_avail::hasFuncAvailCode(FD))
-    return true;
-
-  for (const ParmVarDecl* PVD : FD->parameters()) {
-    QualType VariableType = PVD->getType().getNonReferenceType();
-    if (VariableType.getTypePtr()->isFundamentalType()) {
-
-      std::string TypeSubstitution = UB_UninitSafeTypeConsts::TEMPLATE_NAME + "<" + VariableType.getAsString() + "> ";
-      ASTFrontendInjector::getInstance().substitute(Context, PVD->getSourceRange(), TypeSubstitution + PVD->getNameAsString());
-    }
-  }
-
-  return true;
-}
-
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context),
-      TypesInFuncDeclVisitor(Context) {}
+    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context) {}
 
 void AssertUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeDefinitionsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeAccessesVisitor.TraverseDecl(Context.getTranslationUnitDecl());
-  TypesInFuncDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
 }
 
 } // namespace ub_tester
