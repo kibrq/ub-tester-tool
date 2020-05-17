@@ -220,4 +220,71 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
   return true;
 }
 
+bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
+    ImplicitCastExpr* ImplicitCast) {
+  if (!Context->getSourceManager().isWrittenInMainFile(
+          ImplicitCast->getBeginLoc()))
+    return true;
+
+  switch (ImplicitCast->getCastKind()) {
+  case CastKind::CK_IntegralCast:
+    break;
+  case CastKind::CK_IntegralToBoolean:
+    break;
+  // case CastKind::CK_BooleanToSignedIntegral:
+  // break; // never meet with kind of cast
+  default:
+    return true; // only integral cast is supported for now
+  }
+  if (ImplicitCast->isPartOfExplicitCast())
+    return true; // explicit cast is considered separately
+
+  QualType ImplicitCastType = ImplicitCast->getType();
+  const Type* ImplicitCastTypePtr = ImplicitCastType.getTypePtr();
+  if (ImplicitCastTypePtr->isDependentType())
+    return true; // templates are not supported yet
+  if (ImplicitCastTypePtr->isFloatingType())
+    return true; // floating point types are not supported yet
+  if (!ImplicitCastTypePtr->isFundamentalType())
+    return true; // only fundamental type conversion is supported
+
+  // check ImplicitCastType assumption
+  assert(!ImplicitCastType.hasQualifiers());
+  // remove any typedefs
+  ImplicitCastType = ImplicitCastType.getCanonicalType();
+
+  Expr* SubExpr = ImplicitCast->getSubExpr();
+  Expr* SubExprAsWritten = ImplicitCast->getSubExprAsWritten();
+  QualType SubExprType =
+      SubExpr->getType().getUnqualifiedType().getCanonicalType();
+  assert(SubExprType != ImplicitCastType);
+
+  // check heuristic assumption about string-representation
+  assert(getExprAsString(ImplicitCast, Context) ==
+         getExprAsString(SubExprAsWritten, Context));
+  // check begin location assumption
+  assert(ImplicitCast->getBeginLoc() == SubExprAsWritten->getBeginLoc());
+
+  // to prevent _Bool instead of bool type
+  std::string ImplicitCastTypeAsString = ImplicitCastTypePtr->isBooleanType()
+                                             ? "bool"
+                                             : ImplicitCastType.getAsString();
+  std::string SubExprTypeAsString = SubExprType.getTypePtr()->isBooleanType()
+                                        ? "bool"
+                                        : SubExprType.getAsString();
+  // other C-type-alias conflicting with C++17 haven't been found yet
+
+  llvm::outs() << getExprLineNCol(ImplicitCast, Context) << " "
+               << ImplicitCastType.getAsString() << " <- "
+               << SubExprType.getAsString() << "\n";
+
+  ASTFrontendInjector::getInstance().substitute(
+      Context, ImplicitCast->getBeginLoc(), "#@",
+      "IMPLICIT_CAST(@, " + ImplicitCastTypeAsString + ", " +
+          SubExprTypeAsString + ")",
+      ImplicitCast);
+
+  return true;
+}
+
 } // namespace ub_tester
