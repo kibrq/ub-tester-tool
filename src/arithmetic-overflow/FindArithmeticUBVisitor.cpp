@@ -274,12 +274,6 @@ bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
                                         : SubExprType.getAsString();
   // other C-type-alias conflicting with C++17 haven't been found yet
 
-  llvm::outs() << getExprLineNCol(ImplicitCast, Context) << " "
-               << ImplicitCastType.getAsString() << " <- "
-               << SubExprType.getAsString() << "\n";
-  llvm::outs() << "on subexpr: " << getExprAsString(ImplicitCast, Context)
-               << "\n";
-
   ASTFrontendInjector::getInstance().substitute(
       Context, ImplicitCast->getBeginLoc(), "#@",
       "IMPLICIT_CAST(@, " + SubExprTypeAsString + ", " +
