@@ -16,7 +16,7 @@ enum class TyCoCheckRes {
                                           // problems for user
 };
 
-namespace type_conv_support {
+namespace support {
 
 template <typename CommonType, typename ToType>
 TyCoCheckRes checkIfExprFitsInTypeLimits(CommonType CommonTypeExpr) {
@@ -51,7 +51,7 @@ TyCoCheckRes checkIfExprFitsInTypeLimits(CommonType CommonTypeExpr) {
   return TyCoCheckRes::SAFE_CONVERSION;
 }
 
-} // namespace type_conv_support
+} // namespace support
 
 template <typename FromType, typename ToType>
 struct Conversions final {
@@ -65,7 +65,7 @@ struct Conversions final {
     if (FromTypeIsSigned && (!ToTypeIsSigned) && Expr < 0)
       return TyCoCheckRes::NEG_VALUE_TO_UNSIGNED_TYPE_CONVERSION;
 
-    using type_conv_support::checkIfExprFitsInTypeLimits;
+    using support::checkIfExprFitsInTypeLimits;
     // compare expr with ToType limits, using the widest signed common type
     if (FromTypeIsSigned && ToTypeIsSigned) {
       // make_signed is needed to prevent unwanted template instantation

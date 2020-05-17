@@ -8,7 +8,7 @@
   static_assert(std::numeric_limits<Type>::is_integer)
 
 namespace ub_tester {
-namespace arithm_check {
+namespace arithm::checkers {
 
 enum class ArithmCheckRes {            // can be used as return from:
   OVERFLOW_MAX,                        // all operators
@@ -189,5 +189,5 @@ ArithmCheckRes checkUnaryNeg(T Expr) {
   return ArithmCheckRes::SAFE_OPERATION;
 }
 
-} // namespace arithm_check
+} // namespace arithm::checkers
 } // namespace ub_tester

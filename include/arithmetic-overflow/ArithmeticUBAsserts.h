@@ -10,16 +10,20 @@
  * exceptions like bitshift operators (can have different integer types).
  * However, return type of binary operator is always Lhs type. */
 #define ASSERT_BINOP(Operation, Lhs, Rhs, LhsType, RhsType)                    \
-  arithm_asserts::assert##Operation<LhsType, RhsType>((Lhs), (Rhs), #LhsType,  \
-                                                      __FILE__, __LINE__)
+  arithm::asserts::assert##Operation<LhsType, RhsType>((Lhs), (Rhs), #LhsType, \
+                                                       __FILE__, __LINE__)
 #define ASSERT_UNOP(Operation, Expr, Type)                                     \
-  arithm_asserts::assert##Operation<Type>((Expr), #Type, __FILE__, __LINE__)
+  arithm::asserts::assert##Operation<Type>((Expr), #Type, __FILE__, __LINE__)
 
 #define ASSERT_COMPASSIGNOP(Operation, Lhs, Rhs, LhsType, LhsComputationType,  \
                             RhsType)                                           \
-  arithm_asserts::assertCompAssignOp##Operation<LhsType, LhsComputationType,   \
-                                                RhsType>(                      \
+  arithm::asserts::assertCompAssignOp##Operation<LhsType, LhsComputationType,  \
+                                                 RhsType>(                     \
       (Lhs), (Rhs), #LhsType, #LhsComputationType, __FILE__, __LINE__)
+
+#define IMPLICIT_CAST(SubExpr, ToType, FromType)                               \
+  arithm::asserts::casts::assertIntegralCast<ToType, FromType>(                \
+      (SubExpr), #ToType, #FromType, __FILE__, __LINE__)
 
 #define OVERFLOW_ASSERT_FAILED(Type, DoIfWarning)                              \
   if (!std::numeric_limits<Type>::is_signed) {                                 \
@@ -29,9 +33,9 @@
 
 // in future failures and warnings will be collected by special class
 #define ASSERT_FAILED(ExitCode)                                                \
-  exit(arithm_asserts_exit_codes::ExitCode) // return 0 // for testing
+  exit(arithm::exit_codes::ExitCode) // return 0 // for testing
 #define PUSH_WARNING(WarningCode, DoIfWarning)                                 \
-  std::cerr << "Warning " << arithm_asserts_exit_codes::WarningCode            \
+  std::cerr << "Warning " << arithm::exit_codes::WarningCode                   \
             << " has been generated.\n";                                       \
   DoIfWarning;
 
@@ -47,10 +51,7 @@
   (void)Arg4;
 
 namespace ub_tester {
-namespace arithm_asserts {
-
-// should be moved to others exit-codes
-namespace arithm_asserts_exit_codes {
+namespace arithm::exit_codes {
 
 inline constexpr int OVERFLOW_EXIT_CODE = -1;
 inline constexpr int DIVISION_BY_ZERO_EXIT_CODE = -2;
@@ -65,10 +66,91 @@ inline constexpr int UNSAFE_CONV_WARNING_CODE = -9;
 inline constexpr int IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE = -10;
 inline constexpr int NOT_CONSIDERED_WARNING_CODE = -11;
 
-} // namespace arithm_asserts_exit_codes
+} // namespace arithm::exit_codes
 
-using arithm_check::ArithmCheckRes;
+namespace arithm::asserts {
+
+using arithm::checkers::ArithmCheckRes;
 using type_conv::TyCoCheckRes;
+
+namespace casts {
+
+template <typename ToType, typename FromType>
+ToType assertIntegralCast(FromType SubExpr, const char* ToTypeName,
+                          const char* FromTypeName, const char* FileName,
+                          int Line) {
+  static_assert(std::numeric_limits<ToType>::is_integer);
+  static_assert(std::numeric_limits<FromType>::is_integer);
+  ToType SubExprInToType = static_cast<ToType>(SubExpr);
+
+  switch (
+      type_conv::Conversions<FromType, ToType>::checkIntegralConv(SubExpr)) {
+  case TyCoCheckRes::NEG_VALUE_TO_UNSIGNED_TYPE_CONVERSION:
+    std::cerr << "unsafe conversion while implicit cast in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "conversion of (" << FromTypeName << " " << +SubExpr << " -> "
+              << ToTypeName << " " << +SubExprInToType << ") from "
+              << FromTypeName << " to " << ToTypeName
+              << ";\n     negative value to unsigned type conversion does not "
+                 "safe the value\n";
+    PUSH_WARNING(UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MAX:
+    std::cerr << "unsafe conversion while implicit cast in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "conversion of (" << FromTypeName << " " << +SubExpr << " -> "
+              << ToTypeName << " " << +SubExprInToType << ") from "
+              << FromTypeName << " to " << ToTypeName
+              << ";\n     res overflows to-type max value: " << +SubExpr
+              << " > " << +std::numeric_limits<ToType>::max()
+              << "; conversion does not safe the value\n";
+    PUSH_WARNING(UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MIN:
+    std::cerr << "unsafe conversion while implicit cast in " << FileName
+              << " Line: " << Line << "\nlog: "
+              << "conversion of (" << FromTypeName << " " << +SubExpr << " -> "
+              << ToTypeName << " " << +SubExprInToType << ") from "
+              << FromTypeName << " to " << ToTypeName
+              << ";\n     res overflows to-type min value: " << +SubExpr
+              << " < " << +std::numeric_limits<ToType>::lowest()
+              << "; conversion does not safe the value\n";
+    PUSH_WARNING(UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MAX_IMPL_DEFINED:
+    std::cerr
+        << "unsafe conversion while implicit cast in " << FileName
+        << " Line: " << Line << "\nlog: "
+        << "conversion of (" << FromTypeName << " " << +SubExpr << " -> "
+        << ToTypeName << " " << +SubExprInToType << ") from " << FromTypeName
+        << " to " << ToTypeName
+        << ";\n     res overflows to-type max value: " << +SubExpr << " > "
+        << +std::numeric_limits<ToType>::max()
+        << "; conversion does not safe the value\n"
+        << "     and is implementation defined because to-type is signed\n";
+    PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::EXPR_OVERFLOWS_TOTYPE_MIN_IMPL_DEFINED:
+    std::cerr
+        << "unsafe conversion while implicit cast in " << FileName
+        << " Line: " << Line << "\nlog: "
+        << "conversion of (" << FromTypeName << " " << +SubExpr << " -> "
+        << ToTypeName << " " << +SubExprInToType << ") from " << FromTypeName
+        << " to " << ToTypeName
+        << ";\n     res overflows to-type min value: " << +SubExpr << " < "
+        << +std::numeric_limits<ToType>::lowest()
+        << "; conversion does not safe the value\n"
+        << "     and is implementation defined because to-type is signed\n";
+    PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE, break);
+  case TyCoCheckRes::BOOL_CONVERSION_IS_NOT_CONSIDERED:
+    std::cerr << "to-bool-conversion while implicit cast in " << FileName
+              << " Line: " << Line
+              << "\nlog: to-bool-conversions are not considered\n";
+    PUSH_WARNING(NOT_CONSIDERED_WARNING_CODE, break);
+
+  case TyCoCheckRes::SAFE_CONVERSION:
+    break;
+  }
+  return SubExpr;
+}
+
+} // namespace casts
 
 template <typename LhsType, typename RhsType>
 LhsType assertSum(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
@@ -77,7 +159,7 @@ LhsType assertSum(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   ARE_SAME_TYPES(LhsType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
-  switch (arithm_check::checkSum<LhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkSum<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " + " << +Rhs << " > "
@@ -104,7 +186,7 @@ LhsType assertDiff(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   ARE_SAME_TYPES(LhsType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
-  switch (arithm_check::checkDiff<LhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkDiff<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " - " << +Rhs << " > "
@@ -131,7 +213,7 @@ LhsType assertMul(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   ARE_SAME_TYPES(LhsType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
-  switch (arithm_check::checkMul<LhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkMul<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " * " << +Rhs << " > "
@@ -159,7 +241,7 @@ LhsType assertDiv(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
   // check for flt-point in future: minLim <= (Lhs / 0-approx Rhs) <= maxLim
-  switch (arithm_check::checkDiv<LhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkDiv<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsTypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: " << +Lhs << " / " << +Rhs << " > "
@@ -191,7 +273,7 @@ LhsType assertMod(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   ARE_SAME_TYPES(LhsType, RhsType);
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
 
-  switch (arithm_check::checkMod<LhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkMod<LhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::MOD_UNDEFINED_DIV_OVERFLOWS_MAX:
     std::cerr << LhsTypeName << " mod (%) is undefined in " << FileName
               << " Line: " << Line
@@ -229,7 +311,7 @@ LhsType assertBitShiftLeft(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
   typedef typename std::make_unsigned<LhsType>::type UnsignedLhsType;
 
-  switch (arithm_check::checkBitShiftLeft<LhsType, RhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkBitShiftLeft<LhsType, RhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::BITSHIFT_NEGATIVE_RHS:
     std::cerr << LhsTypeName << " bitshift left (<<) is undefined in "
               << FileName << " Line: " << Line << "\nlog: negative rhs; "
@@ -294,7 +376,7 @@ LhsType assertBitShiftRight(LhsType Lhs, RhsType Rhs, const char* LhsTypeName,
   HAS_CONV_RANK_GEQ_THAN_INT(LhsType); // integral promotion is expected
   HAS_CONV_RANK_GEQ_THAN_INT(RhsType); // integral promotion is expected
 
-  switch (arithm_check::checkBitShiftRight<LhsType, RhsType>(Lhs, Rhs)) {
+  switch (arithm::checkers::checkBitShiftRight<LhsType, RhsType>(Lhs, Rhs)) {
   case ArithmCheckRes::BITSHIFT_NEGATIVE_RHS:
     std::cerr << LhsTypeName << " bitshift right (>>) is undefined in "
               << FileName << " Line: " << Line << "\nlog: negative rhs; "
@@ -327,7 +409,7 @@ T assertUnaryNeg(T Expr, const char* TypeName, const char* FileName, int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
   HAS_CONV_RANK_GEQ_THAN_INT(T); // integral promotion is expected
 
-  switch (arithm_check::checkUnaryNeg<T>(Expr)) {
+  switch (arithm::checkers::checkUnaryNeg<T>(Expr)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << TypeName << " overflow in " << FileName << " Line: " << Line
               << "\nlog: -(" << +Expr << ") > "
@@ -347,7 +429,7 @@ T assertUnaryNeg(T Expr, const char* TypeName, const char* FileName, int Line) {
   }
 }
 
-namespace arithm_asserts_support {
+namespace support {
 
 template <typename Type, typename CommonType>
 void assertIncrOrDecrOpResTypeConv(Type Expr, CommonType ComputedOperationRes,
@@ -445,7 +527,7 @@ void assertIncrOrDecrOpResTypeConv(Type Expr, CommonType ComputedOperationRes,
   }
 }
 
-} // namespace arithm_asserts_support
+} // namespace support
 
 /* computation of incr/decr operators applied on x <=> computation of x +=/-= 1:
  * 1) x and 1 are converted to common type of T and int
@@ -472,8 +554,8 @@ T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
   if (CommonTypeName == "undefined type")
     CommonTypeName = "std::common_type<" + std::string(TypeName) + ", int>";
 
-  switch (
-      arithm_check::checkSum<CommonType>(ExprInCommonType, RhsInCommonType)) {
+  switch (arithm::checkers::checkSum<CommonType>(ExprInCommonType,
+                                                 RhsInCommonType)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << CommonTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: ++(" << TypeName << " " << +Expr
@@ -492,7 +574,7 @@ T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
     assert(0 && "Unexpected ArithmCheckRes from checkSum");
   }
 
-  arithm_asserts_support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
+  support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
       Expr, ExprInCommonType + 1, "prefix ++", "+", "++expr", "expr += 1",
       TypeName, CommonTypeName.c_str(), FileName, Line);
 
@@ -524,8 +606,8 @@ T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
   if (CommonTypeName == "undefined type")
     CommonTypeName = "std::common_type<" + std::string(TypeName) + ", int>";
 
-  switch (
-      arithm_check::checkSum<CommonType>(ExprInCommonType, RhsInCommonType)) {
+  switch (arithm::checkers::checkSum<CommonType>(ExprInCommonType,
+                                                 RhsInCommonType)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << CommonTypeName << " overflow in " << FileName
               << " Line: " << Line << "\nlog: (" << TypeName << " " << +Expr
@@ -544,7 +626,7 @@ T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
     assert(0 && "Unexpected ArithmCheckRes from checkSum");
   }
 
-  arithm_asserts_support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
+  support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
       Expr, ExprInCommonType + 1, "postfix ++", "+", "expr++", "expr += 1",
       TypeName, CommonTypeName.c_str(), FileName, Line);
 
@@ -576,8 +658,8 @@ T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
   if (CommonTypeName == "undefined type")
     CommonTypeName = "std::common_type<" + std::string(TypeName) + ", int>";
 
-  switch (
-      arithm_check::checkDiff<CommonType>(ExprInCommonType, RhsInCommonType)) {
+  switch (arithm::checkers::checkDiff<CommonType>(ExprInCommonType,
+                                                  RhsInCommonType)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     assert(0 && "Prefix decrement assert detected OVERFLOW_MAX");
 
@@ -596,7 +678,7 @@ T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
     assert(0 && "Unexpected ArithmCheckRes from checkDiff");
   }
 
-  arithm_asserts_support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
+  support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
       Expr, ExprInCommonType - 1, "prefix --", "-", "--expr", "expr -= 1",
       TypeName, CommonTypeName.c_str(), FileName, Line);
 
@@ -628,8 +710,8 @@ T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
   if (CommonTypeName == "undefined type")
     CommonTypeName = "std::common_type<" + std::string(TypeName) + ", int>";
 
-  switch (
-      arithm_check::checkDiff<CommonType>(ExprInCommonType, RhsInCommonType)) {
+  switch (arithm::checkers::checkDiff<CommonType>(ExprInCommonType,
+                                                  RhsInCommonType)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     assert(0 && "Postfix decrement assert detected OVERFLOW_MAX");
 
@@ -648,7 +730,7 @@ T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
     assert(0 && "Unexpected ArithmCheckRes from checkDiff");
   }
 
-  arithm_asserts_support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
+  support::assertIncrOrDecrOpResTypeConv<T, CommonType>(
       Expr, ExprInCommonType - 1, "postfix --", "-", "expr--", "expr -= 1",
       TypeName, CommonTypeName.c_str(), FileName, Line);
 
@@ -661,7 +743,7 @@ bool assertPostfixDecr<bool>(bool& Expr, const char* TypeName,
   assert(0 && "bool postfix decrement is deprecated since C++17");
 }
 
-namespace arithm_asserts_support {
+namespace support {
 
 template <typename LhsType, typename LhsComputationType>
 void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
@@ -757,7 +839,7 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
   }
 }
 
-} // namespace arithm_asserts_support
+} // namespace support
 
 template <typename LhsType, typename LhsComputationType, typename RhsType>
 LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
@@ -770,7 +852,7 @@ LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkSum<LhsComputationType>(
+  switch (arithm::checkers::checkSum<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
@@ -802,8 +884,7 @@ LhsType& assertCompAssignOpSum(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType + Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType + Rhs, "+", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
   return Lhs += Rhs;
@@ -822,7 +903,7 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkDiff<LhsComputationType>(
+  switch (arithm::checkers::checkDiff<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
@@ -854,8 +935,7 @@ LhsType& assertCompAssignOpDiff(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType - Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType - Rhs, "-", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -875,7 +955,7 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkMul<LhsComputationType>(
+  switch (arithm::checkers::checkMul<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
@@ -907,8 +987,7 @@ LhsType& assertCompAssignOpMul(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType * Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType * Rhs, "*", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -928,7 +1007,7 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkDiv<LhsComputationType>(
+  switch (arithm::checkers::checkDiv<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::OVERFLOW_MAX:
     std::cerr << LhsComputationTypeName << " overflow in " << FileName
@@ -966,8 +1045,7 @@ LhsType& assertCompAssignOpDiv(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType / Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType / Rhs, "/", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -987,7 +1065,7 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkMod<LhsComputationType>(
+  switch (arithm::checkers::checkMod<LhsComputationType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::MOD_UNDEFINED_DIV_OVERFLOWS_MAX:
     std::cerr << LhsComputationTypeName << " mod (%=) is undefined in "
@@ -1026,8 +1104,7 @@ LhsType& assertCompAssignOpMod(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType % Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType % Rhs, "%", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -1050,7 +1127,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkBitShiftLeft<LhsComputationType, RhsType>(
+  switch (arithm::checkers::checkBitShiftLeft<LhsComputationType, RhsType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::BITSHIFT_NEGATIVE_RHS:
     std::cerr << LhsComputationTypeName
@@ -1128,8 +1205,7 @@ LhsType& assertCompAssignOpBitShiftLeft(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType << Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType << Rhs, "<<", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -1150,7 +1226,7 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
   LhsComputationType LhsInComputationType =
       static_cast<LhsComputationType>(Lhs);
 
-  switch (arithm_check::checkBitShiftRight<LhsComputationType, RhsType>(
+  switch (arithm::checkers::checkBitShiftRight<LhsComputationType, RhsType>(
       static_cast<LhsComputationType>(Lhs), Rhs)) {
   case ArithmCheckRes::BITSHIFT_NEGATIVE_RHS:
     std::cerr << LhsComputationTypeName
@@ -1187,8 +1263,7 @@ LhsType& assertCompAssignOpBitShiftRight(LhsType& Lhs, RhsType Rhs,
 
   // after (LhsInComputationType >> Rhs) is computed, it is converted to
   // LhsType
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, LhsInComputationType >> Rhs, ">>", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -1207,8 +1282,7 @@ LhsType& assertCompAssignOpLogicAnd(LhsType& Lhs, RhsType Rhs,
       LhsComputationType); // integral promotion is expected
 
   // (&=) cannot overflow or cause UB, so only conversion check is needed
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, static_cast<LhsComputationType>(Lhs) & Rhs, "&", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -1227,8 +1301,7 @@ LhsType& assertCompAssignOpLogicOr(LhsType& Lhs, RhsType Rhs,
       LhsComputationType); // integral promotion is expected
 
   // (|=) cannot overflow or cause UB, so only conversion check is needed
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, static_cast<LhsComputationType>(Lhs) | Rhs, "|", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
@@ -1247,13 +1320,12 @@ LhsType& assertCompAssignOpLogicXor(LhsType& Lhs, RhsType Rhs,
       LhsComputationType); // integral promotion is expected
 
   // (^=) cannot overflow or cause UB, so only conversion check is needed
-  arithm_asserts_support::checkCompAssignOpResTypeConv<LhsType,
-                                                       LhsComputationType>(
+  support::checkCompAssignOpResTypeConv<LhsType, LhsComputationType>(
       Lhs, Rhs, static_cast<LhsComputationType>(Lhs) ^ Rhs, "^", LhsTypeName,
       LhsComputationTypeName, FileName, Line);
 
   return Lhs ^= Rhs;
 }
 
-} // namespace arithm_asserts
+} // namespace arithm::asserts
 } // namespace ub_tester
