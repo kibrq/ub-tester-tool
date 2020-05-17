@@ -14,12 +14,9 @@ clang::QualType getLowestLevelPointeeType(clang::QualType);
 
 std::string getRangeAsString(const clang::SourceRange& Range, const clang::ASTContext* Context);
 
-<<<<<<< HEAD
 clang::SourceLocation getNameLastLoc(const clang::DeclaratorDecl*, const clang::ASTContext*);
 clang::SourceLocation getAfterNameLoc(const clang::DeclaratorDecl*, const clang::ASTContext*);
 
-=======
->>>>>>> 09b5821248fdc00c592f0945bc4663289ccc7e2a
 std::string getFuncNameWithArgsAsString(const clang::FunctionDecl* FuncDecl);
 
 namespace func_code_avail {

@@ -44,18 +44,8 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
       // TODO: maybe shift here by 1?
 
-<<<<<<< HEAD
       ASTFrontendInjector::getInstance().substitute(Context, getAfterNameLoc(VariableDecl, Context), "#@", "{@}",
                                                     InitializationExpr);
-=======
-      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getBeginLoc(), "#@#@",
-                                                    TypeSubstitution + "@{static_cast<" + VariableType.getAsString() + ">(@)}",
-                                                    VariableName, getExprAsString(dyn_cast<Expr>(InitializationExpr), Context));
-    } else {
-      // // note: VarDecl->SourceRange does not include variable name
-
-      ASTFrontendInjector::getInstance().substitute(Context, VariableDecl->getSourceRange(), TypeSubstitution + VariableName);
->>>>>>> 09b5821248fdc00c592f0945bc4663289ccc7e2a
     }
   }
   return true;
@@ -67,7 +57,6 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
     return true;
 
   if (DRE->getDecl()->getType().getTypePtr()->isFundamentalType()) {
-<<<<<<< HEAD
 
     // check value access
     bool FoundCorrespICE = false;
@@ -94,34 +83,6 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
     if (FoundCorrespICE)
       return true;
 
-=======
-
-    // check value access
-    bool FoundCorrespICE = false;
-    DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
-    do {
-      const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
-      if (DREParentNodeList.empty())
-        break;
-
-      DREParentIterNode = DREParentNodeList[0];
-      const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
-
-      if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
-          ICE->getType().getTypePtr()->isFundamentalType()*/
-          && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {
-        FoundCorrespICE = true;
-
-        std::string VarName = DRE->getNameInfo().getName().getAsString();
-
-        ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
-                                                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()", VarName);
-      }
-    } while (!FoundCorrespICE);
-    if (FoundCorrespICE)
-      return true;
-
->>>>>>> 09b5821248fdc00c592f0945bc4663289ccc7e2a
     // then reference access
 
     bool FoundCallingFunction = false;
@@ -170,11 +131,7 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
     // assuming all fundamental types are already Safe_T
     // TODO: replace 'assuming' with assert (?)
 
-<<<<<<< HEAD
     ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
-=======
-    ASTFrontendInjector::getInstance().substitute(Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
->>>>>>> 09b5821248fdc00c592f0945bc4663289ccc7e2a
                                                   "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
                                                   BinOp->getRHS());
   }
