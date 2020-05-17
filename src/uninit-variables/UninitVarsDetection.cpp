@@ -131,7 +131,7 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
     // assuming all fundamental types are already Safe_T
     // TODO: replace 'assuming' with assert (?)
 
-    ASTFrontendInjector::getInstance().substitute(Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
+    ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
                                                   "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
                                                   BinOp->getRHS());
   }
