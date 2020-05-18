@@ -17,6 +17,8 @@ public:
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
 
+  size_t getSize() const;
+
   T& operator[](int index);
   const T& operator[](int index) const;
 
@@ -36,6 +38,7 @@ public:
 
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
+  size_t getSize() const;
 
   UBSafeCArray<T, N>& operator[](int index);
   const UBSafeCArray<T, N>& operator[](int index) const;
@@ -58,6 +61,7 @@ public:
 
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
+  size_t getSize() const;
 
   char& operator[](int index);
   const char& operator[](int index) const;
