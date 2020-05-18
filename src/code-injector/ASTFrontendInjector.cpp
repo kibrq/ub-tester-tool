@@ -1,7 +1,7 @@
-#include "UBUtility.h"
-#include "clang/Basic/SourceManager.h"
-
 #include "code-injector/ASTFrontendInjector.h"
+#include "UBUtility.h"
+
+#include "clang/Basic/SourceManager.h"
 
 #include <experimental/filesystem>
 #include <fstream>
@@ -35,6 +35,8 @@ ASTFrontendInjector& ASTFrontendInjector::getInstance() {
 
 namespace {
 inline constexpr char UBTesterPrefix[] = "UBTested_";
+inline constexpr char TargetKeyword[] = "#include";
+
 std::string generateOutputFilename(std::string Filename) {
   fs::path Path{std::move(Filename)};
   Path.replace_filename(UBTesterPrefix +
@@ -55,7 +57,7 @@ void ASTFrontendInjector::substituteIncludePaths() {
     std::string Word;
     bool isIncludePrev = false;
     while (IStream >> Word) {
-      if (Word.compare("#include") == 0) {
+      if (Word.compare(TargetKeyword) == 0) {
         isIncludePrev = true;
         continue;
       }
@@ -81,8 +83,8 @@ void ASTFrontendInjector::addFile(const std::string& Filename) {
 }
 
 void ASTFrontendInjector::applySubstitutions() {
-  for (auto& Inj : Injectors_) {
-    Inj.second->applySubstitutions();
+  for (auto& [Filename, Inj] : Injectors_) {
+    Inj->applySubstitutions();
   }
 }
 
