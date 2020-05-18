@@ -13,34 +13,30 @@ namespace code_injector {
 
 using SubArgs = std::vector<std::string>;
 
-enum class CharacterKind : char { ARG = '@', ALL = '#', NONE = 0 };
+enum class CharacterKind : char { ARG = '@', ALL = '#', SKIP = '$', NONE = 0 };
 
-inline bool isCharacter(char C, CharacterKind Char) {
-  return C == static_cast<char>(Char);
-}
+inline bool isCharacter(char C, CharacterKind Char) { return C == static_cast<char>(Char); }
 
 inline bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2) {
   return isCharacter(C, Char1) || isCharacter(C, Char2);
 }
 
 template <typename... CharacterKinds>
-bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2,
-             CharacterKinds... Chars) {
+bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2, CharacterKinds... Chars) {
   return isCharacter(C, Char1) || isAnyOf(C, Char2, Chars...);
 }
 
 inline bool isAnyCharacter(char C) {
-  return isAnyOf(C, CharacterKind::ARG, CharacterKind::ALL);
+  return isAnyOf(C, CharacterKind::ARG, CharacterKind::ALL, CharacterKind::SKIP);
 }
 
 class CodeInjector {
 public:
   CodeInjector() = default;
-  CodeInjector(const std::string& InputFilename,
-               const std::string& OutputFilename);
+  CodeInjector(const std::string& InputFilename, const std::string& OutputFilename);
 
-  void substitute(size_t Offset, std::string SourceFormat,
-                  std::string OutputFormat, const SubArgs& Args);
+  void substitute(
+      size_t Offset, std::string SourceFormat, std::string OutputFormat, const SubArgs& Args);
 
   void applySubstitutions();
 
@@ -54,10 +50,11 @@ private:
 
 private:
   struct Substitution {
-    Substitution(size_t Offset, std::string SourceFormat,
-                 std::string OutputFormat, SubArgs Args)
-        : Offset_{Offset}, SourceFormat_{std::move(SourceFormat)},
-          OutputFormat_{std::move(OutputFormat)}, Args_{std::move(Args)} {}
+    Substitution(size_t Offset, std::string SourceFormat, std::string OutputFormat, SubArgs Args)
+        : Offset_{Offset},
+          SourceFormat_{std::move(SourceFormat)},
+          OutputFormat_{std::move(OutputFormat)},
+          Args_{std::move(Args)} {}
 
     bool operator<(const Substitution& Other) const;
     size_t Offset_;
