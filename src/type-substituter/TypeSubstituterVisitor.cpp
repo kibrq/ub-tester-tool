@@ -1,6 +1,6 @@
 #include "type-substituter/TypeSubstituterVisitor.h"
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "type-substituter/SafeTypesView.h"
 
 #include "clang/Basic/SourceManager.h"
@@ -203,9 +203,9 @@ void TypeSubstituterVisitor::substituteTypeOfVariable(DeclaratorDecl* DDecl) {
 
   NewDeclaration << Type_.getTypeAsString() << " " << DDecl->getNameAsString();
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
-      NewDeclaration.str());
+  InjectorASTWrapper::getInstance().substitute(
+      {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
+      NewDeclaration.str(), Context_);
   Type_.reset();
 }
 
@@ -213,8 +213,8 @@ void TypeSubstituterVisitor::substituteTypeOfReturn(FunctionDecl* FDecl) {
   if (!Type_.isInited())
     return;
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString());
+  InjectorASTWrapper::getInstance().substitute(
+      FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString(), Context_);
   Type_.reset();
 }
 
@@ -222,9 +222,9 @@ void TypeSubstituterVisitor::substituteTypeOfTypedef(TypedefNameDecl* TDecl) {
   if (!Type_.isInited())
     return;
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, TDecl->getTypeSourceInfo()->getTypeLoc().getSourceRange(),
-      Type_.getTypeAsString());
+  InjectorASTWrapper::getInstance().substitute(
+      TDecl->getTypeSourceInfo()->getTypeLoc().getSourceRange(),
+      Type_.getTypeAsString(), Context_);
   Type_.reset();
 }
 

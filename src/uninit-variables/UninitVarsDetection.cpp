@@ -1,6 +1,6 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -53,9 +53,12 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
       // TODO: maybe shift here by 1?
 
-      ASTFrontendInjector::getInstance().substitute(
-          Context, getAfterNameLoc(VariableDecl, Context), "#@", "{@}",
-          InitializationExpr);
+      SubstitutionASTWrapper(Context)
+          .setLoc(getAfterNameLoc(VariableDecl, Context))
+          .setPrior(SubstPriorityKind::Deep)
+          .setFormats("#@", "{@}")
+          .setArguments(InitializationExpr)
+          .apply();
     }
   }
   return true;
@@ -92,10 +95,13 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       std::string UnderlyingVarName =
           UnderlyingDRE->getNameInfo().getName().getAsString();
 
-      ASTFrontendInjector::getInstance().substitute(
-          Context, UnderlyingDRE->getBeginLoc(), "#@",
-          "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()",
-          UnderlyingVarName);
+      SubstitutionASTWrapper(Context)
+          .setLoc(UnderlyingDRE->getBeginLoc())
+          .setPrior(SubstPriorityKind::Deep)
+          .setFormats("#@",
+                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()")
+          .setArguments(UnderlyingVarName)
+          .apply();
     }
 
     // ! problems with Parent-related documentation
@@ -144,10 +150,13 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
     //                            LocPairToString(DefinitionExprLocationRange.second)
     //                            + " ]] )";
 
-    ASTFrontendInjector::getInstance().substitute(
-        Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
-        "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)",
-        BinOp->getLHS(), BinOp->getRHS());
+    SubstitutionASTWrapper(Context)
+        .setLoc(BinOp->getLHS()->getEndLoc())
+        .setPrior(SubstPriorityKind::Deep)
+        .setFormats("@#@",
+                    "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
+        .setArguments(BinOp->getLHS(), BinOp->getRHS())
+        .apply();
   }
 
   return true;

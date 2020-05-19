@@ -1,6 +1,6 @@
 #include "arithmetic-overflow/FindArithmeticUBVisitor.h"
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "clang/Basic/SourceManager.h"
 #include <cassert>
 
@@ -67,11 +67,15 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   assert((!LhsType.getTypePtr()->isBooleanType()) &&
          (!RhsType.getTypePtr()->isBooleanType()));
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context, Binop->getBeginLoc(), "@#" + BinopName + "#@",
-      "ASSERT_BINOP(" + OperationName + ", @, @, " + LhsType.getAsString() +
-          ", " + RhsType.getAsString() + ")",
-      Lhs, Rhs);
+  SubstitutionASTWrapper(Context)
+      .setLoc(Binop->getBeginLoc())
+      .setPrior(SubstPriorityKind::Shallow)
+      .setFormats("@#@", "ASSERT_BINOP(" + OperationName + ", @, @, " +
+                             LhsType.getAsString() + ", " +
+                             RhsType.getAsString() + ")")
+      .setArguments(Lhs, Rhs)
+      .apply();
+
   return true;
 }
 
@@ -121,11 +125,15 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   // so _Bool (bool C-type-alias) won't occur
   assert(!UnopType.getTypePtr()->isBooleanType());
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context, Unop->getBeginLoc(),
-      IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
-      "ASSERT_UNOP(" + OperationName + ", @, " + UnopType.getAsString() + ")",
-      SubExpr);
+  SubstitutionASTWrapper(Context)
+      .setLoc(Unop->getBeginLoc())
+      .setPrior(SubstPriorityKind::Shallow)
+      .setFormats(IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
+                  "ASSERT_UNOP(" + OperationName + ", @, " +
+                      UnopType.getAsString() + ")")
+      .setArguments(SubExpr)
+      .apply();
+
   return true;
 }
 
@@ -212,11 +220,15 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
       LhsType.getTypePtr()->isBooleanType() ? "bool" : LhsType.getAsString();
   // other C-type-alias conflicting with C++17 haven't been found yet
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context, CompAssignOp->getBeginLoc(), "@#" + CompAssignOpName + "#@",
-      "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " + LhsTypeName + ", " +
-          LhsComputationType.getAsString() + ", " + RhsType.getAsString() + ")",
-      Lhs, Rhs);
+  SubstitutionASTWrapper(Context)
+      .setLoc(CompAssignOp->getBeginLoc())
+      .setPrior(SubstPriorityKind::Shallow)
+      .setFormats("@#@", "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " +
+                             LhsTypeName + ", " +
+                             LhsComputationType.getAsString() + ", " +
+                             RhsType.getAsString() + ")")
+      .setArguments(Lhs, Rhs)
+      .apply();
   return true;
 }
 
@@ -274,12 +286,13 @@ bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
                                         : SubExprType.getAsString();
   // other C-type-alias conflicting with C++17 haven't been found yet
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context, ImplicitCast->getBeginLoc(), "#@",
-      "IMPLICIT_CAST(@, " + SubExprTypeAsString + ", " +
-          ImplicitCastTypeAsString + ")",
-      ImplicitCast);
-
+  SubstitutionASTWrapper(Context)
+      .setLoc(ImplicitCast->getBeginLoc())
+      .setPrior(SubstPriorityKind::Shallow)
+      .setFormats("#@", "IMPLICIT_CAST(@, " + SubExprTypeAsString + ", " +
+                            ImplicitCastTypeAsString + ")")
+      .setArguments(ImplicitCast)
+      .apply();
   return true;
 }
 

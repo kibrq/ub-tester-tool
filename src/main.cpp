@@ -9,7 +9,7 @@
 
 #include "arithmetic-overflow/ArithmeticUBAsserts.h"
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "index-out-of-bounds/IOBConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
@@ -30,6 +30,7 @@ public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
+    InjectorASTWrapper::getInstance().addFile(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
         std::make_unique<IOBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> UninitVarsConsumer =
@@ -53,15 +54,13 @@ public:
 int main(int argc, const char** argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
 
-  ub_tester::ASTFrontendInjector::initialize(OptionsParser.getSourcePathList());
-  ub_tester::ASTFrontendInjector::getInstance().substituteIncludePaths();
-
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
 
   int ReturnCode =
       Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
+  ub_tester::InjectorASTWrapper::getInstance().substituteIncludePaths();
   if (!ReturnCode) {
-    ub_tester::ASTFrontendInjector::getInstance().applySubstitutions();
+    ub_tester::InjectorASTWrapper::getInstance().applySubstitutions();
   }
 }
