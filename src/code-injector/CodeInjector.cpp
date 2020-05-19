@@ -11,7 +11,8 @@
 
 namespace ub_tester::code_injector {
 
-CodeInjector::CodeInjector(const std::string& InputFilename, const std::string& OutputFilename)
+CodeInjector::CodeInjector(const std::string& InputFilename,
+                           const std::string& OutputFilename)
     : InputFilename_{InputFilename}, OutputFilename_{OutputFilename} {}
 
 void CodeInjector::applySubstitutions() {
@@ -21,17 +22,20 @@ void CodeInjector::applySubstitutions() {
   applySubstitutions(IStream, OStream);
 }
 
-void CodeInjector::applySubstitutions(std::istream& IStream, const std::string& OutputFilename) {
+void CodeInjector::applySubstitutions(std::istream& IStream,
+                                      const std::string& OutputFilename) {
   std::ofstream OStream(OutputFilename, std::ios::out | std::ios::binary);
   applySubstitutions(IStream, OStream);
 }
 
-void CodeInjector::applySubstitutions(const std::string& InputFilename, std::ostream& OStream) {
+void CodeInjector::applySubstitutions(const std::string& InputFilename,
+                                      std::ostream& OStream) {
   std::ifstream IStream(InputFilename, std::ios::in | std::ios::binary);
   applySubstitutions(IStream, OStream);
 }
 
-void CodeInjector::applySubstitutions(std::istream& IStream, std::ostream& OStream) {
+void CodeInjector::applySubstitutions(std::istream& IStream,
+                                      std::ostream& OStream) {
   std::sort(Substitutions_.begin(), Substitutions_.end());
   while (IStream.peek() != EOF) {
     if (!maybeFrontSubstitution(IStream, OStream))
@@ -53,14 +57,16 @@ bool CodeInjector::Substitution::operator<(const Substitution& Other) const {
   return Offset_ < Other.Offset_;
 }
 
-void CodeInjector::substitute(
-    size_t Offset, std::string SourceFormat, std::string OutputFormat, const SubArgs& Args) {
-  Substitutions_.emplace_back(Offset, std::move(SourceFormat), std::move(OutputFormat), Args);
+void CodeInjector::substitute(size_t Offset, std::string SourceFormat,
+                              std::string OutputFormat, const SubArgs& Args) {
+  Substitutions_.emplace_back(Offset, std::move(SourceFormat),
+                              std::move(OutputFormat), Args);
 }
 
 namespace {
-void findFirstEnrtyOf(std::istream& IStream, std::string_view Needle) {
-  std::vector<unsigned> NeedleOffsets(std::numeric_limits<unsigned char>::max());
+void findFirstEntryOf(std::istream& IStream, std::string_view Needle) {
+  std::vector<unsigned> NeedleOffsets(
+      std::numeric_limits<unsigned char>::max());
   for (auto& Off : NeedleOffsets) {
     Off = Needle.length();
   }
@@ -94,28 +100,52 @@ void findFirstEntryOf(std::istream& IStream, char Char) {
     ;
   return;
 }
+void findNextCharacter(std::istream& IStream, char Char,
+                       const std::string& NextArg) {
+  if (isCharacter(Char, CharacterKind::ARG)) {
+    findFirstEntryOf(IStream, NextArg);
+  } else if (!isAnyCharacter(Char)) {
+    findFirstEntryOf(IStream, Char);
+  }
+}
+
 } // namespace
 
-bool CodeInjector::maybeFrontSubstitution(std::istream& IStream, std::ostream& OStream) {
-  if (!Substitutions_.empty() && Substitutions_.front().Offset_ == IStream.tellg()) {
+bool CodeInjector::maybeFrontSubstitution(std::istream& IStream,
+                                          std::ostream& OStream) {
+  if (!Substitutions_.empty() &&
+      Substitutions_.front().Offset_ == IStream.tellg()) {
     applyFrontSubstitution(IStream, OStream);
     return true;
   }
-  assert(Substitutions_.empty() || Substitutions_.front().Offset_ > IStream.tellg());
+  assert(Substitutions_.empty() ||
+         Substitutions_.front().Offset_ > IStream.tellg());
   return false;
 }
 
-void CodeInjector::applyFrontSubstitution(std::istream& IStream, std::ostream& OStream) {
+void CodeInjector::applyFrontSubstitution(std::istream& IStream,
+                                          std::ostream& OStream) {
   Substitution Sub = std::move(Substitutions_.front());
   Substitutions_.pop_front();
   std::string_view OutputFormat = Sub.OutputFormat_;
   unsigned CurArg = 0;
+  bool isPrevSkip = false;
+  int PrevPos = 0;
   for (const auto& Char : Sub.SourceFormat_) {
+    findNextCharacter(IStream, Char, Sub.Args_[CurArg]);
+    if (isPrevSkip) {
+      isPrevSkip = false;
+      int EndPos = IStream.tellg();
+      IStream.seekg(PrevPos - EndPos, std::ios_base::cur);
+      for (; PrevPos < EndPos; ++PrevPos) {
+        OStream << static_cast<char>(IStream.get());
+      }
+    }
     switch (Char) {
     case static_cast<char>(CharacterKind::ARG): {
-      findFirstEnrtyOf(IStream, Sub.Args_[CurArg]);
       unsigned Pos = OutputFormat.find_first_of(Char);
-      std::copy_n(OutputFormat.begin(), Pos, std::ostream_iterator<char>(OStream));
+      std::copy_n(OutputFormat.begin(), Pos,
+                  std::ostream_iterator<char>(OStream));
       unsigned StartPos = IStream.tellg();
       while (IStream.tellg() < StartPos + Sub.Args_[CurArg].length())
         if (!maybeFrontSubstitution(IStream, OStream)) {
@@ -124,15 +154,18 @@ void CodeInjector::applyFrontSubstitution(std::istream& IStream, std::ostream& O
       OutputFormat.remove_prefix(Pos + 1), ++CurArg;
       break;
     }
-    case static_cast<char>(CharacterKind::ALL): {
+    case static_cast<char>(CharacterKind::SKIP): {
+      isPrevSkip = true;
+      PrevPos = IStream.tellg();
       break;
     }
-    default: {
-      findFirstEntryOf(IStream, Char);
+    case static_cast<char>(CharacterKind::ALL): {
+    default:
       break;
     }
     }
   }
-  std::copy(OutputFormat.begin(), OutputFormat.end(), std::ostream_iterator<char>(OStream));
+  std::copy(OutputFormat.begin(), OutputFormat.end(),
+            std::ostream_iterator<char>(OStream));
 }
 } // namespace ub_tester::code_injector

@@ -58,6 +58,6 @@ else()
       clangBasic
       )
 
-    target_link_libraries(${UB_EXE} pthread z dl)
+    target_link_libraries(${UB_EXE} stdc++fs pthread z dl)
    
 endif()

@@ -1,50 +1,89 @@
+#include "code-injector/ASTFrontendInjector.h"
 #include "UBUtility.h"
+
 #include "clang/Basic/SourceManager.h"
 
-#include "code-injector/ASTFrontendInjector.h"
+#include <experimental/filesystem>
+#include <fstream>
+#include <string_view>
+#include <unordered_set>
 
 using namespace clang;
 using namespace ub_tester::code_injector;
+namespace fs = std::experimental::filesystem;
 
 namespace ub_tester {
 
+std::unique_ptr<ASTFrontendInjector> ASTFrontendInjector::Instance_{nullptr};
+
+void ASTFrontendInjector::initialize(
+    const std::vector<std::string>& SourcePathList) {
+  static bool Inited = false;
+  assert(!Inited);
+  Inited = true;
+  for (const auto& SourcePath : SourcePathList) {
+    getInstance().addFile(fs::absolute(SourcePath));
+  }
+}
+
 ASTFrontendInjector& ASTFrontendInjector::getInstance() {
-  static ASTFrontendInjector Injector;
-  return Injector;
+  if (!Instance_) {
+    Instance_.reset(new ASTFrontendInjector());
+  }
+  return *Instance_;
 }
 
 namespace {
+inline constexpr char UBTesterPrefix[] = "UBTested_";
+inline constexpr char TargetKeyword[] = "#include";
+
 std::string generateOutputFilename(std::string Filename) {
-  for (size_t i = Filename.length(); i > 0; i--) {
-    if (Filename[i - 1] == '/') {
-      Filename.insert(i, "IMPROVED_");
-      break;
-    }
-  }
-  return Filename;
-}
-
-size_t getLine(const SourceManager& SM, const SourceLocation& Loc) {
-  return SM.getSpellingLineNumber(Loc);
-}
-
-size_t getCol(const SourceManager& SM, const SourceLocation& Loc) {
-  return SM.getSpellingColumnNumber(Loc);
+  fs::path Path{std::move(Filename)};
+  Path.replace_filename(UBTesterPrefix +
+                        static_cast<std::string>(Path.filename()));
+  return static_cast<std::string>(Path);
 }
 } // namespace
 
-void ASTFrontendInjector::addFile(const std::string& Filename) {
-  Injectors.emplace_back(std::make_unique<CodeInjector>(
-      Filename, generateOutputFilename(Filename)));
+void ASTFrontendInjector::substituteIncludePaths() {
+  std::unordered_set<std::string> AvailFilenames;
+  auto& Files = getInstance().Injectors_;
+  for (const auto& [Filename, Inj] : Files) {
+    AvailFilenames.insert(
+        static_cast<std::string>(fs::path{Filename}.filename()));
+  }
+  for (const auto& [Filename, Inj] : Files) {
+    std::ifstream IStream(Filename, std::ios::in);
+    std::string Word;
+    bool isIncludePrev = false;
+    while (IStream >> Word) {
+      if (Word.compare(TargetKeyword) == 0) {
+        isIncludePrev = true;
+        continue;
+      }
+      if (!isIncludePrev) {
+        continue;
+      }
+      // Don't really know why Word.length() - 2...
+      if (std::string IncludeFilename = static_cast<std::string>(
+              fs::path(Word.substr(1, Word.length() - 2)).filename());
+          AvailFilenames.find(IncludeFilename) != AvailFilenames.end()) {
+        unsigned Pos = IStream.tellg();
+        Inj->substitute(Pos - Word.length(), "$@",
+                        UBTesterPrefix + std::string{"@"}, {IncludeFilename});
+      }
+      isIncludePrev = false;
+    }
+  }
 }
 
-void ASTFrontendInjector::addFile(const ASTContext* Context) {
-  const SourceManager& SM = Context->getSourceManager();
-  addFile(SM.getFileEntryForID(SM.getMainFileID())->getName().str());
+void ASTFrontendInjector::addFile(const std::string& Filename) {
+  Injectors_.emplace(Filename, std::make_unique<CodeInjector>(
+                                   Filename, generateOutputFilename(Filename)));
 }
 
 void ASTFrontendInjector::applySubstitutions() {
-  for (auto& Inj : Injectors) {
+  for (auto& [Filename, Inj] : Injectors_) {
     Inj->applySubstitutions();
   }
 }
@@ -55,8 +94,9 @@ void ASTFrontendInjector::substitute(const ASTContext* Context,
                                      std::string OutputFormat,
                                      const SubArgs& Args) {
   const SourceManager& SM = Context->getSourceManager();
-  Injectors.back()->substitute(SM.getFileOffset(Loc), std::move(SourceFormat),
-                               std::move(OutputFormat), Args);
+  Injectors_[SM.getFilename(Loc).str()]->substitute(
+      SM.getFileOffset(Loc), std::move(SourceFormat), std::move(OutputFormat),
+      Args);
 }
 
 void ASTFrontendInjector::substitute(const clang::ASTContext* Context,

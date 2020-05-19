@@ -14,6 +14,8 @@
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 
+#include <experimental/filesystem>
+
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
@@ -27,7 +29,6 @@ class UBTesterAction : public ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
-    ASTFrontendInjector::getInstance().addFile(&Compiler.getASTContext());
 
     std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
         std::make_unique<IOBConsumer>(&Compiler.getASTContext());
@@ -51,8 +52,13 @@ public:
 
 int main(int argc, const char** argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
+
+  ub_tester::ASTFrontendInjector::initialize(OptionsParser.getSourcePathList());
+  ub_tester::ASTFrontendInjector::getInstance().substituteIncludePaths();
+
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
+
   int ReturnCode =
       Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
   if (!ReturnCode) {

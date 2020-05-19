@@ -5,6 +5,7 @@
 #include "code-injector/CodeInjector.h"
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace ub_tester {
@@ -12,17 +13,14 @@ namespace ub_tester {
 class ASTFrontendInjector {
 public:
   static ASTFrontendInjector& getInstance();
+  static void initialize(const std::vector<std::string>& SourcePathList);
 
   ASTFrontendInjector(const ASTFrontendInjector& other) = delete;
   ASTFrontendInjector(ASTFrontendInjector&& other) = delete;
   ASTFrontendInjector& operator=(const ASTFrontendInjector& other) = delete;
   ASTFrontendInjector& operator=(ASTFrontendInjector&& other) = delete;
 
-  void addFile(const clang::ASTContext* Context);
-  void addFile(const std::string& Filename);
-
-  // Formats must have equal count of %.
-  // substitute(Context, Loc, "%+%", "AssertSum(%, %)", "a", Expr);
+  void substituteIncludePaths();
 
   void applySubstitutions();
 
@@ -41,10 +39,15 @@ public:
                   Args... as);
 
 private:
-  explicit ASTFrontendInjector() = default;
+  void addFile(const std::string& Filename);
 
 private:
-  std::vector<std::unique_ptr<code_injector::CodeInjector>> Injectors;
+  explicit ASTFrontendInjector() = default;
+  static std::unique_ptr<ASTFrontendInjector> Instance_;
+
+private:
+  std::unordered_map<std::string, std::unique_ptr<code_injector::CodeInjector>>
+      Injectors_;
 };
 
 }; // namespace ub_tester
