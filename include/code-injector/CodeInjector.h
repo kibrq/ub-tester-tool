@@ -7,13 +7,11 @@
 #include <string>
 #include <vector>
 
-namespace ub_tester {
+namespace ub_tester::code_injector {
 
-namespace code_injector {
+using SubstArgs = std::vector<std::string>;
 
-using SubArgs = std::vector<std::string>;
-
-enum class CharacterKind : char { ARG = '@', ALL = '#', SKIP = '$', NONE = 0 };
+enum class CharacterKind : char { Arg = '@', All = '#', Skip = '$' };
 
 inline bool isCharacter(char C, CharacterKind Char) { return C == static_cast<char>(Char); }
 
@@ -27,16 +25,43 @@ bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2, CharacterKinds...
 }
 
 inline bool isAnyCharacter(char C) {
-  return isAnyOf(C, CharacterKind::ARG, CharacterKind::ALL, CharacterKind::SKIP);
+  return isAnyOf(C, CharacterKind::Arg, CharacterKind::All, CharacterKind::Skip);
 }
+
+enum class SubstPriorityKind : unsigned { Shallow /*High?*/ = 0, Medium = 1, Deep = 2 };
+
+class CodeInjector;
+struct Substitution {
+  Substitution(
+      size_t Offset, SubstPriorityKind Prior, std::string SourceFormat, std::string OutputFormat,
+      SubstArgs Args)
+      : Offset_{Offset},
+        Prior_{Prior},
+        SourceFormat_{std::move(SourceFormat)},
+        OutputFormat_{std::move(OutputFormat)},
+        Args_{std::move(Args)} {}
+
+  bool operator<(const Substitution& Other) const;
+
+private:
+  friend class CodeInjector;
+
+private:
+  size_t Offset_;
+  SubstPriorityKind Prior_;
+  std::string SourceFormat_, OutputFormat_;
+  SubstArgs Args_;
+};
 
 class CodeInjector {
 public:
   CodeInjector() = default;
   CodeInjector(const std::string& InputFilename, const std::string& OutputFilename);
 
+  void substitute(Substitution Subst);
   void substitute(
-      size_t Offset, std::string SourceFormat, std::string OutputFormat, const SubArgs& Args);
+      size_t Offset, SubstPriorityKind Prior, std::string SourceFormat, std::string OutputFormat,
+      const SubstArgs& Args);
 
   void applySubstitutions();
 
@@ -49,23 +74,7 @@ private:
   void applyFrontSubstitution(std::istream&, std::ostream&);
 
 private:
-  struct Substitution {
-    Substitution(size_t Offset, std::string SourceFormat, std::string OutputFormat, SubArgs Args)
-        : Offset_{Offset},
-          SourceFormat_{std::move(SourceFormat)},
-          OutputFormat_{std::move(OutputFormat)},
-          Args_{std::move(Args)} {}
-
-    bool operator<(const Substitution& Other) const;
-    size_t Offset_;
-    std::string SourceFormat_;
-    std::string OutputFormat_;
-    SubArgs Args_;
-  };
-
-private:
   std::optional<std::string> InputFilename_, OutputFilename_;
   std::deque<Substitution> Substitutions_;
 };
-} // namespace code_injector
-} // namespace ub_tester
+} // namespace ub_tester::code_injector
