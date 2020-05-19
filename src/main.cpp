@@ -40,12 +40,20 @@ public:
     consumers.emplace_back(std::move(UtilConsumer));
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
-    // consumers.emplace_back(std::move(ArithmeticUBConsumer));
+    consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }
 };
+
+class UBTesterUtilityAction : public ASTFrontendAction {
+public:
+  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+    return std::make_unique<UtilityConsumer>(&Compiler.getASTContext());
+  }
+};
+
 } // namespace ub_tester
 
 int main(int argc, const char** argv) {
@@ -55,6 +63,12 @@ int main(int argc, const char** argv) {
   ub_tester::ASTFrontendInjector::getInstance().substituteIncludePaths();
 
   ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+
+  int UtilityReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
+  if (UtilityReturnCode) {
+    std::cerr << "File(s) preprocessing failed\n";
+    exit(1);
+  }
 
   int ReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
   if (!ReturnCode) {

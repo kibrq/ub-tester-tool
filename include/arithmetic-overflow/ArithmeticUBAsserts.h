@@ -536,7 +536,7 @@ void assertIncrOrDecrOpResTypeConv(Type Expr, CommonType ComputedOperationRes,
  * (of course, postfix operators return copy of x, but point 3) still occurs */
 
 template <typename T>
-T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
+inline T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
   typedef typename std::common_type<T, int>::type CommonType;
@@ -581,14 +581,14 @@ T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
   return ++Expr;
 }
 template <>
-bool& assertPrefixIncr<bool>(bool& Expr, const char* TypeName,
+inline bool& assertPrefixIncr<bool>(bool& Expr, const char* TypeName,
                              const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool prefix increment is deprecated since C++17");
 }
 
 template <typename T>
-T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
+inline T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
   typedef typename std::common_type<T, int>::type CommonType;
@@ -633,14 +633,14 @@ T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
   return Expr++;
 }
 template <>
-bool assertPostfixIncr<bool>(bool& Expr, const char* TypeName,
+inline bool assertPostfixIncr<bool>(bool& Expr, const char* TypeName,
                              const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix increment is deprecated since C++17");
 }
 
 template <typename T>
-T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
+inline T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
   typedef typename std::common_type<T, int>::type CommonType;
@@ -685,14 +685,14 @@ T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
   return --Expr;
 }
 template <>
-bool& assertPrefixDecr<bool>(bool& Expr, const char* TypeName,
+inline bool& assertPrefixDecr<bool>(bool& Expr, const char* TypeName,
                              const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool prefix decrement is deprecated since C++17");
 }
 
 template <typename T>
-T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
+inline T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
                     int Line) {
   FLT_POINT_NOT_SUPPORTED(T);
   typedef typename std::common_type<T, int>::type CommonType;
@@ -737,7 +737,7 @@ T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
   return Expr--;
 }
 template <>
-bool assertPostfixDecr<bool>(bool& Expr, const char* TypeName,
+inline bool assertPostfixDecr<bool>(bool& Expr, const char* TypeName,
                              const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix decrement is deprecated since C++17");
