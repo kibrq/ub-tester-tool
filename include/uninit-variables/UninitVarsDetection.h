@@ -5,12 +5,6 @@
 
 namespace ub_tester {
 
-namespace UB_UninitSafeTypeConsts {
-const std::string TEMPLATE_NAME = "UB_UninitSafeType";
-const std::string GETMETHOD_NAME = "getValue";
-const std::string INITMETHOD_NAME = "tryInitValue";
-} // namespace UB_UninitSafeTypeConsts
-
 class FindFundTypeVarDeclVisitor : public clang::RecursiveASTVisitor<FindFundTypeVarDeclVisitor> {
 public:
   explicit FindFundTypeVarDeclVisitor(clang::ASTContext* Context);
@@ -27,7 +21,7 @@ public:
   explicit FindSafeTypeAccessesVisitor(clang::ASTContext* Context);
 
   // detect variable usage
-  bool VisitImplicitCastExpr(clang::ImplicitCastExpr* ice);
+  bool VisitDeclRefExpr(clang::DeclRefExpr* DRE);
 
 private:
   clang::ASTContext* Context;
@@ -37,7 +31,7 @@ class FindSafeTypeDefinitionsVisitor : public clang::RecursiveASTVisitor<FindSaf
 public:
   explicit FindSafeTypeDefinitionsVisitor(clang::ASTContext* Context);
 
-  // detect variable usage
+  // detect variable assignment
   bool VisitBinaryOperator(clang::BinaryOperator* BinOp);
 
 private:

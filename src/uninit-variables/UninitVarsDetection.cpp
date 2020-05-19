@@ -1,23 +1,19 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
 #include "code-injector/ASTFrontendInjector.h"
+#include "uninit-variables/UB_UninitSafeType.h"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
-#include "llvm/Support/CommandLine.h"
-
-// #include "clang/AST/ParentMap.h"
 #include "clang/AST/ParentMapContext.h"
 
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
 
+#include <UBUtility.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -25,88 +21,70 @@ namespace ub_tester {
 
 // all constructors
 
-FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context)
-    : Context(Context) {}
-FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context)
-    : Context(Context) {}
-FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(
-    ASTContext* Context)
-    : Context(Context) {}
+FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
+FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context(Context) {}
+FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
-// TODO: preserve 'static', 'const' (?) and other (?) keywords
 bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   if (!Context->getSourceManager().isInMainFile(VariableDecl->getBeginLoc()))
     return true;
 
   clang::QualType VariableType = VariableDecl->getType().getUnqualifiedType();
-  if (VariableType.getTypePtr()->isFundamentalType() &&
-      !(VariableDecl->isLocalVarDeclOrParm() &&
-        !VariableDecl->isLocalVarDecl())) {
+  if (VariableType.getNonReferenceType().getTypePtr()->isFundamentalType() &&
+      !(VariableDecl->isLocalVarDeclOrParm() && !VariableDecl->isLocalVarDecl())) {
 
     if (VariableDecl->hasInit()) {
 
-      Expr* InitializationExpr =
-          dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
+      Expr* InitializationExpr = dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
       assert(InitializationExpr);
 
-      // std::cout << getExprAsString(InitializationExpr, Context) << std::endl;
-      // TODO: maybe shift here by 1?
-
-      ASTFrontendInjector::getInstance().substitute(
-          Context, getAfterNameLoc(VariableDecl, Context), "#@", "{@}",
-          InitializationExpr);
+      ASTFrontendInjector::getInstance().substitute(Context, getAfterNameLoc(VariableDecl, Context), "#@", "(@)",
+                                                    InitializationExpr);
     }
   }
   return true;
 }
 
-// TODO: move to corresponding class
-// bool IsFunctionUndetectable(CallExpr* FuncCallExpr) {
-//   FunctionDecl* FuncDecl = FuncCallExpr->getDirectCallee();
-//   if (FuncDecl == nullptr || !FuncDecl->isDefined()) {
-//     std::cout << "got undetectable function" << std::endl;
-//     return true;
-//   }
-//   return false;
-// }
-
 // detect variable usage; substutute with get OR getIgnore
-bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
-  if (!Context->getSourceManager().isInMainFile(ICE->getBeginLoc()))
+bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
+  if (!Context->getSourceManager().isInMainFile(DRE->getBeginLoc()))
     return true;
 
-  if (ICE->getCastKind() == CastKind::CK_LValueToRValue &&
-      ICE->getType().getTypePtr()->isFundamentalType()) {
-    // assuming all fundamental types are already Safe_T
+  if (DRE->getDecl()->getType().getNonReferenceType()->isFundamentalType()) {
 
-    const DeclRefExpr* UnderlyingDRE = dyn_cast<DeclRefExpr>(ICE->getSubExpr());
-    if (UnderlyingDRE != nullptr) {
-      // LocationRange UnderlyingDRERange =
-      // GetLocationRange(UnderlyingDRE->getSourceRange(),
-      // Context->getSourceManager());
+    std::string VarName = DRE->getNameInfo().getName().getAsString();
 
-      // TODO: ensure unimportance of following line
-      // UnderlyingDRERange.second.second += 1;
+    // check if value access
+    bool FoundCorrespICE = false;
+    DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
+    do {
+      const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
+      if (DREParentNodeList.empty())
+        break;
 
-      std::string UnderlyingVarName =
-          UnderlyingDRE->getNameInfo().getName().getAsString();
+      DREParentIterNode = DREParentNodeList[0];
+      const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
 
-      ASTFrontendInjector::getInstance().substitute(
-          Context, UnderlyingDRE->getBeginLoc(), "#@",
-          "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()",
-          UnderlyingVarName);
-    }
+      if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
+          ICE->getType().getTypePtr()->isFundamentalType()*/
+          && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {
+        FoundCorrespICE = true;
 
-    // ! problems with Parent-related documentation
-    // ? check if a node is an argument in function call ?
-    // ? then in 'bad' function call ?
+        ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
+                                                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()", VarName);
+      }
+    } while (!FoundCorrespICE);
+    if (FoundCorrespICE)
+      return true;
+
+    // then reference access
 
     bool FoundCallingFunction = false;
-    DynTypedNode ParentIterNode = DynTypedNode::create<>(*ICE);
+    bool FoundCodeAvailCallingFunction = false;
+    DynTypedNode ParentIterNode = DynTypedNode::create<>(*DRE);
     do {
-      const DynTypedNodeList ParentNodeList =
-          ParentMapContext(*Context).getParents(ParentIterNode);
+      const DynTypedNodeList ParentNodeList = ParentMapContext(*Context).getParents(ParentIterNode);
       if (ParentNodeList.empty())
         break;
 
@@ -114,40 +92,50 @@ bool FindSafeTypeAccessesVisitor::VisitImplicitCastExpr(ImplicitCastExpr* ICE) {
       const CallExpr* CallingFunction = ParentIterNode.get<CallExpr>();
 
       if (CallingFunction) {
-        // THIS FINALLY WORKS
         FoundCallingFunction = true;
+
+        if (func_code_avail::hasFuncAvailCode(CallingFunction->getDirectCallee())) {
+          // return entire object - goes by reference
+          // equals 'do nothing with code'
+          FoundCodeAvailCallingFunction = true;
+        }
       }
 
     } while (!FoundCallingFunction);
-  }
+    if (FoundCodeAvailCallingFunction || !FoundCallingFunction) {
+      // 'good' function
+      // do nothing!
+      return true;
+    } else {
+      // set ignore for 'bad' functions
+      ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
+                                                    "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()", VarName);
+      // TODO: send warning
+    }
+
+    if (!FoundCallingFunction) {
+      // as for ref v1, giving out all references is ignored
+      // ? for ref v2: maybe do nothing, since such reference can only be used to init another?
+      ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
+                                                    "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()", VarName);
+    }
+  } // else not even fundamental type
 
   return true;
 }
 
 // detect Safe_T assignments; substitute with .init() function
-bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
-    BinaryOperator* BinOp) {
+bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
   if (!Context->getSourceManager().isInMainFile(BinOp->getBeginLoc()))
     return true;
 
-  if (BinOp->isAssignmentOp() &&
-      BinOp->getLHS()->getType().getTypePtr()->isFundamentalType()) {
+  if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType()) {
     // assuming all fundamental types are already Safe_T
     // TODO: replace 'assuming' with assert (?)
 
-    // LocationRange DefinitionExprLocationRange =
-    // GetLocationRange(BinOp->getRHS()->getSourceRange(),
-    // Context->getSourceManager()); std::string substitution = '.' +
-    // UB_UninitSafeTypeConsts::INITMETHOD_NAME + "( [[ file contents from " +
-    //                            LocPairToString(DefinitionExprLocationRange.first)
-    //                            + " to " +
-    //                            LocPairToString(DefinitionExprLocationRange.second)
-    //                            + " ]] )";
-
-    ASTFrontendInjector::getInstance().substitute(
-        Context, BinOp->getLHS()->getEndLoc(), "@#=#@",
-        "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)",
-        BinOp->getLHS(), BinOp->getRHS());
+    ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
+                                                  "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
+                                                  BinOp->getRHS());
   }
 
   return true;
@@ -156,11 +144,9 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context),
-      SafeTypeDefinitionsVisitor(Context) {}
+    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context) {}
 
-void AssertUninitVarsConsumer::HandleTranslationUnit(
-    clang::ASTContext& Context) {
+void AssertUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeDefinitionsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeAccessesVisitor.TraverseDecl(Context.getTranslationUnitDecl());
