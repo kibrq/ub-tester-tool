@@ -41,6 +41,16 @@ void CodeInjector::applySubstitutions(std::istream& IStream,
   }
 }
 
+const std::string& CodeInjector::getInputFilename() const {
+  assert(InputFilename_);
+  return *InputFilename_;
+}
+
+const std::string& CodeInjector::getOutputFilename() const {
+  assert(OutputFilename_);
+  return *OutputFilename_;
+}
+
 bool Substitution::operator<(const Substitution& Other) const {
   if (Offset_ != Other.Offset_) {
     return Offset_ < Other.Offset_;

@@ -203,6 +203,8 @@ void TypeSubstituterVisitor::substituteTypeOfVariable(DeclaratorDecl* DDecl) {
 
   NewDeclaration << Type_.getTypeAsString() << " " << DDecl->getNameAsString();
 
+  const auto& SM = Context_->getSourceManager();
+
   InjectorASTWrapper::getInstance().substitute(
       {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
       NewDeclaration.str(), Context_);
@@ -229,7 +231,9 @@ void TypeSubstituterVisitor::substituteTypeOfTypedef(TypedefNameDecl* TDecl) {
 }
 
 bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl* FDecl) {
-  if (!Context_->getSourceManager().isWrittenInMainFile(FDecl->getBeginLoc()))
+  const auto& SM = Context_->getSourceManager();
+  if (!SM.isInMainFile(FDecl->getBeginLoc()) ||
+      SM.isMacroBodyExpansion(FDecl->getBeginLoc()))
     return true;
 
   if (FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType() &&
@@ -242,7 +246,8 @@ bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl* FDecl) {
 }
 
 bool TypeSubstituterVisitor::HelperVisitDeclaratorDecl(DeclaratorDecl* D) {
-  if (!Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc()))
+  const auto& SM = Context_->getSourceManager();
+  if (!SM.isInMainFile(D->getBeginLoc()))
     return true;
   Type_.shouldVisitTypes(true);
   TraverseType(D->getType());

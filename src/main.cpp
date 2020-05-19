@@ -56,11 +56,12 @@ int main(int argc, const char** argv) {
 
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
-
   int ReturnCode =
       Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
-  ub_tester::InjectorASTWrapper::getInstance().substituteIncludePaths();
+
   if (!ReturnCode) {
+    ub_tester::InjectorASTWrapper::getInstance().substituteIncludePaths(
+        OptionsParser.getSourcePathList());
     ub_tester::InjectorASTWrapper::getInstance().applySubstitutions();
   }
 }

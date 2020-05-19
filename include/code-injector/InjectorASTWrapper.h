@@ -6,7 +6,6 @@
 #include "clang/Basic/SourceManager.h"
 
 #include <memory>
-#include <unordered_map>
 #include <vector>
 
 using ub_tester::code_injector::SubstPriorityKind;
@@ -24,7 +23,7 @@ public:
 
   void addFile(const clang::ASTContext* Context);
 
-  void substituteIncludePaths();
+  void substituteIncludePaths(const std::vector<std::string>&);
 
   void applySubstitutions();
 
@@ -38,9 +37,7 @@ private:
   explicit InjectorASTWrapper() = default;
 
 private:
-  std::unordered_map<unsigned, std::unique_ptr<code_injector::CodeInjector>>
-      Injectors_;
-  std::unordered_map<unsigned, std::string> Filenames_;
+  std::vector<std::unique_ptr<code_injector::CodeInjector>> Injectors_;
 };
 
 template <typename... Expr>

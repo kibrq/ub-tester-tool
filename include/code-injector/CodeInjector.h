@@ -63,7 +63,7 @@ private:
 
 private:
   size_t Offset_;
-  SubstPriorityKind Prior_;
+  SubstPriorityKind Prior_{SubstPriorityKind::Medium};
   std::string SourceFormat_, OutputFormat_;
   SubstArgs Args_;
 };
@@ -84,6 +84,9 @@ public:
   void applySubstitutions(std::istream&, const std::string& OutputFilename);
   void applySubstitutions(const std::string& InputFilename, std::ostream&);
   void applySubstitutions(std::istream&, std::ostream&);
+
+  const std::string& getInputFilename() const;
+  const std::string& getOutputFilename() const;
 
 private:
   bool maybeFrontSubstitution(std::istream&, std::ostream&);

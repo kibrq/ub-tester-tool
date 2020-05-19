@@ -31,51 +31,49 @@ std::string generateOutputFilename(std::string Filename) {
 }
 } // namespace
 
-void InjectorASTWrapper::substituteIncludePaths() {
+void InjectorASTWrapper::substituteIncludePaths(
+    const std::vector<std::string>& Files) {
   std::unordered_set<std::string> AvailFilenames;
-  auto& Files = getInstance().Injectors_;
-  /*for (const auto& [Filename, Inj] : Files) {
+  auto& Injectors = getInstance().Injectors_;
+  for (const auto& Filename : Files) {
     AvailFilenames.insert(
         static_cast<std::string>(fs::path{Filename}.filename()));
   }
-   for (const auto& [Filename, Inj] : Files) {
-     std::ifstream IStream(Filename, std::ios::in);
-     std::string Word;
-     bool isIncludePrev = false;
-     while (IStream >> Word) {
-       if (Word.compare(TargetKeyword) == 0) {
-         isIncludePrev = true;
-         continue;
-       }
-       if (!isIncludePrev) {
-         continue;
-       }
-       // Don't really know why Word.length() - 2...
-       if (std::string IncludeFilename = static_cast<std::string>(
-               fs::path(Word.substr(1, Word.length() - 2)).filename());
-           AvailFilenames.find(IncludeFilename) != AvailFilenames.end()) {
-         unsigned Pos = IStream.tellg();
-         Inj->substitute(Pos - Word.length(), SubstPriorityKind::Medium, "$@",
-                         UBTesterPrefix + std::string{"@"}, {IncludeFilename});
-       }
-       isIncludePrev = false;
-     }
-   }
-   */
+  for (const auto& Inj : Injectors) {
+    std::ifstream IStream(Inj->getInputFilename(), std::ios::in);
+    std::string Word;
+    bool isIncludePrev = false;
+    while (IStream >> Word) {
+      if (Word.compare(TargetKeyword) == 0) {
+        isIncludePrev = true;
+        continue;
+      }
+      if (!isIncludePrev) {
+        continue;
+      }
+      // Don't really know why Word.length() - 2...
+      if (std::string IncludeFilename = static_cast<std::string>(
+              fs::path(Word.substr(1, Word.length() - 2)).filename());
+          AvailFilenames.find(IncludeFilename) != AvailFilenames.end()) {
+        unsigned Pos = IStream.tellg();
+        Inj->substitute(Pos - Word.length(), SubstPriorityKind::Medium, "$@",
+                        UBTesterPrefix + std::string{"@"}, {IncludeFilename});
+      }
+      isIncludePrev = false;
+    }
+  }
 }
 
 void InjectorASTWrapper::addFile(const ASTContext* Context) {
   const auto& SM = Context->getSourceManager();
   auto ID = SM.getMainFileID();
   std::string Filename = SM.getFileEntryForID(ID)->getName().str();
-  Injectors_.emplace(ID.getHashValue(),
-                     std::make_unique<CodeInjector>(
-                         Filename, generateOutputFilename(Filename)));
-  Filenames_.emplace(ID.getHashValue(), std::move(Filename));
+  Injectors_.emplace_back(std::make_unique<CodeInjector>(
+      Filename, generateOutputFilename(Filename)));
 }
 
 void InjectorASTWrapper::applySubstitutions() {
-  for (auto& [Hash, Inj] : Injectors_) {
+  for (auto& Inj : Injectors_) {
     Inj->applySubstitutions();
   }
 }
@@ -83,7 +81,7 @@ void InjectorASTWrapper::applySubstitutions() {
 void InjectorASTWrapper::substitute(Substitution&& Substr,
                                     const clang::ASTContext* Context) {
   const auto& SM = Context->getSourceManager();
-  Injectors_[SM.getMainFileID().getHashValue()]->substitute(std::move(Substr));
+  Injectors_.back()->substitute(std::move(Substr));
 }
 
 void InjectorASTWrapper::substitute(const clang::SourceRange& Range,
