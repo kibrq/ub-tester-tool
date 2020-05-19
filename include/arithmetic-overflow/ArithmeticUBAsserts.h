@@ -53,18 +53,18 @@
 namespace ub_tester {
 namespace arithm::exit_codes {
 
-inline constexpr int OVERFLOW_EXIT_CODE = -1;
-inline constexpr int DIVISION_BY_ZERO_EXIT_CODE = -2;
-inline constexpr int UNDEFINED_MOD_EXIT_CODE = -3;
-inline constexpr int UNDEFINED_BITSHIFT_LEFT_EXIT_CODE = -4;
-inline constexpr int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
+constexpr int OVERFLOW_EXIT_CODE = -1;
+constexpr int DIVISION_BY_ZERO_EXIT_CODE = -2;
+constexpr int UNDEFINED_MOD_EXIT_CODE = -3;
+constexpr int UNDEFINED_BITSHIFT_LEFT_EXIT_CODE = -4;
+constexpr int UNDEFINED_BITSHIFT_RIGHT_EXIT_CODE = -5;
 
-inline constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
-inline constexpr int OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE = -7;
-inline constexpr int IMPL_DEFINED_WARNING_CODE = -8;
-inline constexpr int UNSAFE_CONV_WARNING_CODE = -9;
-inline constexpr int IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE = -10;
-inline constexpr int NOT_CONSIDERED_WARNING_CODE = -11;
+constexpr int UNSIGNED_OVERFLOW_WARNING_CODE = -6;
+constexpr int OVERFLOW_IN_BITSHIFT_CXX20_WARNING_CODE = -7;
+constexpr int IMPL_DEFINED_WARNING_CODE = -8;
+constexpr int UNSAFE_CONV_WARNING_CODE = -9;
+constexpr int IMPL_DEFINED_UNSAFE_CONV_WARNING_CODE = -10;
+constexpr int NOT_CONSIDERED_WARNING_CODE = -11;
 
 } // namespace arithm::exit_codes
 
@@ -581,8 +581,8 @@ T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
   return ++Expr;
 }
 template <>
-bool& assertPrefixIncr<bool>(bool& Expr, const char* TypeName,
-                             const char* FileName, int Line) {
+inline bool& assertPrefixIncr<bool>(bool& Expr, const char* TypeName,
+                                    const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool prefix increment is deprecated since C++17");
 }
@@ -633,8 +633,8 @@ T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
   return Expr++;
 }
 template <>
-bool assertPostfixIncr<bool>(bool& Expr, const char* TypeName,
-                             const char* FileName, int Line) {
+inline bool assertPostfixIncr<bool>(bool& Expr, const char* TypeName,
+                                    const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix increment is deprecated since C++17");
 }
@@ -685,8 +685,8 @@ T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
   return --Expr;
 }
 template <>
-bool& assertPrefixDecr<bool>(bool& Expr, const char* TypeName,
-                             const char* FileName, int Line) {
+inline bool& assertPrefixDecr<bool>(bool& Expr, const char* TypeName,
+                                    const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool prefix decrement is deprecated since C++17");
 }
@@ -737,8 +737,8 @@ T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
   return Expr--;
 }
 template <>
-bool assertPostfixDecr<bool>(bool& Expr, const char* TypeName,
-                             const char* FileName, int Line) {
+inline bool assertPostfixDecr<bool>(bool& Expr, const char* TypeName,
+                                    const char* FileName, int Line) {
   UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
   assert(0 && "bool postfix decrement is deprecated since C++17");
 }
