@@ -1,19 +1,14 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
 #include "code-injector/ASTFrontendInjector.h"
-#include "uninit-variables/UB_UninitSafeType.h"
-
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/FrontendAction.h"
-#include "clang/Tooling/Tooling.h"
+#include "uninit-variables/UB_UninitSafeTypeConsts.h"
 
 #include "clang/AST/ParentMapContext.h"
+#include "clang/Frontend/CompilerInstance.h"
 
 using namespace clang;
-using namespace clang::tooling;
 using namespace llvm;
 
-#include <UBUtility.h>
 #include <iostream>
 #include <stdexcept>
 
