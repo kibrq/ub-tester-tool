@@ -25,8 +25,8 @@ public:
       if (varInfo.file)
         errorMessage += " in file " + varInfo.file;
       if (varInfo.line)
-        errorMessage << " at line " << varInfo.line;
-      throw std::logic_error(errorMessage.str());
+        errorMessage += " at line " + varInfo.line;
+      throw std::logic_error(errorMessage);
     }
     return value;
   }
