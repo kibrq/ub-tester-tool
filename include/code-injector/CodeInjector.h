@@ -13,33 +13,48 @@ using SubstArgs = std::vector<std::string>;
 
 enum class CharacterKind : char { Arg = '@', All = '#', Skip = '$' };
 
-inline bool isCharacter(char C, CharacterKind Char) { return C == static_cast<char>(Char); }
+inline bool isCharacter(char C, CharacterKind Char) {
+  return C == static_cast<char>(Char);
+}
 
 inline bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2) {
   return isCharacter(C, Char1) || isCharacter(C, Char2);
 }
 
 template <typename... CharacterKinds>
-bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2, CharacterKinds... Chars) {
+bool isAnyOf(char C, CharacterKind Char1, CharacterKind Char2,
+             CharacterKinds... Chars) {
   return isCharacter(C, Char1) || isAnyOf(C, Char2, Chars...);
 }
 
 inline bool isAnyCharacter(char C) {
-  return isAnyOf(C, CharacterKind::Arg, CharacterKind::All, CharacterKind::Skip);
+  return isAnyOf(C, CharacterKind::Arg, CharacterKind::All,
+                 CharacterKind::Skip);
 }
 
-enum class SubstPriorityKind : unsigned { Shallow /*High?*/ = 0, Medium = 1, Deep = 2 };
+enum class SubstPriorityKind : unsigned {
+  Shallow /*High?*/ = 0,
+  Medium = 1,
+  Deep = 2
+};
 
 class CodeInjector;
 struct Substitution {
-  Substitution(
-      size_t Offset, SubstPriorityKind Prior, std::string SourceFormat, std::string OutputFormat,
-      SubstArgs Args)
-      : Offset_{Offset},
-        Prior_{Prior},
-        SourceFormat_{std::move(SourceFormat)},
-        OutputFormat_{std::move(OutputFormat)},
-        Args_{std::move(Args)} {}
+  Substitution() = default;
+  Substitution(size_t Offset, SubstPriorityKind Prior, std::string SourceFormat,
+               std::string OutputFormat, SubstArgs Args)
+      : Offset_{Offset}, Prior_{Prior}, SourceFormat_{std::move(SourceFormat)},
+        OutputFormat_{std::move(OutputFormat)}, Args_{std::move(Args)} {}
+
+  inline void setOffset(size_t Offset) { Offset_ = Offset; }
+  inline void setPrior(SubstPriorityKind Prior) { Prior_ = Prior; }
+  inline void setSourceFormat(std::string SourceFormat) {
+    SourceFormat_.assign(std::move(SourceFormat));
+  }
+  inline void setOutputFormat(std::string OutputFormat) {
+    OutputFormat_.assign(std::move(OutputFormat));
+  }
+  inline void setArguments(const SubstArgs& Arguments) { Args_ = Arguments; }
 
   bool operator<(const Substitution& Other) const;
 
@@ -56,12 +71,13 @@ private:
 class CodeInjector {
 public:
   CodeInjector() = default;
-  CodeInjector(const std::string& InputFilename, const std::string& OutputFilename);
+  CodeInjector(const std::string& InputFilename,
+               const std::string& OutputFilename);
 
   void substitute(Substitution Subst);
-  void substitute(
-      size_t Offset, SubstPriorityKind Prior, std::string SourceFormat, std::string OutputFormat,
-      const SubstArgs& Args);
+  void substitute(size_t Offset, SubstPriorityKind Prior,
+                  std::string SourceFormat, std::string OutputFormat,
+                  const SubstArgs& Args);
 
   void applySubstitutions();
 
