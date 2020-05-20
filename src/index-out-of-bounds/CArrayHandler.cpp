@@ -95,10 +95,10 @@ std::pair<std::string, std::string> CArrayHandler::getCtorFormats() {
   std::string SourceFormat = Array_.Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
   OutputFormat << "("
-               << iob_view::generateSafeArrayCtor(Array_.Sizes_,
-                                                  Array_.Init_.has_value()
-                                                      ? std::optional("@")
-                                                      : std::nullopt)
+               << iob::view::generateSafeArrayCtor(Array_.Sizes_,
+                                                   Array_.Init_.has_value()
+                                                       ? std::optional("@")
+                                                       : std::nullopt)
                << ")";
   return {SourceFormat, OutputFormat.str()};
 }
@@ -128,7 +128,7 @@ bool CArrayHandler::TraverseVarDecl(VarDecl* D) {
 }
 
 std::pair<std::string, std::string> CArrayHandler::getSubscriptFormats() {
-  return {"@[@]", iob_view::generateIOBChecker("@", "@")};
+  return {"@[@]", iob::view::generateIOBChecker("@", "@")};
 }
 
 void CArrayHandler::executeSubstitutionOfSubscript(
