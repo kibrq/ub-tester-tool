@@ -41,12 +41,19 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   return true;
 }
 
+bool isDREToLocalVarOrParm(DeclRefExpr* DRE) {
+  if (!DRE)
+    return false;
+  VarDecl* VD = dyn_cast_or_null<VarDecl>(DRE->getDecl());
+  return VD && VD->isLocalVarDeclOrParm();
+}
+
 // detect variable usage; substutute with get OR getIgnore
 bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
   if (!Context->getSourceManager().isInMainFile(DRE->getBeginLoc()))
     return true;
 
-  if (DRE->getDecl()->getType().getNonReferenceType()->isFundamentalType()) {
+  if (DRE->getDecl()->getType().getNonReferenceType()->isFundamentalType() && isDREToLocalVarOrParm(DRE)) {
 
     std::string VarName = DRE->getNameInfo().getName().getAsString();
 
@@ -63,11 +70,14 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
 
       if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
           ICE->getType().getTypePtr()->isFundamentalType()*/
-          && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {
+          && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {    // backwards check
         FoundCorrespICE = true;
 
         ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
-                                                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "()", VarName);
+                                                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME +
+                                                          "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
+                                                          DRE->getDecl()->getType().getAsString() + "\"})",
+                                                      VarName);
       }
     } while (!FoundCorrespICE);
     if (FoundCorrespICE)
@@ -85,6 +95,8 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
 
       ParentIterNode = ParentNodeList[0];
       const CallExpr* CallingFunction = ParentIterNode.get<CallExpr>();
+
+      // TODO: backwards check
 
       if (CallingFunction) {
         FoundCallingFunction = true;
@@ -124,9 +136,9 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) 
   if (!Context->getSourceManager().isInMainFile(BinOp->getBeginLoc()))
     return true;
 
-  if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType()) {
-    // assuming all fundamental types are already Safe_T
-    // TODO: replace 'assuming' with assert (?)
+  if (BinOp->isAssignmentOp() && !BinOp->isCompoundAssignmentOp() &&
+      BinOp->getLHS()->getType().getTypePtr()->isFundamentalType() &&
+      isDREToLocalVarOrParm(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
 
     ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
                                                   "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),

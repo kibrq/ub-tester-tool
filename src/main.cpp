@@ -30,17 +30,15 @@ class UBTesterAction : public ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
-    std::unique_ptr<ASTConsumer> UtilConsumer = std::make_unique<UtilityConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> OutOfBoundsConsumer = std::make_unique<IOBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> ArithmeticUBConsumer = std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> TypeSubstituter = std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    consumers.emplace_back(std::move(UtilConsumer));
-    consumers.emplace_back(std::move(OutOfBoundsConsumer));
+    // consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
-    consumers.emplace_back(std::move(ArithmeticUBConsumer));
+    // consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));

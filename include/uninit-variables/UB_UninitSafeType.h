@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <string>
 
 // this only needs to be included in target file; no other use
 // TODO: require <string> or change to c-like string
@@ -8,24 +9,24 @@ public:
   UB_UninitSafeType(T t) : value{t}, isInit{true}, isIgnored{false} {}
   UB_UninitSafeType(const UB_UninitSafeType<T>& t) : value{t.getValue()}, isInit{true}, isIgnored{false} {}
 
-  struct VariableInfo {
-    const char* filename = nullptr;
+  struct CallInfo {
+    const std::string file = nullptr;
     size_t line = 0;
-    const char* varName = nullptr;
-    const char* varType = nullptr;
+    const std::string varName = nullptr;
+    const std::string varType = nullptr;
   };
 
-  T getValue(VariableInfo varInfo) const {
+  T getValue(CallInfo varInfo) const {
     if (!isIgnored && !isInit) {
       std::string errorMessage{"access to value of uninitialized variable"};
-      if (varInfo.varName)
-        errorMessage += " " + varInfo.varName;
-      if (varInfo.varType)
-        errorMessage += " of type \'" + varInfo.varType + "\'";
-      if (varInfo.file)
-        errorMessage += " in file " + varInfo.file;
+      if (varInfo.varName != "")
+        errorMessage += (" named \'" + varInfo.varName + "\'");
+      if (varInfo.varType != "")
+        errorMessage += (" of type \'" + varInfo.varType + "\'");
+      if (varInfo.file != "")
+        errorMessage += (" in file " + varInfo.file);
       if (varInfo.line)
-        errorMessage += " at line " + varInfo.line;
+        errorMessage += (" at line " + std::to_string(varInfo.line));
       throw std::logic_error(errorMessage);
     }
     return value;
@@ -46,6 +47,22 @@ public:
     value = t.getValue(); // TODO: avoid line mismatch
     isInit = true;
     return value;
+  }
+  operator T() const {
+    // TODO: receive CallInfo
+    return getValue(); // TODO: avoid line mismatch
+  }
+  // the following unary operators DO NOT cause lvalue to rvalue cast
+  T& operator++() { ++value; }
+  T& operator++(int) { value++; } // ! INCORRECT BEHAVIOUR, must save result WITHOUT LRV_CAST !
+  T& operator--() { --value; }
+  T& operator--(int) { value--; } // ! INCORRECT BEHAVIOUR
+  T* operator&() const {
+    if (!isInit) {
+      isIgnored = true;
+      // TODO: send warning
+    }
+    return &value;
   }
 
 private:
