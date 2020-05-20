@@ -14,8 +14,6 @@
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 
-#include <experimental/filesystem>
-
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
