@@ -135,6 +135,13 @@ bool TypeSubstituterVisitor::TraverseRecordType(RecordType* T) {
   return true;
 }
 
+bool TypeSubstituterVisitor::TraverseTypedefType(TypedefType* T) {
+  if (Type_.isInited()) {
+    Type_ << T->getDecl()->getQualifiedNameAsString();
+  }
+  return true;
+}
+
 bool TypeSubstituterVisitor::TraverseTemplateTypeParmType(
     TemplateTypeParmType* T) {
   if (Type_.isInited()) {

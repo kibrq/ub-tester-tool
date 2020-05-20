@@ -20,6 +20,7 @@ public:
   bool TraverseBuiltinType(clang::BuiltinType*);
   bool TraverseRecordType(clang::RecordType*);
   bool TraverseEnumType(clang::EnumType*);
+  bool TraverseTypedefType(clang::TypedefType*);
   bool TraverseTemplateTypeParmType(clang::TemplateTypeParmType*);
   bool TraverseTemplateSpecializationType(clang::TemplateSpecializationType*);
   bool TraverseType(clang::QualType);
