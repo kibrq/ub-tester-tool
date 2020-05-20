@@ -1,7 +1,6 @@
 #include "clang/AST/ASTConsumer.h"
 
 #include "index-out-of-bounds/CArrayHandler.h"
-#include "index-out-of-bounds/PointerHandler.h"
 
 #include <string>
 
@@ -14,7 +13,6 @@ public:
 
 private:
   CArrayHandler ArrayHandler_;
-  PointerHandler PointerHandler_;
 };
 
 } // namespace ub_tester

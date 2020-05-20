@@ -34,6 +34,7 @@ void CodeInjector::applySubstitutions(const std::string& InputFilename,
 
 void CodeInjector::applySubstitutions(std::istream& IStream,
                                       std::ostream& OStream) {
+
   std::sort(Substitutions_.begin(), Substitutions_.end());
   while (IStream.peek() != EOF) {
     if (!maybeFrontSubstitution(IStream, OStream))
@@ -159,6 +160,7 @@ void CodeInjector::applyFrontSubstitution(std::istream& IStream,
     }
     switch (Char) {
     case static_cast<char>(CharacterKind::Arg): {
+
       unsigned Pos = OutputFormat.find_first_of(Char);
       std::copy_n(OutputFormat.begin(), Pos,
                   std::ostream_iterator<char>(OStream));
@@ -177,6 +179,7 @@ void CodeInjector::applyFrontSubstitution(std::istream& IStream,
     }
     case static_cast<char>(CharacterKind::All): {
     default:
+
       break;
     }
     }

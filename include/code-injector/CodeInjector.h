@@ -94,6 +94,7 @@ private:
 
 private:
   std::optional<std::string> InputFilename_, OutputFilename_;
+
   std::deque<Substitution> Substitutions_;
 };
 } // namespace ub_tester::code_injector
