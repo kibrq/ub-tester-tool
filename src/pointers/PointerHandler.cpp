@@ -1,6 +1,6 @@
 #include "pointers/PointerHandler.h"
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "pointers/PointersAssertsView.h"
 
 #include "clang/Basic/SourceManager.h"
@@ -83,8 +83,11 @@ std::pair<std::string, std::string> PointerHandler::getCtorFormats() {
 void PointerHandler::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
   SourceLocation Loc = getAfterNameLoc(VDecl, Context_);
   auto Formats = getCtorFormats();
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, Loc, Formats.first, Formats.second, Pointers_.back().Init_);
+  SubstitutionASTWrapper(Context_)
+      .setLoc(Loc)
+      .setFormats(Formats.first, Formats.second)
+      .setArguments(Pointers_.back().Init_)
+      .apply();
 }
 
 #define NOT_IN_MAINFILE(Context, Node)                                         \
@@ -125,8 +128,11 @@ void PointerHandler::executeSubstitutionOfPointerAssignment(
     BinaryOperator* BO) {
   SourceLocation Loc = BO->getBeginLoc();
   auto Formats = getAssignFormats();
-  ASTFrontendInjector::getInstance().substitute(Context_, Loc, Formats.first,
-                                                Formats.second, BO->getLHS());
+  SubstitutionASTWrapper(Context_)
+      .setLoc(Loc)
+      .setFormats(Formats.first, Formats.second)
+      .setArguments(BO->getLHS())
+      .apply();
 }
 
 bool PointerHandler::TraverseBinAssign(BinaryOperator* BO,
@@ -153,8 +159,11 @@ void PointerHandler::executeSubstitutionOfStarOperator(UnaryOperator* UO) {
   SourceLocation Loc = UO->getBeginLoc();
   std::string SourceFormat = "*@";
   std::string OutputFormat = ptr::view::getAssertStarOpeartorAsString("@");
-  ASTFrontendInjector::getInstance().substitute(Context_, Loc, SourceFormat,
-                                                OutputFormat, UO->getSubExpr());
+  SubstitutionASTWrapper(Context_)
+      .setLoc(Loc)
+      .setFormats(SourceFormat, OutputFormat)
+      .setArguments(UO->getSubExpr())
+      .apply();
 }
 
 bool PointerHandler::VisitUnaryOperator(UnaryOperator* UO) {
@@ -171,9 +180,12 @@ void PointerHandler::executeSubstitutionOfMemberExpr(MemberExpr* ME) {
   SourceLocation Loc = ME->getBeginLoc();
   std::string SourceFormat = "@#@";
   std::string OutputFormat = ptr::view::getAssertMemberExprAsString("@", "@");
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, Loc, SourceFormat, OutputFormat, ME->getBase(),
-      SourceRange{ME->getMemberLoc(), ME->getEndLoc()});
+  SubstitutionASTWrapper(Context_)
+      .setLoc(Loc)
+      .setFormats(SourceFormat, OutputFormat)
+      .setArguments(ME->getBase(),
+                    SourceRange{ME->getMemberLoc(), ME->getEndLoc()})
+      .apply();
 }
 
 bool PointerHandler::VisitMemberExpr(MemberExpr* ME) {
