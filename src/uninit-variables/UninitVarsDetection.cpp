@@ -68,9 +68,11 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       DREParentIterNode = DREParentNodeList[0];
       const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
 
-      if (ICE && ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
-          ICE->getType().getTypePtr()->isFundamentalType()*/
-          && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {    // backwards check
+      if (ICE &&
+          ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
+   ICE->getType().getTypePtr()->isFundamentalType()*/
+          // ! && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {    // backwards check DISABLED due to CAO
+          && ICE->getSubExpr()->getType().getNonReferenceType()->isFundamentalType()) {
         FoundCorrespICE = true;
 
         ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
