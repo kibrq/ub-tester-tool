@@ -20,7 +20,7 @@ InjectorASTWrapper& InjectorASTWrapper::getInstance() {
 }
 
 namespace {
-inline constexpr char UBTesterPrefix[] = "UBTested_";
+inline constexpr char UBTesterPrefix[] = "IMPROVED_";
 inline constexpr char TargetKeyword[] = "#include";
 
 std::string generateOutputFilename(std::string Filename) {
