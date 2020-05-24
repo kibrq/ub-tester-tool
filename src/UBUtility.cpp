@@ -54,6 +54,7 @@ SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc,
     assert(Tok.hasValue());
     if (Tok->isAnyIdentifier() &&
         Tok->getRawIdentifier().str().compare(VarName) == 0) {
+
       return BeginLoc;
     }
     BeginLoc = Tok->getLocation();

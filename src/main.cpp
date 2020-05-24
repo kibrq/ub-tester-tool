@@ -11,6 +11,7 @@
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
 #include "code-injector/InjectorASTWrapper.h"
 #include "index-out-of-bounds/IOBConsumer.h"
+#include "pointers/PointersConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 
@@ -37,12 +38,15 @@ public:
         std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> TypeSubstituter =
         std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> PointerConsumer =
+        std::make_unique<PointersConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
+    consumers.emplace_back(std::move(PointerConsumer));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }
