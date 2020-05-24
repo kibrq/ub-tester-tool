@@ -12,3 +12,7 @@ cmake ..
 make
 ```
 By executing these commands you'll get a file **ub-tester**
+
+## Usage
+To use our application, you have to add #include with path to include folder in ub-tester-tool in to the file(-s) which you want to test. Then you can simply run out application on these file(-s). On the output ub_tester will give you **IMPROVED_** versions of your files. After that, you can compile IMPORVED_ versions with your project and run on your input data. 
+ 
