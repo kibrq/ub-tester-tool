@@ -15,6 +15,7 @@ public:
   explicit PointerHandler(clang::ASTContext*);
 
   bool VisitCallExpr(clang::CallExpr*);
+  bool VisitCXXNewExpr(clang::CXXNewExpr*);
   bool TraverseVarDecl(clang::VarDecl*);
   bool TraverseBinAssign(clang::BinaryOperator*, DataRecursionQueue* = nullptr);
 

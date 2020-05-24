@@ -69,6 +69,19 @@ bool PointerHandler::VisitCallExpr(CallExpr* CE) {
   return true;
 }
 
+bool PointerHandler::VisitCXXNewExpr(CXXNewExpr* CNE) {
+  if (shouldVisitNodes()) {
+    backPointer().hasSize_ = true;
+    if (!CNE->isArray()) {
+      backPointer().Size_ << "1";
+    } else {
+      backPointer().Size_ << getExprAsString(CNE->getArraySize().getValue(),
+                                             Context_);
+    }
+  }
+  return true;
+}
+
 std::pair<std::string, std::string> PointerHandler::getCtorFormats() {
   std::string SourceFormat = backPointer().Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
