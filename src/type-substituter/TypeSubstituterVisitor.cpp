@@ -1,6 +1,7 @@
 #include "type-substituter/TypeSubstituterVisitor.h"
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
+#include "cli/CLIOptions.h"
 #include "type-substituter/SafeTypesView.h"
 #include "clang/Basic/SourceManager.h"
 
@@ -14,8 +15,7 @@ namespace ub_tester {
 
 using namespace typenames_to_inject;
 
-TypeSubstituterVisitor::TypeSubstituterVisitor(ASTContext* Context)
-    : Context_{Context} {}
+TypeSubstituterVisitor::TypeSubstituterVisitor(ASTContext* Context) : Context_{Context} {}
 
 void TypeSubstituterVisitor::TypeInfo_t::init() { IsInited_ = true; }
 
@@ -24,16 +24,13 @@ void TypeSubstituterVisitor::TypeInfo_t::reset() {
   IsInited_ = ShouldVisitTypes_ = false;
 }
 
-TypeSubstituterVisitor::TypeInfo_t&
-TypeSubstituterVisitor::TypeInfo_t::operator<<(const std::string& Str) {
+TypeSubstituterVisitor::TypeInfo_t& TypeSubstituterVisitor::TypeInfo_t::operator<<(const std::string& Str) {
   init();
   Buffer_ << Str;
   return *this;
 }
 
-std::string TypeSubstituterVisitor::TypeInfo_t::getTypeAsString() const {
-  return Buffer_.str();
-}
+std::string TypeSubstituterVisitor::TypeInfo_t::getTypeAsString() const { return Buffer_.str(); }
 
 void TypeSubstituterVisitor::TypeInfo_t::addQuals(
     Qualifiers Quals, const PrintingPolicy& PPolicy) {
@@ -83,6 +80,7 @@ bool TypeSubstituterVisitor::TraverseIncompleteArrayType(
 
 bool TypeSubstituterVisitor::TraverseConstantArrayType(
     ConstantArrayType* ConstArrType) {
+      // if clio
   Type_ << SafeArrayName << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseConstantArrayType(
       ConstArrType);
@@ -109,6 +107,7 @@ bool TypeSubstituterVisitor::TraverseLValueReferenceType(
 }
 
 bool TypeSubstituterVisitor::TraversePointerType(PointerType* PtrType) {
+  // if clio
   Type_ << SafePointerName << "<";
   RecursiveASTVisitor<TypeSubstituterVisitor>::TraversePointerType(PtrType);
   Type_ << ">";
@@ -116,6 +115,7 @@ bool TypeSubstituterVisitor::TraversePointerType(PointerType* PtrType) {
 }
 
 bool TypeSubstituterVisitor::TraverseBuiltinType(BuiltinType* BType) {
+  // if clio
   bool FirstInit = !Type_.isInited();
   if (FirstInit)
     Type_ << SafeBuiltinVarName << "<";
