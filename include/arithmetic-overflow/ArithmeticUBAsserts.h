@@ -11,26 +11,27 @@
  * exceptions like bitshift operators (can have different integer types).
  * However, return type of binary operator is always Lhs type. */
 #define ASSERT_BINOP(Operation, Lhs, Rhs, LhsType, RhsType)                    \
-  arithm::asserts::assert##Operation<LhsType, RhsType>((Lhs), (Rhs), #LhsType, \
-                                                       __FILE__, __LINE__)
+  ub_tester::arithm::asserts::assert##Operation<LhsType, RhsType>(             \
+      (Lhs), (Rhs), #LhsType, __FILE__, __LINE__)
 #define ASSERT_UNOP(Operation, Expr, Type)                                     \
-  arithm::asserts::assert##Operation<Type>((Expr), #Type, __FILE__, __LINE__)
+  ub_tester::arithm::asserts::assert##Operation<Type>((Expr), #Type, __FILE__, \
+                                                      __LINE__)
 
 #define ASSERT_COMPASSIGNOP(Operation, Lhs, Rhs, LhsType, LhsComputationType,  \
                             RhsType)                                           \
-  arithm::asserts::assertCompAssignOp##Operation<LhsType, LhsComputationType,  \
-                                                 RhsType>(                     \
+  ub_tester::arithm::asserts::assertCompAssignOp##Operation<                   \
+      LhsType, LhsComputationType, RhsType>(                                   \
       (Lhs), (Rhs), #LhsType, #LhsComputationType, __FILE__, __LINE__)
 
 #define IMPLICIT_CAST(SubExpr, FromType, ToType)                               \
-  arithm::asserts::casts::assertIntegralCast<FromType, ToType>(                \
+  ub_tester::arithm::asserts::casts::assertIntegralCast<FromType, ToType>(     \
       (SubExpr), #FromType, #ToType, __FILE__, __LINE__)
 
 #define OVERFLOW_DETECTED(Type, Message)                                       \
   if (std::numeric_limits<Type>::is_signed) {                                  \
     ASSERT_FAILED(OVERFLOW_ERROR, (Message));                                  \
   } else                                                                       \
-    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING, "Warning: " + (Message))
+    PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING, (Message))
 
 #define ASSERT_FAILED(FailCode, Message)                                       \
   AssertMessageManager::pushMessage(                                           \
@@ -38,18 +39,12 @@
   assert(0 && "Assert detected error but manager didn't handle it")
 #define PUSH_WARNING(FailCode, Message)                                        \
   AssertMessageManager::pushMessage(                                           \
-      AssertMessage((Message), AssertFailCode::FailCode))
+      AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
 
 #define ARE_SAME_TYPES(Type1, Type2)                                           \
   static_assert(std::is_same<Type1, Type2>::value)
 #define HAS_CONV_RANK_GEQ_THAN_INT(Type)                                       \
   static_assert(arithm_ut::checkIfTypeHasConvRankGeqThanInt<Type>());
-// will be removed in future, when class for message-args appears
-#define UNUSED_ASSERT_ARGS(Arg1, Arg2, Arg3, Arg4)                             \
-  (void)Arg1;                                                                  \
-  (void)Arg2;                                                                  \
-  (void)Arg3;                                                                  \
-  (void)Arg4;
 
 namespace ub_tester::arithm::asserts {
 
@@ -602,7 +597,7 @@ T& assertPrefixIncr(T& Expr, const char* TypeName, const char* FileName,
 template <>
 inline bool& assertPrefixIncr<bool>(bool& Expr, const char* TypeName,
                                     const char* FileName, int Line) {
-  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
+  arithm_ut::UnusedArgs{Expr, TypeName, FileName, Line};
   assert(0 && "bool prefix increment is deprecated since C++17");
 }
 
@@ -656,7 +651,7 @@ T assertPostfixIncr(T& Expr, const char* TypeName, const char* FileName,
 template <>
 inline bool assertPostfixIncr<bool>(bool& Expr, const char* TypeName,
                                     const char* FileName, int Line) {
-  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
+  arithm_ut::UnusedArgs{Expr, TypeName, FileName, Line};
   assert(0 && "bool postfix increment is deprecated since C++17");
 }
 
@@ -710,7 +705,7 @@ T& assertPrefixDecr(T& Expr, const char* TypeName, const char* FileName,
 template <>
 inline bool& assertPrefixDecr<bool>(bool& Expr, const char* TypeName,
                                     const char* FileName, int Line) {
-  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
+  arithm_ut::UnusedArgs{Expr, TypeName, FileName, Line};
   assert(0 && "bool prefix decrement is deprecated since C++17");
 }
 
@@ -764,7 +759,7 @@ T assertPostfixDecr(T& Expr, const char* TypeName, const char* FileName,
 template <>
 inline bool assertPostfixDecr<bool>(bool& Expr, const char* TypeName,
                                     const char* FileName, int Line) {
-  UNUSED_ASSERT_ARGS(Expr, TypeName, FileName, Line);
+  arithm_ut::UnusedArgs{Expr, TypeName, FileName, Line};
   assert(0 && "bool postfix decrement is deprecated since C++17");
 }
 

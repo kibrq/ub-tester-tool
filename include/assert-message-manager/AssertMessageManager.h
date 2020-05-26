@@ -43,6 +43,7 @@ private:
     for (const auto& Message : Messages_)
       std::cerr << Message.Message_ << "\n";
     Messages_.clear();
+    std::cerr << "error detected, aborting\n\n";
     exit(static_cast<int>(FailCode));
   }
 
