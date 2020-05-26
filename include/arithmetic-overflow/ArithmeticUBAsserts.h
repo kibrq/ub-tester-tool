@@ -129,9 +129,12 @@ ToType assertIntegralCast(FromType SubExpr, const char* FromTypeName,
     PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING, Message.str());
     break;
   case TyCoCheckRes::BOOL_CONVERSION_IS_NOT_CONSIDERED:
-    Message << "to-bool-conversion while implicit cast in " << FileName
+    Message << "bool-conversion while implicit cast in " << FileName
             << " Line: " << Line
-            << "\nlog: to-bool-conversions are not considered\n";
+            << "\nlog: bool-conversions are not considered;\n     "
+            << "conversion of (" << FromTypeName << " " << +SubExpr << " -> "
+            << ToTypeName << " " << +SubExprInToType << ") from "
+            << FromTypeName << " to " << ToTypeName << "\n";
     PUSH_WARNING(NOT_CONSIDERED_WARNING, Message.str());
     break;
 
@@ -532,11 +535,9 @@ void assertIncrOrDecrOpResTypeConv(Type Expr, CommonType ComputedOperationRes,
     PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING, Message.str());
     break;
   case TyCoCheckRes::BOOL_CONVERSION_IS_NOT_CONSIDERED:
-    Message << "to-bool-conversion while (" << OpName << ") computation in "
-            << FileName << " Line: " << Line
-            << "\nlog: to-bool-conversions are not considered\n";
-    PUSH_WARNING(NOT_CONSIDERED_WARNING, Message.str());
-    break;
+    assert(
+        0 &&
+        "bool prefix/postfix increment/decrement are deprecated since C++17");
 
   case TyCoCheckRes::SAFE_CONVERSION:
     break;
@@ -861,9 +862,15 @@ void checkCompAssignOpResTypeConv(LhsType Lhs, LhsComputationType Rhs,
     PUSH_WARNING(IMPL_DEFINED_UNSAFE_CONV_WARNING, Message.str());
     break;
   case TyCoCheckRes::BOOL_CONVERSION_IS_NOT_CONSIDERED:
-    Message << "to-bool-conversion while (" << InnerOpName
-            << "=) computation in " << FileName << " Line: " << Line
-            << "\nlog: to-bool-conversions are not considered\n";
+    Message << "bool-conversion while (" << InnerOpName << "=) computation in "
+            << FileName << " Line: " << Line
+            << "\nlog: bool-conversions are not considered;\n     "
+            << "lhs " << InnerOpName << "= rhs is computed as "
+            << LhsComputationTypeName << " expression;\n     conversion of (("
+            << LhsTypeName << " " << +Lhs << " -> " << LhsComputationTypeName
+            << " " << LhsInComputationType << ") " << InnerOpName << " " << +Rhs
+            << ") = " << +ComputedOperationRes << " from "
+            << LhsComputationTypeName << " to " << LhsTypeName << "\n";
     PUSH_WARNING(NOT_CONSIDERED_WARNING, Message.str());
     break;
 
