@@ -44,7 +44,8 @@ SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc, 
   while (SM.isBeforeInTranslationUnit(BeginLoc, EndLoc)) {
     auto Tok = Lexer::findNextToken(BeginLoc, SM, LO);
     assert(Tok.hasValue());
-    if (Tok->isAnyIdentifier() && Tok->getRawIdentifier().str().compare(VarName) == 0) {
+    if (Tok->isAnyIdentifier() &&
+        Tok->getRawIdentifier().str().compare(VarName) == 0) {
       return BeginLoc;
     }
     BeginLoc = Tok->getLocation();

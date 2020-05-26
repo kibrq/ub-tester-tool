@@ -2,7 +2,7 @@
 #include "clang/Lex/Lexer.h"
 
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "index-out-of-bounds/CArrayHandler.h"
 #include "index-out-of-bounds/IOBStringView.h"
 
@@ -61,8 +61,11 @@ bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
     return true;
 
   if (List->isSemanticForm() && List->isSyntacticForm()) {
-    ASTFrontendInjector::getInstance().substitute(Context_, List->getBeginLoc(),
-                                                  "@", "{@}", List);
+    SubstitutionASTWrapper(Context_)
+        .setLoc(List->getBeginLoc())
+        .setFormats("@", "{@}")
+        .setArguments(List)
+        .apply();
   }
 
   if (Array_.shouldVisitNodes_) {
@@ -92,10 +95,10 @@ std::pair<std::string, std::string> CArrayHandler::getCtorFormats() {
   std::string SourceFormat = Array_.Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
   OutputFormat << "("
-               << iob_view::generateSafeArrayCtor(Array_.Sizes_,
-                                                  Array_.Init_.has_value()
-                                                      ? std::optional("@")
-                                                      : std::nullopt)
+               << iob::view::generateSafeArrayCtor(Array_.Sizes_,
+                                                   Array_.Init_.has_value()
+                                                       ? std::optional("@")
+                                                       : std::nullopt)
                << ")";
   return {SourceFormat, OutputFormat.str()};
 }
@@ -103,8 +106,11 @@ std::pair<std::string, std::string> CArrayHandler::getCtorFormats() {
 void CArrayHandler::executeSubstitutionOfCtor(VarDecl* D) {
   SourceLocation Loc = getAfterNameLoc(D, Context_);
   std::pair<std::string, std::string> Formats = getCtorFormats();
-  ASTFrontendInjector::getInstance().substitute(Context_, Loc, Formats.first,
-                                                Formats.second, Array_.Init_);
+  SubstitutionASTWrapper(Context_)
+      .setLoc(Loc)
+      .setFormats(Formats.first, Formats.second)
+      .setArguments(Array_.Init_)
+      .apply();
 }
 
 bool CArrayHandler::TraverseVarDecl(VarDecl* D) {
@@ -122,16 +128,18 @@ bool CArrayHandler::TraverseVarDecl(VarDecl* D) {
 }
 
 std::pair<std::string, std::string> CArrayHandler::getSubscriptFormats() {
-  return {"@[@]", iob_view::generateIOBChecker("@", "@")};
+  return {"@[@]", iob::view::generateIOBChecker("@", "@")};
 }
 
 void CArrayHandler::executeSubstitutionOfSubscript(
     ArraySubscriptExpr* SubscriptExpr) {
   SourceLocation BeginLoc = SubscriptExpr->getBeginLoc();
   std::pair<std::string, std::string> Formats = getSubscriptFormats();
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, BeginLoc, Formats.first, Formats.second,
-      SubscriptExpr->getLHS(), SubscriptExpr->getRHS());
+  SubstitutionASTWrapper(Context_)
+      .setLoc(BeginLoc)
+      .setFormats(Formats.first, Formats.second)
+      .setArguments(SubscriptExpr->getLHS(), SubscriptExpr->getRHS())
+      .apply();
 }
 
 bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {

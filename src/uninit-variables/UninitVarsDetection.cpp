@@ -1,7 +1,7 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
 #include "uninit-variables/UB_UninitSafeTypeConsts.h"
+#include "code-injector/InjectorASTWrapper.h"
 
 #include "clang/AST/ParentMapContext.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -34,8 +34,12 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
       Expr* InitializationExpr = dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
       assert(InitializationExpr);
 
-      ASTFrontendInjector::getInstance().substitute(Context, getAfterNameLoc(VariableDecl, Context), "#@", "(@)",
-                                                    InitializationExpr);
+      SubstitutionASTWrapper(Context)
+          .setLoc(getAfterNameLoc(VariableDecl, Context))
+          .setPrior(SubstPriorityKind::Deep)
+          .setFormats("#@", "(@)")
+          .setArguments(InitializationExpr)
+          .apply();
     }
   }
   return true;
@@ -95,11 +99,14 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
           && ICE->getSubExpr()->getType().getNonReferenceType()->isFundamentalType()) {
         FoundCorrespICE = true;
 
-        ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
-                                                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME +
-                                                          "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
-                                                          VarType.getAsString() + "\"})",
-                                                      VarName);
+        SubstitutionASTWrapper(Context)
+          .setLoc(DRE->getBeginLoc())
+          .setPrior(SubstPriorityKind::Deep)
+          .setFormats("#@",
+                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
+                                                          VarType.getAsString() + "\"})")
+          .setArguments(VarName)
+          .apply();
       }
     } while (!FoundCorrespICE);
     if (FoundCorrespICE)
@@ -137,16 +144,26 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       return true;
     } else {
       // set ignore for 'bad' functions
-      ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
-                                                    "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()", VarName);
+       SubstitutionASTWrapper(Context)
+          .setLoc(DRE->getBeginLoc())
+          .setPrior(SubstPriorityKind::Deep)
+          .setFormats("#@",
+                      "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()")
+          .setArguments(VarName)
+          .apply();
       // TODO: send warning
     }
 
     if (!FoundCallingFunction) {
       // as for ref v1, giving out all references is ignored
       // ? for ref v2: maybe do nothing, since such reference can only be used to init another?
-      ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
-                                                    "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()", VarName);
+      SubstitutionASTWrapper(Context)
+          .setLoc(DRE->getBeginLoc())
+          .setPrior(SubstPriorityKind::Deep)
+          .setFormats("#@",
+                      "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()")
+          .setArguments(VarName)
+          .apply();
     }
   } // else not even fundamental type
 
@@ -162,13 +179,22 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
       isDREToLocalVarOrParmOrMember(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
 
     if (!BinOp->isCompoundAssignmentOp()) {
-      ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
-                                                    "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
-                                                    BinOp->getRHS());
+      SubstitutionASTWrapper(Context)
+        .setLoc(BinOp->getBeginLoc())
+        .setPrior(SubstPriorityKind::Shallow)
+        .setFormats("@#@",
+                    "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
+        .setArguments(BinOp->getLHS(), BinOp->getRHS())
+        .apply();
     } else {
       // CAOs do not cause LRValue conversion, but still require the value
-      ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@",
-                                                    "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()", BinOp->getLHS());
+      SubstitutionASTWrapper(Context)
+        .setLoc(BinOp->getBeginLoc())
+        .setPrior(SubstPriorityKind::Shallow)
+        .setFormats("@",
+                    "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
+        .setArguments(BinOp->getLHS())
+        .apply();
     }
   }
 
@@ -179,8 +205,13 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* UnOp) {
   if (!Context->getSourceManager().isInMainFile(UnOp->getBeginLoc()))
     return true;
   if (UnOp->getSubExpr()->getType()->isFundamentalType() && (UnOp->isIncrementDecrementOp())) {
-    ASTFrontendInjector::getInstance().substitute(Context, UnOp->getBeginLoc(), "#@",
-                                                  "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()", UnOp->getSubExpr());
+    SubstitutionASTWrapper(Context)
+        .setLoc(UnOp->getBeginLoc())
+        .setPrior(SubstPriorityKind::Shallow)
+        .setFormats("#@",
+                    "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
+        .setArguments(UnOp->getSubExpr())
+        .apply();
   } // else there will be LRValue conversion, another case
   return true;
 }

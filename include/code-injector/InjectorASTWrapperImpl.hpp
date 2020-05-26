@@ -1,8 +1,5 @@
 #pragma once
 
-#include "clang/AST/ASTContext.h"
-#include "clang/Lex/Lexer.h"
-
 #include "UBUtility.h"
 
 #include <optional>
@@ -10,7 +7,7 @@
 
 namespace ub_tester {
 
-using code_injector::SubArgs;
+using code_injector::SubstArgs;
 
 namespace {
 
@@ -35,13 +32,13 @@ inline std::string getArgAsString(int a, const clang::ASTContext* Context) {
 
 template <typename T>
 inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context,
-                                              SubArgs& Vec, const T& Arg) {
+                                              SubstArgs& Vec, const T& Arg) {
   Vec.push_back(getArgAsString(Arg, Context));
 }
 
 template <typename T>
 inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context,
-                                              SubArgs& Vec,
+                                              SubstArgs& Vec,
                                               const std::optional<T>& Arg) {
   if (Arg.has_value()) {
     generateArgumentsForSubstitution_(Context, Vec, Arg.value());
@@ -50,7 +47,7 @@ inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context,
 
 template <typename T, typename U>
 inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context,
-                                              SubArgs& Vec, const T& Arg1,
+                                              SubstArgs& Vec, const T& Arg1,
                                               const U& Arg2) {
   generateArgumentsForSubstitution_(Context, Vec, Arg1);
   generateArgumentsForSubstitution_(Context, Vec, Arg2);
@@ -58,43 +55,39 @@ inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context,
 
 template <typename T, typename U, typename... W>
 inline void generateArgumentsForSubstitution_(const clang::ASTContext* Context,
-                                              SubArgs& Vec, const T& Arg1,
+                                              SubstArgs& Vec, const T& Arg1,
                                               const U& Arg2, W... ws) {
   generateArgumentsForSubstitution_(Context, Vec, Arg1);
   generateArgumentsForSubstitution_(Context, Vec, Arg2, ws...);
 }
 
-inline SubArgs
+inline SubstArgs
 generateArgumentsForSubstitution(const clang::ASTContext* Context) {
   return {};
 }
 
 template <typename T>
-inline SubArgs
+inline SubstArgs
 generateArgumentsForSubstitution(const clang::ASTContext* Context,
                                  const T& Arg) {
-  SubArgs Result;
+  SubstArgs Result;
   generateArgumentsForSubstitution_(Context, Result, Arg);
   return Result;
 }
 
 template <typename T, typename U, typename... W>
-inline SubArgs
+inline SubstArgs
 generateArgumentsForSubstitution(const clang::ASTContext* Context,
                                  const T& Arg1, const U& Arg2, W... ws) {
-  SubArgs Result;
+  SubstArgs Result;
   generateArgumentsForSubstitution_(Context, Result, Arg1, Arg2, ws...);
   return Result;
 }
 } // namespace
 
-template <typename... Args>
-void ASTFrontendInjector::substitute(const clang::ASTContext* Context,
-                                     const clang::SourceLocation& BeginLoc,
-                                     std::string SourceFormat,
-                                     std::string OutputFormat, Args... as) {
-  substitute(Context, BeginLoc, std::move(SourceFormat),
-             std::move(OutputFormat),
-             generateArgumentsForSubstitution(Context, as...));
+template <typename... Expr>
+SubstArgs createSubstArgs(const clang::ASTContext* Context, Expr... Exprs) {
+  return generateArgumentsForSubstitution(Context, Exprs...);
 }
+
 } // namespace ub_tester

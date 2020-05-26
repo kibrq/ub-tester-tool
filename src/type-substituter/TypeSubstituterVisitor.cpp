@@ -1,6 +1,6 @@
 #include "type-substituter/TypeSubstituterVisitor.h"
 #include "UBUtility.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "type-substituter/SafeTypesView.h"
 
 #include "clang/Basic/SourceManager.h"
@@ -135,6 +135,13 @@ bool TypeSubstituterVisitor::TraverseRecordType(RecordType* T) {
   return true;
 }
 
+bool TypeSubstituterVisitor::TraverseTypedefType(TypedefType* T) {
+  if (Type_.isInited()) {
+    Type_ << T->getDecl()->getQualifiedNameAsString();
+  }
+  return true;
+}
+
 bool TypeSubstituterVisitor::TraverseTemplateTypeParmType(
     TemplateTypeParmType* T) {
   if (Type_.isInited()) {
@@ -203,9 +210,11 @@ void TypeSubstituterVisitor::substituteTypeOfVariable(DeclaratorDecl* DDecl) {
 
   NewDeclaration << Type_.getTypeAsString() << " " << DDecl->getNameAsString();
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
-      NewDeclaration.str());
+  const auto& SM = Context_->getSourceManager();
+
+  InjectorASTWrapper::getInstance().substitute(
+      {DDecl->getBeginLoc(), getNameLastLoc(DDecl, Context_)},
+      NewDeclaration.str(), Context_);
   Type_.reset();
 }
 
@@ -213,8 +222,8 @@ void TypeSubstituterVisitor::substituteTypeOfReturn(FunctionDecl* FDecl) {
   if (!Type_.isInited())
     return;
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString());
+  InjectorASTWrapper::getInstance().substitute(
+      FDecl->getReturnTypeSourceRange(), Type_.getTypeAsString(), Context_);
   Type_.reset();
 }
 
@@ -222,14 +231,16 @@ void TypeSubstituterVisitor::substituteTypeOfTypedef(TypedefNameDecl* TDecl) {
   if (!Type_.isInited())
     return;
 
-  ASTFrontendInjector::getInstance().substitute(
-      Context_, TDecl->getTypeSourceInfo()->getTypeLoc().getSourceRange(),
-      Type_.getTypeAsString());
+  InjectorASTWrapper::getInstance().substitute(
+      TDecl->getTypeSourceInfo()->getTypeLoc().getSourceRange(),
+      Type_.getTypeAsString(), Context_);
   Type_.reset();
 }
 
 bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl* FDecl) {
-  if (!Context_->getSourceManager().isWrittenInMainFile(FDecl->getBeginLoc()))
+  const auto& SM = Context_->getSourceManager();
+  if (!SM.isInMainFile(FDecl->getBeginLoc()) ||
+      SM.isMacroBodyExpansion(FDecl->getBeginLoc()))
     return true;
 
   if (FDecl && !FDecl->getReturnType().getTypePtr()->isVoidType() &&
@@ -242,7 +253,8 @@ bool TypeSubstituterVisitor::VisitFunctionDecl(FunctionDecl* FDecl) {
 }
 
 bool TypeSubstituterVisitor::HelperVisitDeclaratorDecl(DeclaratorDecl* D) {
-  if (!Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc()))
+  const auto& SM = Context_->getSourceManager();
+  if (!SM.isInMainFile(D->getBeginLoc()))
     return true;
   Type_.shouldVisitTypes(true);
   TraverseType(D->getType());
