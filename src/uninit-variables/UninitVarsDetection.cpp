@@ -152,7 +152,7 @@ bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(
 
     SubstitutionASTWrapper(Context)
         .setLoc(BinOp->getLHS()->getBeginLoc())
-        .setPrior(SubstPriorityKind::Deep)
+        .setPrior(SubstPriorityKind::Shallow)
         .setFormats("@#@",
                     "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
         .setArguments(BinOp->getLHS(), BinOp->getRHS())
