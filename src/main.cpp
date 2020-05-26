@@ -25,15 +25,19 @@ static llvm::cl::OptionCategory UBTesterOptionsCategory("ub-tester options");
 // static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 // static cl::extrahelp MoreHelp("\nMore help text...\n");
 
-namespace ub_tester::clio {
+namespace ub_tester {
+namespace clio {
 
 bool SuppressWarnings;
 
-} // namespace ub_tester::clio
+} // namespace clio
 
-static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("disable warnings output"),
+static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"),
                                                 cl::location(ub_tester::clio::SuppressWarnings), cl::init(false),
                                                 cl::cat(UBTesterOptionsCategory));
+
+} // namespace ub_tester
+
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
@@ -55,7 +59,13 @@ public:
 };
 } // namespace ub_tester
 
+void UBTesterVersionPrinter(raw_ostream& ostr) {
+  ostr << "ub-tester tool\n\nVersion: b0.9\n\nAuthors: https://github.com/KirillBrilliantov, https://github.com/GlebSolovev, "
+          "https://github.com/DLochmelis33\n";
+}
+
 int main(int argc, const char** argv) {
+  cl::SetVersionPrinter(UBTesterVersionPrinter);
   CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::Optional);
 
   ub_tester::ASTFrontendInjector::initialize(OptionsParser.getSourcePathList());
