@@ -26,19 +26,29 @@ static llvm::cl::OptionCategory UBTesterOptionsCategory("ub-tester options");
 // static cl::extrahelp MoreHelp("\nMore help text...\n");
 
 namespace ub_tester {
+
 namespace clio {
 
+bool runOOB;
+bool runArithm;
+bool runUninit;
 bool SuppressWarnings;
 
-} // namespace clio
+namespace internal {
+ApplyOnly AO;
 
 static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"),
                                                 cl::location(ub_tester::clio::SuppressWarnings), cl::init(false),
                                                 cl::cat(UBTesterOptionsCategory));
+static cl::opt<ApplyOnly, true>
+    ApplyOnlyOption("apply-only", cl::desc("Only apply specified checks"),
+                    cl::values(clEnumValN(ApplyOnly::OOB, "oob", "Arrays and pointers out of bounds checks"),
+                               clEnumValN(ApplyOnly::Arithm, "arithm", "Arithmetic operations checks"),
+                               clEnumValN(ApplyOnly::Uninit, "uninit", "Uninitialized variables checks")),
+                    cl::location(AO), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
+} // namespace internal
+} // namespace clio
 
-} // namespace ub_tester
-
-namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
@@ -49,9 +59,12 @@ public:
     std::unique_ptr<ASTConsumer> TypeSubstituter = std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    consumers.emplace_back(std::move(OutOfBoundsConsumer));
-    consumers.emplace_back(std::move(UninitVarsConsumer));
-    consumers.emplace_back(std::move(ArithmeticUBConsumer));
+    if (clio::runOOB)
+      consumers.emplace_back(std::move(OutOfBoundsConsumer));
+    if (clio::runUninit)
+      consumers.emplace_back(std::move(UninitVarsConsumer));
+    if (clio::runArithm)
+      consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
@@ -67,6 +80,7 @@ void UBTesterVersionPrinter(raw_ostream& ostr) {
 int main(int argc, const char** argv) {
   cl::SetVersionPrinter(UBTesterVersionPrinter);
   CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::Optional);
+  ub_tester::clio::processFlags();
 
   ub_tester::ASTFrontendInjector::initialize(OptionsParser.getSourcePathList());
   ub_tester::ASTFrontendInjector::getInstance().substituteIncludePaths();
