@@ -9,7 +9,8 @@
 
 #include "arithmetic-overflow/ArithmeticUBAsserts.h"
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
-#include "code-injector/InjectorASTWrapper.h"
+#include "cli/CLIOptions.h"
+#include "code-injector/ASTFrontendInjector.h"
 #include "index-out-of-bounds/IOBConsumer.h"
 #include "pointers/PointersConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
@@ -21,10 +22,19 @@ using namespace llvm;
 using namespace ub_tester::code_injector;
 using namespace ub_tester::code_injector::wrapper;
 
-static llvm::cl::OptionCategory MyToolCategory("my-tool options");
-static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
-static cl::extrahelp MoreHelp("\nMore help text...\n");
+static llvm::cl::OptionCategory UBTesterOptionsCategory("ub-tester options");
+// static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+// static cl::extrahelp MoreHelp("\nMore help text...\n");
 
+namespace ub_tester::clio {
+
+bool SuppressWarnings;
+
+} // namespace ub_tester::clio
+
+static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("disable warnings output"),
+                                                cl::location(ub_tester::clio::SuppressWarnings), cl::init(false),
+                                                cl::cat(UBTesterOptionsCategory));
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
@@ -58,7 +68,7 @@ public:
 } // namespace ub_tester
 
 int main(int argc, const char** argv) {
-  CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
+  CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::Optional);
 
   ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
