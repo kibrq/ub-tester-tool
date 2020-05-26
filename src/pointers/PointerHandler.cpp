@@ -174,6 +174,7 @@ void PointerHandler::executeSubstitutionOfStarOperator(UnaryOperator* UO) {
   std::string OutputFormat = ptr::view::getAssertStarOpeartorAsString("@");
   SubstitutionASTWrapper(Context_)
       .setLoc(Loc)
+      .setPrior(SubstPriorityKind::Deep)
       .setFormats(SourceFormat, OutputFormat)
       .setArguments(UO->getSubExpr())
       .apply();
@@ -195,6 +196,7 @@ void PointerHandler::executeSubstitutionOfMemberExpr(MemberExpr* ME) {
   std::string OutputFormat = ptr::view::getAssertMemberExprAsString("@", "@");
   SubstitutionASTWrapper(Context_)
       .setLoc(Loc)
+      .setPrior(SubstPriorityKind::Deep)
       .setFormats(SourceFormat, OutputFormat)
       .setArguments(ME->getBase(),
                     SourceRange{ME->getMemberLoc(), ME->getEndLoc()})

@@ -36,6 +36,10 @@ void CodeInjector::applySubstitutions(std::istream& IStream,
                                       std::ostream& OStream) {
 
   std::sort(Substitutions_.begin(), Substitutions_.end());
+  Substitutions_.erase(
+      std::unique(Substitutions_.begin(), Substitutions_.end()),
+      Substitutions_.end());
+
   while (IStream.peek() != EOF) {
     if (!maybeFrontSubstitution(IStream, OStream))
       OStream << static_cast<char>(IStream.get());
@@ -67,6 +71,16 @@ bool Substitution::operator<(const Substitution& Other) const {
     Len2 += A.length();
   }
   return Len1 > Len2;
+}
+
+bool Substitution::operator==(const Substitution& Other) const {
+  if (Offset_ != Other.Offset_) {
+    return false;
+  }
+  if (SourceFormat_.compare(Other.SourceFormat_) != 0) {
+    return false;
+  }
+  return true;
 }
 
 void CodeInjector::substitute(Substitution Subst) {

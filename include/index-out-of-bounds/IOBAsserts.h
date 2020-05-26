@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ub-safe-containers/UBSafeCArray.h"
+#include "../ub-safe-containers/UBSafeCArray.h"
 
 #include <climits>
 #include <cstdlib>
@@ -12,23 +12,29 @@
 
 namespace ub_tester::iob::checkers {
 
-#define ASSERT_INDEX_OUT_OF_BOUNDS(Lhs, Rhs)                                                       \
-  ub_tester::iob::checkers::checkIOB(                                                              \
-      Lhs, Rhs, ub_tester::iob::checkers::IOBCheckerHelper(#Lhs, Rhs, __FILE__, __LINE__))
+#define ASSERT_INDEX_OUT_OF_BOUNDS(Lhs, Rhs)                                   \
+  ub_tester::iob::checkers::checkIOB(                                          \
+      Lhs, Rhs,                                                                \
+      ub_tester::iob::checkers::IOBCheckerHelper(#Lhs, Rhs, __FILE__,          \
+                                                 __LINE__))
 
-#define ASSERT_INVALID_SIZE(Sizes)                                                                 \
-  ub_tester::iob::checkers::checkInvalidSize(                                                      \
-      Sizes, ub_tester::iob::checkers::InvalidSizeCheckerHelper(__FILE__, __LINE__))
+#define ASSERT_INVALID_SIZE(Sizes)                                             \
+  ub_tester::iob::checkers::checkInvalidSize(                                  \
+      Sizes,                                                                   \
+      ub_tester::iob::checkers::InvalidSizeCheckerHelper(__FILE__, __LINE__))
 
 struct IOBCheckerHelper {
-  IOBCheckerHelper(const char* VarName, int Index, const char* Filename, size_t LineNum)
-      : VarName_{VarName}, Index_{Index}, Filename_{Filename}, LineNum_{LineNum}, Size_{0} {}
+  IOBCheckerHelper(const char* VarName, int Index, const char* Filename,
+                   size_t LineNum)
+      : VarName_{VarName}, Index_{Index}, Filename_{Filename},
+        LineNum_{LineNum}, Size_{0} {}
 
   void setSize(size_t Size) { Size_ = Size; }
 
   void signalizeError() const {
     std::stringstream Message;
-    Message << "In " << Filename_ << " on line " << LineNum_ << " Index Out Of Bounds!!\n"
+    Message << "In " << Filename_ << " on line " << LineNum_
+            << " Index Out Of Bounds!!\n"
             << "Size of variable "
             << "\'" << VarName_ << "\'"
             << " is " << Size_ << " but requested index is " << Index_ << '\n';
@@ -57,7 +63,8 @@ T& checkIOB(UBSafeCArray<T>& Array, int Index, IOBCheckerHelper Helper) {
 }
 
 template <typename T>
-const T& checkIOB(const UBSafeCArray<T>& Array, int Index, IOBCheckerHelper Helper) {
+const T& checkIOB(const UBSafeCArray<T>& Array, int Index,
+                  IOBCheckerHelper Helper) {
   try {
     return Array[Index];
   } catch (const std::out_of_range& e) {
@@ -124,7 +131,8 @@ struct InvalidSizeCheckerHelper {
 
   void signalizeError() const {
     std::stringstream Message;
-    Message << "In " << Filename_ << " on line " << LineNum_ << " Invalid size of an array!!\n"
+    Message << "In " << Filename_ << " on line " << LineNum_
+            << " Invalid size of an array!!\n"
             << "Trying to make ARRAY of size " << InvalidSizeValue_ << '\n';
     std::cout << Message.str();
     exit(1);
@@ -138,8 +146,8 @@ private:
   int InvalidSizeValue_;
 };
 
-inline std::vector<size_t>
-checkInvalidSize(const std::vector<int>& Sizes, InvalidSizeCheckerHelper Helper) {
+inline std::vector<size_t> checkInvalidSize(const std::vector<int>& Sizes,
+                                            InvalidSizeCheckerHelper Helper) {
   std::vector<size_t> Res;
   for (const auto& Size : Sizes) {
     if (Size < 0 || Size >= SIZE_MAX) {

@@ -57,6 +57,7 @@ struct Substitution {
   inline void setArguments(const SubstArgs& Arguments) { Args_ = Arguments; }
 
   bool operator<(const Substitution& Other) const;
+  bool operator==(const Substitution& Other) const;
 
 private:
   friend class CodeInjector;
