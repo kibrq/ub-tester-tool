@@ -41,6 +41,11 @@ constexpr bool checkIfTypeHasConvRankGeqThanInt() {
   return sizeof(T) >= sizeof(int);
 }
 
+struct UnusedArgs final {
+  template <typename... Args>
+  UnusedArgs(Args const&...) {}
+};
+
 namespace tmp_functions {
 
 /* Works only for narrow range of types!
