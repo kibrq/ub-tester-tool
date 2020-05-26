@@ -5,6 +5,14 @@
 #include <string>
 #include <vector>
 
+#define ASSERT_FAILED(FailCode, Message)                                       \
+  AssertMessageManager::pushMessage(                                           \
+      AssertMessage((Message), AssertFailCode::FailCode));                     \
+  assert(0 && "Assert detected error but manager didn't handle it")
+#define PUSH_WARNING(FailCode, Message)                                        \
+  AssertMessageManager::pushMessage(                                           \
+      AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
+
 namespace ub_tester::assert_message_manager::supress_messages_mode {
 
 constexpr bool SUPRESS_ALL = false;

@@ -33,14 +33,6 @@
   } else                                                                       \
     PUSH_WARNING(UNSIGNED_OVERFLOW_WARNING, (Message))
 
-#define ASSERT_FAILED(FailCode, Message)                                       \
-  AssertMessageManager::pushMessage(                                           \
-      AssertMessage((Message), AssertFailCode::FailCode));                     \
-  assert(0 && "Assert detected error but manager didn't handle it")
-#define PUSH_WARNING(FailCode, Message)                                        \
-  AssertMessageManager::pushMessage(                                           \
-      AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
-
 #define ARE_SAME_TYPES(Type1, Type2)                                           \
   static_assert(std::is_same<Type1, Type2>::value)
 #define HAS_CONV_RANK_GEQ_THAN_INT(Type)                                       \
