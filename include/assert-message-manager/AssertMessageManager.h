@@ -5,6 +5,25 @@
 #include <string>
 #include <vector>
 
+namespace ub_tester::assert_message_manager::supress_messages_mode {
+
+constexpr bool SUPRESS_ALL = false;
+constexpr bool SUPRESS_WARNINGS = false;
+
+constexpr bool SUPRESS_ARITHM_WARNINGS = false;
+constexpr bool SUPRESS_UNSIGNED_OVERFLOW_WARNING = false;
+constexpr bool SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING = false;
+constexpr bool SUPRESS_UNSAFE_CONV_WARNING = false;
+constexpr bool SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING = false;
+
+// constexpr bool SUPRESS_UNINIT_VARS_WARNINGS = false;
+// constexpr bool SUPRESS_IOB_WARNINGS = false;
+
+constexpr bool SUPRESS_IMPL_DEFINED_WARNING = false;
+constexpr bool SUPRESS_NOT_CONSIDERED_WARNING = false;
+
+}; // namespace ub_tester::assert_message_manager::supress_messages_mode
+
 namespace ub_tester::assert_message_manager {
 
 enum class AssertFailCode { // error code > 0, warning code < 0
@@ -29,12 +48,50 @@ struct AssertMessage final {
   AssertFailCode FailCode_;
 };
 
+bool checkIfMessageIsSupressed(AssertFailCode FailCode) noexcept {
+  using namespace supress_messages_mode;
+  if (SUPRESS_ALL)
+    return true;
+  if (SUPRESS_WARNINGS && static_cast<int>(FailCode) < 0)
+    return true;
+
+  switch (FailCode) {
+  // arithm errors
+  case AssertFailCode::OVERFLOW_ERROR:
+    return false;
+  case AssertFailCode::DIVISION_BY_ZERO_ERROR:
+    return false;
+  case AssertFailCode::UNDEFINED_MOD_ERROR:
+    return false;
+  case AssertFailCode::UNDEFINED_BITSHIFT_LEFT_ERROR:
+    return false;
+  case AssertFailCode::UNDEFINED_BITSHIFT_RIGHT_ERROR:
+    return false;
+  // arithm warnings
+  case AssertFailCode::UNSIGNED_OVERFLOW_WARNING:
+    return SUPRESS_UNSIGNED_OVERFLOW_WARNING || SUPRESS_ARITHM_WARNINGS;
+  case AssertFailCode::OVERFLOW_IN_BITSHIFT_CXX20_WARNING:
+    return SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING ||
+           SUPRESS_ARITHM_WARNINGS;
+  case AssertFailCode::IMPL_DEFINED_WARNING:
+    return SUPRESS_IMPL_DEFINED_WARNING || SUPRESS_ARITHM_WARNINGS;
+  case AssertFailCode::UNSAFE_CONV_WARNING:
+    return SUPRESS_UNSAFE_CONV_WARNING || SUPRESS_ARITHM_WARNINGS;
+  case AssertFailCode::IMPL_DEFINED_UNSAFE_CONV_WARNING:
+    return SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING || SUPRESS_ARITHM_WARNINGS;
+  case AssertFailCode::NOT_CONSIDERED_WARNING:
+    return SUPRESS_NOT_CONSIDERED_WARNING || SUPRESS_ARITHM_WARNINGS;
+  }
+  assert(0 && "Undefined AssertFailCode");
+}
+
 class AssertMessageManager final {
 private:
   AssertMessageManager() = default;
 
   void handleMessage(AssertMessage Message) noexcept {
-    Messages_.push_back(std::move(Message));
+    if (!checkIfMessageIsSupressed(Message.FailCode_))
+      Messages_.push_back(std::move(Message));
     if (static_cast<int>(Message.FailCode_) > 0) // if error, not a warning
       printMessagesNTerminate(Message.FailCode_);
   }
@@ -43,7 +100,8 @@ private:
     for (const auto& Message : Messages_)
       std::cerr << Message.Message_ << "\n";
     Messages_.clear();
-    std::cerr << "error detected, aborting\n\n";
+    if (!supress_messages_mode::SUPRESS_ALL)
+      std::cerr << "error detected, aborting\n\n";
     exit(static_cast<int>(FailCode));
   }
 
