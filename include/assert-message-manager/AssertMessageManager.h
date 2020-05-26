@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cassert>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -23,8 +22,9 @@ enum class AssertFailCode { // error code > 0, warning code < 0
   NOT_CONSIDERED_WARNING = -6
 };
 
-struct AssertMessage {
-  AssertMessage(std::string Message, AssertFailCode FailCode) noexcept;
+struct AssertMessage final {
+  AssertMessage(std::string Message, AssertFailCode FailCode) noexcept
+      : Message_{Message}, FailCode_{FailCode} {}
   std::string Message_;
   AssertFailCode FailCode_;
 };
@@ -32,17 +32,43 @@ struct AssertMessage {
 class AssertMessageManager final {
 private:
   AssertMessageManager() = default;
-  void handleMessage(AssertMessage Message) noexcept;
-  void printMessagesNTerminate(AssertFailCode FailCode) noexcept;
+
+  void handleMessage(AssertMessage Message) noexcept {
+    Messages_.push_back(std::move(Message));
+    if (static_cast<int>(Message.FailCode_) > 0) // if error, not a warning
+      printMessagesNTerminate(Message.FailCode_);
+  }
+
+  void printMessagesNTerminate(AssertFailCode FailCode) noexcept {
+    for (const auto& Message : Messages_)
+      std::cerr << Message.Message_ << "\n";
+    Messages_.clear();
+    exit(static_cast<int>(FailCode));
+  }
 
 public:
-  ~AssertMessageManager() noexcept;
-  static AssertMessageManager& getInstance() noexcept;
-  static void pushMessage(AssertMessage Message) noexcept;
+  ~AssertMessageManager() noexcept {
+    for (const auto& Message : Messages_)
+      std::cerr << Message.Message_ << "\n";
+  }
+
+  static AssertMessageManager& getInstance() noexcept {
+    if (!ManagerPtr_)
+      ManagerPtr_ =
+          std::unique_ptr<AssertMessageManager>(new AssertMessageManager{});
+    return *ManagerPtr_;
+  }
+
+  static void pushMessage(AssertMessage Message) noexcept {
+    AssertMessageManager::getInstance().handleMessage(std::move(Message));
+  }
 
 private:
   static std::unique_ptr<AssertMessageManager> ManagerPtr_;
   std::vector<AssertMessage> Messages_{};
 };
+
+inline std::unique_ptr<AssertMessageManager> AssertMessageManager::ManagerPtr_ =
+    nullptr;
 
 } // namespace ub_tester::assert_message_manager

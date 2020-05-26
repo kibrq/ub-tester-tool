@@ -2,7 +2,6 @@ add_definitions(${LLVM_CXXFLAGS})
 include_directories("${PROJECT_SOURCE_DIR}/${UB_INCLUDE}")
 
 add_subdirectory("code-injector")
-add_subdirectory("assert-message-manager")
 add_subdirectory("arithmetic-overflow")
 add_subdirectory("uninit-variables")
 add_subdirectory("index-out-of-bounds")

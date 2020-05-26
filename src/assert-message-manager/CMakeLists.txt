@@ -1,8 +1,0 @@
-file(GLOB Sources "*.cpp")
-
-add_library(ASSERT_MESSAGE_MANAGER OBJECT ${Sources})
-set_target_properties(ASSERT_MESSAGE_MANAGER PROPERTIES COMPILE_FLAGS "-fno-rtti -std=c++17")
-target_compile_options(ASSERT_MESSAGE_MANAGER PUBLIC "-fPIC")
-
-ADD_SOURCE($<TARGET_OBJECTS:ASSERT_MESSAGE_MANAGER>)
-
