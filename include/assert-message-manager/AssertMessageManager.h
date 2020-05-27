@@ -5,13 +5,11 @@
 #include <string>
 #include <vector>
 
-#define ASSERT_FAILED(FailCode, Message)                                       \
-  AssertMessageManager::pushMessage(                                           \
-      AssertMessage((Message), AssertFailCode::FailCode));                     \
+#define ASSERT_FAILED(FailCode, Message)                                                                                         \
+  AssertMessageManager::pushMessage(AssertMessage((Message), AssertFailCode::FailCode));                                         \
   assert(0 && "Assert detected error but manager didn't handle it")
-#define PUSH_WARNING(FailCode, Message)                                        \
-  AssertMessageManager::pushMessage(                                           \
-      AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
+#define PUSH_WARNING(FailCode, Message)                                                                                          \
+  AssertMessageManager::pushMessage(AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
 
 namespace ub_tester::assert_message_manager::supress_messages_mode {
 
@@ -24,7 +22,7 @@ constexpr bool SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING = false;
 constexpr bool SUPRESS_UNSAFE_CONV_WARNING = false;
 constexpr bool SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING = false;
 
-// constexpr bool SUPRESS_UNINIT_VARS_WARNINGS = false;
+constexpr bool SUPRESS_UNINIT_VARS_WARNINGS = false;
 // constexpr bool SUPRESS_IOB_WARNINGS = false;
 
 constexpr bool SUPRESS_IMPL_DEFINED_WARNING = false;
@@ -40,18 +38,19 @@ enum class AssertFailCode { // error code > 0, warning code < 0
   UNDEFINED_MOD_ERROR = 3,
   UNDEFINED_BITSHIFT_LEFT_ERROR = 4,
   UNDEFINED_BITSHIFT_RIGHT_ERROR = 5,
+  UNINIT_ACCESS_ERROR = 20,
 
   UNSIGNED_OVERFLOW_WARNING = -1,
   OVERFLOW_IN_BITSHIFT_CXX20_WARNING = -2,
   IMPL_DEFINED_WARNING = -3,
   UNSAFE_CONV_WARNING = -4,
   IMPL_DEFINED_UNSAFE_CONV_WARNING = -5,
-  NOT_CONSIDERED_WARNING = -6
+  NOT_CONSIDERED_WARNING = -6,
+  UNINIT_IGNORE_WARNING = -20
 };
 
 struct AssertMessage final {
-  AssertMessage(std::string Message, AssertFailCode FailCode) noexcept
-      : Message_{Message}, FailCode_{FailCode} {}
+  AssertMessage(std::string Message, AssertFailCode FailCode) noexcept : Message_{Message}, FailCode_{FailCode} {}
   std::string Message_;
   AssertFailCode FailCode_;
 };
@@ -75,12 +74,13 @@ bool checkIfMessageIsSupressed(AssertFailCode FailCode) noexcept {
     return false;
   case AssertFailCode::UNDEFINED_BITSHIFT_RIGHT_ERROR:
     return false;
+  case AssertFailCode::UNINIT_ACCESS_ERROR:
+    return false;
   // arithm warnings
   case AssertFailCode::UNSIGNED_OVERFLOW_WARNING:
     return SUPRESS_UNSIGNED_OVERFLOW_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::OVERFLOW_IN_BITSHIFT_CXX20_WARNING:
-    return SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING ||
-           SUPRESS_ARITHM_WARNINGS;
+    return SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::IMPL_DEFINED_WARNING:
     return SUPRESS_IMPL_DEFINED_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::UNSAFE_CONV_WARNING:
@@ -89,6 +89,8 @@ bool checkIfMessageIsSupressed(AssertFailCode FailCode) noexcept {
     return SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::NOT_CONSIDERED_WARNING:
     return SUPRESS_NOT_CONSIDERED_WARNING || SUPRESS_ARITHM_WARNINGS;
+  case AssertFailCode::UNINIT_IGNORE_WARNING:
+    return SUPRESS_UNINIT_VARS_WARNINGS;
   }
   assert(0 && "Undefined AssertFailCode");
 }
@@ -121,8 +123,7 @@ public:
 
   static AssertMessageManager& getInstance() noexcept {
     if (!ManagerPtr_)
-      ManagerPtr_ =
-          std::unique_ptr<AssertMessageManager>(new AssertMessageManager{});
+      ManagerPtr_ = std::unique_ptr<AssertMessageManager>(new AssertMessageManager{});
     return *ManagerPtr_;
   }
 
@@ -135,7 +136,6 @@ private:
   std::vector<AssertMessage> Messages_{};
 };
 
-inline std::unique_ptr<AssertMessageManager> AssertMessageManager::ManagerPtr_ =
-    nullptr;
+inline std::unique_ptr<AssertMessageManager> AssertMessageManager::ManagerPtr_ = nullptr;
 
 } // namespace ub_tester::assert_message_manager

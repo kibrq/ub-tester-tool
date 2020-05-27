@@ -64,9 +64,6 @@ public:
 int main(int argc, const char** argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
 
-  ub_tester::ASTFrontendInjector::initialize(OptionsParser.getSourcePathList());
-  ub_tester::ASTFrontendInjector::getInstance().substituteIncludePaths();
-
   ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
   int UtilityReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());

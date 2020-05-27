@@ -1,3 +1,5 @@
+#include "assert-message-manager/AssertMessageManager.h"
+
 #include <stdexcept>
 #include <string>
 
@@ -20,15 +22,23 @@ public:
     check(varInfo);
     return value;
   }
-  T& getRefCheck() {
-    check({}); // TODO: add CallInfo
+  T& getRefCheck(CallInfo varInfo) {
+    check(varInfo);
     return value;
   }
-  T& getRefIgnore() {
+  T& getRefIgnore(CallInfo varInfo) {
     isIgnored = true;
+    if (!isInit) {
+      // TODO: warning if not init yet
+      using namespace ub_tester;
+      using assert_message_manager::AssertFailCode;
+      using assert_message_manager::AssertMessage;
+      using assert_message_manager::AssertMessageManager;
+      std::string warningMessage = "releasing an uninit variable";
+      appendInfo(warningMessage, varInfo);
+      PUSH_WARNING(UNINIT_IGNORE_WARNING, warningMessage);
+    }
     return value;
-    // TODO: general warning
-    // TODO: extra warning if not init yet (?)
   }
   T& setValue(T t) {
     value = t;
@@ -37,6 +47,7 @@ public:
   }
   T& setValue(const UB_UninitSafeType<T>& t) {
     value = t.getValue({}); // TODO: avoid line mismatch
+    // ? need to pass CallInfo, but how to in T() or operator&() ?
     isInit = true;
     return value;
   }
@@ -85,18 +96,26 @@ private:
   bool isInit;
   bool isIgnored;
 
+  static void appendInfo(std::string& msg, CallInfo varInfo) {
+    if (varInfo.varName != "")
+      msg += (" named \'" + varInfo.varName + "\'");
+    if (varInfo.varType != "")
+      msg += (" of type \'" + varInfo.varType + "\'");
+    if (varInfo.file != "")
+      msg += (" in file " + varInfo.file);
+    if (varInfo.line)
+      msg += (" at line " + std::to_string(varInfo.line));
+  }
+
   void check(CallInfo varInfo) const {
+    using namespace ub_tester;
+    using assert_message_manager::AssertFailCode;
+    using assert_message_manager::AssertMessage;
+    using assert_message_manager::AssertMessageManager;
     if (!isIgnored && !isInit) {
       std::string errorMessage{"access to value of uninitialized variable"};
-      if (varInfo.varName != "")
-        errorMessage += (" named \'" + varInfo.varName + "\'");
-      if (varInfo.varType != "")
-        errorMessage += (" of type \'" + varInfo.varType + "\'");
-      if (varInfo.file != "")
-        errorMessage += (" in file " + varInfo.file);
-      if (varInfo.line)
-        errorMessage += (" at line " + std::to_string(varInfo.line));
-      throw std::logic_error(errorMessage);
+      appendInfo(errorMessage, varInfo);
+      PUSH_WARNING(UNINIT_ACCESS_ERROR, errorMessage);
     }
   }
 };

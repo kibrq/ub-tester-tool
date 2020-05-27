@@ -1,7 +1,7 @@
 #include "uninit-variables/UninitVarsDetection.h"
 #include "UBUtility.h"
-#include "uninit-variables/UB_UninitSafeTypeConsts.h"
 #include "code-injector/InjectorASTWrapper.h"
+#include "uninit-variables/UB_UninitSafeTypeConsts.h"
 
 #include "clang/AST/ParentMapContext.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -100,13 +100,12 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
         FoundCorrespICE = true;
 
         SubstitutionASTWrapper(Context)
-          .setLoc(DRE->getBeginLoc())
-          .setPrior(SubstPriorityKind::Deep)
-          .setFormats("#@",
-                      "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
-                                                          VarType.getAsString() + "\"})")
-          .setArguments(VarName)
-          .apply();
+            .setLoc(DRE->getBeginLoc())
+            .setPrior(SubstPriorityKind::Deep)
+            .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
+                                  VarType.getAsString() + "\"})")
+            .setArguments(VarName)
+            .apply();
       }
     } while (!FoundCorrespICE);
     if (FoundCorrespICE)
@@ -144,11 +143,11 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       return true;
     } else {
       // set ignore for 'bad' functions
-       SubstitutionASTWrapper(Context)
+      SubstitutionASTWrapper(Context)
           .setLoc(DRE->getBeginLoc())
           .setPrior(SubstPriorityKind::Deep)
-          .setFormats("#@",
-                      "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()")
+          .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "({__FILE__, __LINE__, \"" + VarName +
+                                "\", \"" + VarType.getAsString() + "\"})")
           .setArguments(VarName)
           .apply();
       // TODO: send warning
@@ -160,8 +159,8 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       SubstitutionASTWrapper(Context)
           .setLoc(DRE->getBeginLoc())
           .setPrior(SubstPriorityKind::Deep)
-          .setFormats("#@",
-                      "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "()")
+          .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "({__FILE__, __LINE__, " + VarName + ", " +
+                                VarType.getAsString() + "})")
           .setArguments(VarName)
           .apply();
     }
@@ -180,21 +179,19 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
 
     if (!BinOp->isCompoundAssignmentOp()) {
       SubstitutionASTWrapper(Context)
-        .setLoc(BinOp->getBeginLoc())
-        .setPrior(SubstPriorityKind::Shallow)
-        .setFormats("@#@",
-                    "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
-        .setArguments(BinOp->getLHS(), BinOp->getRHS())
-        .apply();
+          .setLoc(BinOp->getBeginLoc())
+          .setPrior(SubstPriorityKind::Shallow)
+          .setFormats("@#@", "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
+          .setArguments(BinOp->getLHS(), BinOp->getRHS())
+          .apply();
     } else {
       // CAOs do not cause LRValue conversion, but still require the value
       SubstitutionASTWrapper(Context)
-        .setLoc(BinOp->getBeginLoc())
-        .setPrior(SubstPriorityKind::Shallow)
-        .setFormats("@",
-                    "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
-        .setArguments(BinOp->getLHS())
-        .apply();
+          .setLoc(BinOp->getBeginLoc())
+          .setPrior(SubstPriorityKind::Shallow)
+          .setFormats("@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
+          .setArguments(BinOp->getLHS())
+          .apply();
     }
   }
 
@@ -208,8 +205,7 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* UnOp) {
     SubstitutionASTWrapper(Context)
         .setLoc(UnOp->getBeginLoc())
         .setPrior(SubstPriorityKind::Shallow)
-        .setFormats("#@",
-                    "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
+        .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
         .setArguments(UnOp->getSubExpr())
         .apply();
   } // else there will be LRValue conversion, another case
