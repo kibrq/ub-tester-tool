@@ -19,21 +19,17 @@ using assert_message_manager::AssertMessage;
 using assert_message_manager::AssertMessageManager;
 
 #define ASSERT_IOB(Lhs, Rhs)                                                   \
-  ub_tester::iob::checkers::checkIOB(                                          \
-      Lhs, Rhs,                                                                \
-      ub_tester::iob::checkers::IOBCheckerHelper(#Lhs, Rhs, __FILE__,          \
-                                                 __LINE__))
+  ub_tester::iob::checkers::checkIOB(Lhs, Rhs, __FILE__, __LINE__)
 
 #define ASSERT_INVALID_SIZE(Sizes)                                             \
-  ub_tester::iob::checkers::checkInvalidSize(                                  \
-      Sizes,                                                                   \
-      ub_tester::iob::checkers::InvalidSizeCheckerHelper(__FILE__, __LINE__))
+  ub_tester::iob::checkers::checkInvalidSize(Sizes, __FILE__, __LINE__)
 
 namespace {
 void generateAssertIOBMessage(const char* Filename, size_t Line, int Index,
                               size_t Size) {
   std::stringstream SStream;
-  SStream << "Index out of bounds! "
+  SStream << "Index out of "
+             "bounds! "
           << " in file " << Filename << " on line " << Line << ".\n";
   SStream << "Requesting index " << Index << ", while size is " << Size << '\n';
   PUSH_ERROR(INDEX_OUT_OF_BOUNDS_ERROR, SStream.str());
@@ -41,9 +37,12 @@ void generateAssertIOBMessage(const char* Filename, size_t Line, int Index,
 void generateAssertInvalidSizeMessage(const char* Filename, size_t Line,
                                       int InvalidDim) {
   std::stringstream SStream;
-  SStream << "Invalid size of an array! "
+  SStream << "Invalid size "
+             "of an array! "
           << " in file " << Filename << " on line " << Line << ".\n";
-  SStream << "Trying to create an array of size " << InvalidDim << '\n';
+  SStream << "Trying to create "
+             "an array of size "
+          << InvalidDim << '\n';
   PUSH_ERROR(INVALID_SIZE_ERROR, SStream.str());
 }
 void generateUntrackedPtrMessage(const char* Filename, size_t Line) {
@@ -62,6 +61,7 @@ T& checkIOB(UBSafeCArray<T>& Array, int Index, const char* Filename,
   } catch (const std::out_of_range& e) {
     generateAssertIOBMessage(Filename, Line, Index, Array.getSize());
   }
+  return Array[Index];
 }
 
 template <typename T>
@@ -157,3 +157,5 @@ inline std::vector<size_t> checkInvalidSize(const std::vector<int>& Sizes,
   return Res;
 }
 } // namespace ub_tester::iob::checkers
+  // ub_tester::iob::checkers
+  // ub_tester::iob::checkers

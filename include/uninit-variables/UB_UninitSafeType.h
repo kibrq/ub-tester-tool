@@ -1,15 +1,17 @@
-#include "assert-message-manager/AssertMessageManager.h"
+#include "../assert-message-manager/AssertMessageManager.h"
 
 #include <stdexcept>
 #include <string>
 
 // this only needs to be included in target file; no other use
 // TODO: require <string> or change to c-like string
-template <typename T> class UB_UninitSafeType {
+template <typename T>
+class UB_UninitSafeType {
 public:
   UB_UninitSafeType() : value{}, isInit{false}, isIgnored{false} {}
   UB_UninitSafeType(T t) : value{t}, isInit{true}, isIgnored{false} {}
-  UB_UninitSafeType(const UB_UninitSafeType<T>& t) : value{t.getValue()}, isInit{true}, isIgnored{false} {}
+  UB_UninitSafeType(const UB_UninitSafeType<T>& t)
+      : value{t.getValue()}, isInit{true}, isIgnored{false} {}
 
   struct CallInfo {
     const std::string file = "";
@@ -36,7 +38,7 @@ public:
       using assert_message_manager::AssertMessageManager;
       std::string warningMessage = "releasing an uninit variable";
       appendInfo(warningMessage, varInfo);
-      PUSH_WARNING(UNINIT_IGNORE_WARNING, warningMessage);
+      PUSH_WARNING(UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING, warningMessage);
     }
     return value;
   }
@@ -115,7 +117,7 @@ private:
     if (!isIgnored && !isInit) {
       std::string errorMessage{"access to value of uninitialized variable"};
       appendInfo(errorMessage, varInfo);
-      PUSH_WARNING(UNINIT_ACCESS_ERROR, errorMessage);
+      PUSH_WARNING(UNINIT_VAR_ACCESS_ERROR, errorMessage);
     }
   }
 };

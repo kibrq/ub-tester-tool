@@ -1,8 +1,8 @@
 #pragma once
 
+#include "../assert-message-manager/AssertMessageManager.h"
 #include "ArithmeticUBCheckers.h"
 #include "TypeConversionCheckers.h"
-#include "assert-message-manager/AssertMessageManager.h"
 #include <cstring>
 #include <sstream>
 
