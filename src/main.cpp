@@ -38,7 +38,7 @@ public:
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     // consumers.emplace_back(std::move(OutOfBoundsConsumer));
     consumers.emplace_back(std::move(UninitVarsConsumer));
-    // consumers.emplace_back(std::move(ArithmeticUBConsumer));
+    consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));

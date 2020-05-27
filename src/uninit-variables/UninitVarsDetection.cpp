@@ -18,7 +18,7 @@ namespace ub_tester {
 
 FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
 FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context(Context) {}
-FindSafeTypeDefinitionsVisitor::FindSafeTypeDefinitionsVisitor(ASTContext* Context) : Context(Context) {}
+FindSafeTypeOperatorsVisitor::FindSafeTypeOperatorsVisitor(ASTContext* Context) : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
 bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
@@ -134,30 +134,45 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
 }
 
 // detect Safe_T assignments; substitute with .init() function
-bool FindSafeTypeDefinitionsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
+bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
   if (!Context->getSourceManager().isInMainFile(BinOp->getBeginLoc()))
     return true;
 
-  if (BinOp->isAssignmentOp() && !BinOp->isCompoundAssignmentOp() &&
-      BinOp->getLHS()->getType().getTypePtr()->isFundamentalType() &&
+  if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType() &&
       isDREToLocalVarOrParm(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
 
-    ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
-                                                  "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
-                                                  BinOp->getRHS());
+    if (!BinOp->isCompoundAssignmentOp()) {
+      ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
+                                                    "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)", BinOp->getLHS(),
+                                                    BinOp->getRHS());
+    } else {
+      // CAOs do not cause LRValue conversion, but still require the value
+      ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@",
+                                                    "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()", BinOp->getLHS());
+    }
   }
 
+  return true;
+}
+
+bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* UnOp) {
+  if (!Context->getSourceManager().isInMainFile(UnOp->getBeginLoc()))
+    return true;
+  if (UnOp->getSubExpr()->getType()->isFundamentalType() && (UnOp->isIncrementDecrementOp())) {
+    ASTFrontendInjector::getInstance().substitute(Context, UnOp->getBeginLoc(), "#@",
+                                                  "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()", UnOp->getSubExpr());
+  } // else there will be LRValue conversion, another case
   return true;
 }
 
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeDefinitionsVisitor(Context) {}
+    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeOperatorsVisitor(Context) {}
 
 void AssertUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
-  SafeTypeDefinitionsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
+  SafeTypeOperatorsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeAccessesVisitor.TraverseDecl(Context.getTranslationUnitDecl());
 }
 

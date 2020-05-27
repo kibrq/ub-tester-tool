@@ -17,21 +17,13 @@ public:
   };
 
   T getValue(CallInfo varInfo) const {
-    if (!isIgnored && !isInit) {
-      std::string errorMessage{"access to value of uninitialized variable"};
-      if (varInfo.varName != "")
-        errorMessage += (" named \'" + varInfo.varName + "\'");
-      if (varInfo.varType != "")
-        errorMessage += (" of type \'" + varInfo.varType + "\'");
-      if (varInfo.file != "")
-        errorMessage += (" in file " + varInfo.file);
-      if (varInfo.line)
-        errorMessage += (" at line " + std::to_string(varInfo.line));
-      throw std::logic_error(errorMessage);
-    }
+    check(varInfo);
     return value;
   }
-  // T& getReference() { return value; }
+  T& getRefCheck() {
+    check({}); // TODO: add CallInfo
+    return value;
+  }
   T& getRefIgnore() {
     isIgnored = true;
     return value;
@@ -53,10 +45,10 @@ public:
     return getValue({}); // TODO: avoid line mismatch
   }
   // the following unary operators DO NOT cause lvalue to rvalue cast
+  // yet they DO cause UB with uninit vars
   T& operator++() { return ++value; }
   T operator++(int) {
     // ? TODO: send a disclaimer?
-    // we used the value; however, it is somehow unused irl ahaha in fact it is
     T res = getValue({}); // TODO: line mismatch
     value++;
     return res;
@@ -76,19 +68,35 @@ public:
     return &value;
   }
   // also all compound operators
-  template <typename U = T> auto& operator+=(U u) { return value += u; }
-  template <typename U = T> auto& operator-=(U u) { return value -= u; }
-  template <typename U = T> auto& operator*=(U u) { return value *= u; }
-  template <typename U = T> auto& operator/=(U u) { return value /= u; }
-  template <typename U = T> auto& operator%=(U u) { return value %= u; }
-  template <typename U = T> auto& operator&=(U u) { return value &= u; }
-  template <typename U = T> auto& operator|=(U u) { return value |= u; }
-  template <typename U = T> auto& operator^=(U u) { return value ^= u; }
-  template <typename U = T> auto& operator<<=(U u) { return value ^= u; }
-  template <typename U = T> auto& operator>>=(U u) { return value ^= u; }
+  // ! redundant since now explicitly checked
+  // template <typename U = T> auto& operator+=(U u) { return value += u; }
+  // template <typename U = T> auto& operator-=(U u) { return value -= u; }
+  // template <typename U = T> auto& operator*=(U u) { return value *= u; }
+  // template <typename U = T> auto& operator/=(U u) { return value /= u; }
+  // template <typename U = T> auto& operator%=(U u) { return value %= u; }
+  // template <typename U = T> auto& operator&=(U u) { return value &= u; }
+  // template <typename U = T> auto& operator|=(U u) { return value |= u; }
+  // template <typename U = T> auto& operator^=(U u) { return value ^= u; }
+  // template <typename U = T> auto& operator<<=(U u) { return value ^= u; }
+  // template <typename U = T> auto& operator>>=(U u) { return value ^= u; }
 
 private:
   T value;
   bool isInit;
   bool isIgnored;
+
+  void check(CallInfo varInfo) const {
+    if (!isIgnored && !isInit) {
+      std::string errorMessage{"access to value of uninitialized variable"};
+      if (varInfo.varName != "")
+        errorMessage += (" named \'" + varInfo.varName + "\'");
+      if (varInfo.varType != "")
+        errorMessage += (" of type \'" + varInfo.varType + "\'");
+      if (varInfo.file != "")
+        errorMessage += (" in file " + varInfo.file);
+      if (varInfo.line)
+        errorMessage += (" at line " + std::to_string(varInfo.line));
+      throw std::logic_error(errorMessage);
+    }
+  }
 };
