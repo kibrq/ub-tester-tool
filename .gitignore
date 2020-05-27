@@ -1,1 +1,4 @@
 build/*
+*.swp
+samples/IMPROVED_*
+.vscode
