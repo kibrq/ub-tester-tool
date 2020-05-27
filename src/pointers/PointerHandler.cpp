@@ -2,52 +2,52 @@
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
 #include "pointers/PointersAssertsView.h"
-
 #include "clang/Basic/SourceManager.h"
-
 #include <unordered_map>
 
 // TODO add support of more allocation funcs
 
 using namespace clang;
+using namespace ub_tester::code_injector;
+using namespace ub_tester::code_injector::wrapper;
 
 namespace ub_tester {
 
-PointerHandler::PointerInfo_t::PointerInfo_t(bool shouldVisitNodes)
-    : shouldVisitNodes_{shouldVisitNodes} {}
+PointerVisitor::PointerInfo_t::PointerInfo_t(bool ShouldVisitNodes)
+    : ShouldVisitNodes_{ShouldVisitNodes} {}
 
-bool PointerHandler::shouldVisitNodes() {
-  return !Pointers_.empty() && Pointers_.back().shouldVisitNodes_;
+PointerVisitor::PointerInfo_t& PointerVisitor::backPointer() {
+  return Pointers_.back();
 }
 
-void PointerHandler::reset() {
+bool PointerVisitor::shouldVisitNodes() {
+  return !Pointers_.empty() && backPointer().ShouldVisitNodes_;
+}
+
+void PointerVisitor::reset() {
   if (!Pointers_.empty())
     Pointers_.pop_back();
 }
 
-PointerHandler::PointerInfo_t& PointerHandler::backPointer() {
-  return Pointers_.back();
-}
-
-PointerHandler::PointerHandler(ASTContext* Context) : Context_{Context} {}
+PointerVisitor::PointerVisitor(ASTContext* Context) : Context_{Context} {}
 
 namespace {
 
-using SizeCalculator = std::string (*)(CallExpr*, const std::string&,
-                                       ASTContext* Context);
+using SizeCalculatorType = std::string (*)(CallExpr*, const std::string&,
+                                           ASTContext* Context);
 
-std::string MallocSize(CallExpr* CE, const std::string& PointeeType,
-                       ASTContext* Context) {
+std::string calculateMallocSize(CallExpr* CE, const std::string& PointeeType,
+                                ASTContext* Context) {
   std::stringstream Res;
   Res << getExprAsString(CE->getArg(0), Context) << "/"
       << "sizeof(" << PointeeType << ")";
   return Res.str();
 }
 
-std::unordered_map<std::string, SizeCalculator> SizeCalculators = {
-    {"malloc", &MallocSize}};
+std::unordered_map<std::string, SizeCalculatorType> SizeCalculators = {
+    {"malloc", &calculateMallocSize}};
 
-std::optional<SizeCalculator>
+std::optional<SizeCalculatorType>
 getSizeCalculationFunc(const std::string& FunctionName) {
   if (SizeCalculators.find(FunctionName) != SizeCalculators.end())
     return SizeCalculators[FunctionName];
@@ -56,12 +56,12 @@ getSizeCalculationFunc(const std::string& FunctionName) {
 
 } // namespace
 
-bool PointerHandler::VisitCallExpr(CallExpr* CE) {
+bool PointerVisitor::VisitCallExpr(CallExpr* CE) {
   if (shouldVisitNodes() && CE->getDirectCallee()) {
     auto Calculator = getSizeCalculationFunc(
         CE->getDirectCallee()->getNameInfo().getAsString());
     if (Calculator) {
-      backPointer().hasSize_ = true;
+      backPointer().HasSize_ = true;
       backPointer().Size_ << Calculator.value()(CE, backPointer().PointeeType_,
                                                 Context_);
     }
@@ -69,31 +69,29 @@ bool PointerHandler::VisitCallExpr(CallExpr* CE) {
   return true;
 }
 
-bool PointerHandler::VisitCXXNewExpr(CXXNewExpr* CNE) {
+bool PointerVisitor::VisitCXXNewExpr(CXXNewExpr* CNE) {
   if (shouldVisitNodes()) {
-    backPointer().hasSize_ = true;
-    if (!CNE->isArray()) {
+    backPointer().HasSize_ = true;
+    if (!CNE->isArray())
       backPointer().Size_ << "1";
-    } else {
+    else
       backPointer().Size_ << getExprAsString(CNE->getArraySize().getValue(),
                                              Context_);
-    }
   }
   return true;
 }
 
-std::pair<std::string, std::string> PointerHandler::getCtorFormats() {
+std::pair<std::string, std::string> PointerVisitor::getCtorFormats() {
   std::string SourceFormat = backPointer().Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
   OutputFormat << "(" << (backPointer().Init_.has_value() ? "@" : "")
-               << (backPointer().hasSize_ ? ", " : "")
-               << (backPointer().hasSize_ > 0 ? Pointers_.back().Size_.str()
-                                              : "")
+               << (backPointer().HasSize_ ? ", " : "")
+               << (backPointer().HasSize_ > 0 ? backPointer().Size_.str() : "")
                << ")";
   return {SourceFormat, OutputFormat.str()};
 }
 
-void PointerHandler::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
+void PointerVisitor::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
   SourceLocation Loc = getAfterNameLoc(VDecl, Context_);
   auto Formats = getCtorFormats();
   SubstitutionASTWrapper(Context_)
@@ -103,111 +101,108 @@ void PointerHandler::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
       .apply();
 }
 
-#define NOT_IN_MAINFILE(Context, Node)                                         \
-  if (!Context->getSourceManager().isWrittenInMainFile(Node->getBeginLoc()))   \
+bool PointerVisitor::TraverseVarDecl(clang::VarDecl* VDecl) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
     return true;
 
-bool PointerHandler::TraverseVarDecl(clang::VarDecl* VDecl) {
-
-  NOT_IN_MAINFILE(Context_, VDecl);
-
   Pointers_.emplace_back(VDecl->getType().getTypePtr()->isPointerType());
-  if (shouldVisitNodes()) {
+  if (shouldVisitNodes())
     backPointer().PointeeType_ =
         dyn_cast<PointerType>(VDecl->getType().getTypePtr())
             ->getPointeeType()
             .getAsString();
-  }
 
-  RecursiveASTVisitor<PointerHandler>::TraverseVarDecl(VDecl);
+  RecursiveASTVisitor<PointerVisitor>::TraverseVarDecl(VDecl);
   if (shouldVisitNodes()) {
-    if (VDecl->hasInit()) {
+    if (VDecl->hasInit())
       backPointer().Init_ = getExprAsString(VDecl->getInit(), Context_);
-    }
     executeSubstitutionOfPointerCtor(VDecl);
   }
   reset();
   return true;
 }
 
-std::pair<std::string, std::string> PointerHandler::getAssignFormats() {
+std::pair<std::string, std::string> PointerVisitor::getAssignFormats() {
   std::string SourceFormat = "@";
   std::stringstream OutputFormat;
   OutputFormat << "(@).setSize(" << backPointer().Size_.str() << ")";
   return {SourceFormat, OutputFormat.str()};
 }
 
-void PointerHandler::executeSubstitutionOfPointerAssignment(
-    BinaryOperator* BO) {
-  SourceLocation Loc = BO->getBeginLoc();
+void PointerVisitor::executeSubstitutionOfPointerAssignment(
+    BinaryOperator* Binop) {
+  SourceLocation Loc = Binop->getBeginLoc();
   auto Formats = getAssignFormats();
   SubstitutionASTWrapper(Context_)
       .setLoc(Loc)
       .setFormats(Formats.first, Formats.second)
-      .setArguments(BO->getLHS())
+      .setArguments(Binop->getLHS())
       .apply();
 }
 
-bool PointerHandler::TraverseBinAssign(BinaryOperator* BO,
+bool PointerVisitor::TraverseBinAssign(BinaryOperator* Binop,
                                        DataRecursionQueue* Queue) {
-  NOT_IN_MAINFILE(Context_, BO);
-  if (BO->getLHS()->getType().getTypePtr()->isPointerType()) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(Binop->getBeginLoc()))
+    return true;
+
+  if (Binop->getLHS()->getType().getTypePtr()->isPointerType()) {
     Pointers_.emplace_back(true);
     backPointer().PointeeType_ =
-        dyn_cast<PointerType>(BO->getLHS()->getType().getTypePtr())
+        dyn_cast<PointerType>(Binop->getLHS()->getType().getTypePtr())
             ->getPointeeType()
             .getAsString();
   }
 
-  RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getLHS());
-  RecursiveASTVisitor<PointerHandler>::TraverseStmt(BO->getRHS());
-  if (shouldVisitNodes()) {
-    executeSubstitutionOfPointerAssignment(BO);
-  }
+  RecursiveASTVisitor<PointerVisitor>::TraverseStmt(Binop->getLHS());
+  RecursiveASTVisitor<PointerVisitor>::TraverseStmt(Binop->getRHS());
+  if (shouldVisitNodes())
+    executeSubstitutionOfPointerAssignment(Binop);
   reset();
   return true;
 }
 
-void PointerHandler::executeSubstitutionOfStarOperator(UnaryOperator* UO) {
-  SourceLocation Loc = UO->getBeginLoc();
+void PointerVisitor::executeSubstitutionOfStarOperator(UnaryOperator* Unop) {
+  SourceLocation Loc = Unop->getBeginLoc();
   std::string SourceFormat = "*@";
-  std::string OutputFormat = ptr::view::getAssertStarOpeartorAsString("@");
+  std::string OutputFormat =
+      ptr::names_to_inject::getAssertStarOperatorAsString("@");
   SubstitutionASTWrapper(Context_)
       .setLoc(Loc)
       .setPrior(SubstPriorityKind::Deep)
       .setFormats(SourceFormat, OutputFormat)
-      .setArguments(UO->getSubExpr())
+      .setArguments(Unop->getSubExpr())
       .apply();
 }
 
-bool PointerHandler::VisitUnaryOperator(UnaryOperator* UO) {
-  NOT_IN_MAINFILE(Context_, UO);
-
-  if (UO->getOpcode() == UnaryOperator::Opcode::UO_Deref &&
-      UO->getSubExpr()->getType()->isPointerType()) {
-    executeSubstitutionOfStarOperator(UO);
-  }
+bool PointerVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(Unop->getBeginLoc()))
+    return true;
+  if (Unop->getOpcode() == UnaryOperator::Opcode::UO_Deref &&
+      Unop->getSubExpr()->getType()->isPointerType())
+    executeSubstitutionOfStarOperator(Unop);
   return true;
 }
 
-void PointerHandler::executeSubstitutionOfMemberExpr(MemberExpr* ME) {
-  SourceLocation Loc = ME->getBeginLoc();
+void PointerVisitor::executeSubstitutionOfMemberExpr(MemberExpr* MembExpr) {
+  SourceLocation Loc = MembExpr->getBeginLoc();
   std::string SourceFormat = "@#@";
-  std::string OutputFormat = ptr::view::getAssertMemberExprAsString("@", "@");
+  std::string OutputFormat =
+      ptr::names_to_inject::getAssertMemberExprAsString("@", "@");
   SubstitutionASTWrapper(Context_)
       .setLoc(Loc)
       .setPrior(SubstPriorityKind::Deep)
       .setFormats(SourceFormat, OutputFormat)
-      .setArguments(ME->getBase(),
-                    SourceRange{ME->getMemberLoc(), ME->getEndLoc()})
+      .setArguments(MembExpr->getBase(), SourceRange{MembExpr->getMemberLoc(),
+                                                     MembExpr->getEndLoc()})
       .apply();
 }
 
-bool PointerHandler::VisitMemberExpr(MemberExpr* ME) {
-  NOT_IN_MAINFILE(Context_, ME);
-  if (ME->isArrow()) {
-    executeSubstitutionOfMemberExpr(ME);
-  }
+bool PointerVisitor::VisitMemberExpr(MemberExpr* MembExpr) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(
+          MembExpr->getBeginLoc()))
+    return true;
+  if (MembExpr->isArrow())
+    executeSubstitutionOfMemberExpr(MembExpr);
   return true;
 }
 

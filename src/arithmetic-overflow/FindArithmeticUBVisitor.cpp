@@ -5,6 +5,8 @@
 #include <cassert>
 
 using namespace clang;
+using namespace ub_tester::code_injector;
+using namespace ub_tester::code_injector::wrapper;
 
 namespace ub_tester {
 

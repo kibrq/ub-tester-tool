@@ -12,7 +12,7 @@
 
 namespace ub_tester::iob::checkers {
 
-#define ASSERT_INDEX_OUT_OF_BOUNDS(Lhs, Rhs)                                   \
+#define ASSERT_IOB(Lhs, Rhs)                                                   \
   ub_tester::iob::checkers::checkIOB(                                          \
       Lhs, Rhs,                                                                \
       ub_tester::iob::checkers::IOBCheckerHelper(#Lhs, Rhs, __FILE__,          \

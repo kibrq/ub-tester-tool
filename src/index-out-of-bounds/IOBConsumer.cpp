@@ -1,14 +1,13 @@
-#include "clang/AST/ASTConsumer.h"
-
 #include "index-out-of-bounds/IOBConsumer.h"
+#include "clang/AST/ASTConsumer.h"
 
 using namespace clang;
 
 namespace ub_tester {
 
-IOBConsumer::IOBConsumer(ASTContext* Context) : ArrayHandler_{Context} {}
+IOBConsumer::IOBConsumer(ASTContext* Context) : ArrayVisitor_{Context} {}
 
 void IOBConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
-  ArrayHandler_.TraverseDecl(Context.getTranslationUnitDecl());
+  ArrayVisitor_.TraverseDecl(Context.getTranslationUnitDecl());
 }
 } // namespace ub_tester

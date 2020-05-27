@@ -1,7 +1,7 @@
-#include "clang/AST/ASTConsumer.h"
+#pragma once
 
 #include "index-out-of-bounds/CArrayHandler.h"
-
+#include "clang/AST/ASTConsumer.h"
 #include <string>
 
 namespace ub_tester {
@@ -12,7 +12,7 @@ public:
   virtual void HandleTranslationUnit(clang::ASTContext& Context);
 
 private:
-  CArrayHandler ArrayHandler_;
+  CArrayVisitor ArrayVisitor_;
 };
 
 } // namespace ub_tester

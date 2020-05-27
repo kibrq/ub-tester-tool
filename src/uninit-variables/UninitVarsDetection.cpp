@@ -6,19 +6,24 @@
 #include "clang/AST/ParentMapContext.h"
 #include "clang/Frontend/CompilerInstance.h"
 
-using namespace clang;
-using namespace llvm;
-
 #include <iostream>
 #include <stdexcept>
+
+using namespace clang;
+using namespace llvm;
+using namespace ub_tester::code_injector;
+using namespace ub_tester::code_injector::wrapper;
 
 namespace ub_tester {
 
 // all constructors
 
-FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context(Context) {}
-FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context(Context) {}
-FindSafeTypeOperatorsVisitor::FindSafeTypeOperatorsVisitor(ASTContext* Context) : Context(Context) {}
+FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context)
+    : Context(Context) {}
+FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context)
+    : Context(Context) {}
+FindSafeTypeOperatorsVisitor::FindSafeTypeOperatorsVisitor(ASTContext* Context)
+    : Context(Context) {}
 
 // substitute types (i.e. 'int' -> 'safe_T<int>')
 bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
@@ -27,11 +32,13 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
 
   clang::QualType VariableType = VariableDecl->getType().getUnqualifiedType();
   if (VariableType.getNonReferenceType().getTypePtr()->isFundamentalType() &&
-      !(VariableDecl->isLocalVarDeclOrParm() && !VariableDecl->isLocalVarDecl())) {
+      !(VariableDecl->isLocalVarDeclOrParm() &&
+        !VariableDecl->isLocalVarDecl())) {
 
     if (VariableDecl->hasInit()) {
 
-      Expr* InitializationExpr = dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
+      Expr* InitializationExpr =
+          dyn_cast_or_null<Expr>(*(VariableDecl->getInitAddress()));
       assert(InitializationExpr);
 
       SubstitutionASTWrapper(Context)
@@ -65,7 +72,8 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
   bool FoundCorrespME = false;
   DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
   const MemberExpr* ME = nullptr;
-  const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
+  const DynTypedNodeList DREParentNodeList =
+      ParentMapContext(*Context).getParents(DREParentIterNode);
   DREParentIterNode = DREParentNodeList[0];
   ME = DREParentIterNode.get<MemberExpr>();
   if (ME && dyn_cast<DeclRefExpr>(ME->getBase()) == DRE)
@@ -76,17 +84,22 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
   else
     VarType = DRE->getDecl()->getType();
 
-  if (VarType.getNonReferenceType()->isFundamentalType() && isDREToLocalVarOrParmOrMember(DRE)) {
+  if (VarType.getNonReferenceType()->isFundamentalType() &&
+      isDREToLocalVarOrParmOrMember(DRE)) {
 
     std::string VarName = DRE->getNameInfo().getName().getAsString();
     if (FoundCorrespME)
-      VarName += ("." + ME->getMemberNameInfo().getAsString()); // does not support nested classes' members
+      VarName +=
+          ("." +
+           ME->getMemberNameInfo()
+               .getAsString()); // does not support nested classes' members
 
     // check if value access
     bool FoundCorrespICE = false;
     DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
     do {
-      const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
+      const DynTypedNodeList DREParentNodeList =
+          ParentMapContext(*Context).getParents(DREParentIterNode);
       if (DREParentNodeList.empty())
         break;
 
@@ -95,15 +108,20 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
 
       if (ICE &&
           ICE->getCastKind() == CastKind::CK_LValueToRValue
-          // ! && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {    // backwards check DISABLED due to CAO
-          && ICE->getSubExpr()->getType().getNonReferenceType()->isFundamentalType()) {
+          // ! && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {    //
+          // backwards check DISABLED due to CAO
+          && ICE->getSubExpr()
+                 ->getType()
+                 .getNonReferenceType()
+                 ->isFundamentalType()) {
         FoundCorrespICE = true;
 
         SubstitutionASTWrapper(Context)
             .setLoc(DRE->getBeginLoc())
             .setPrior(SubstPriorityKind::Deep)
-            .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME + "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
-                                  VarType.getAsString() + "\"})")
+            .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME +
+                                  "({__FILE__, __LINE__, \"" + VarName +
+                                  "\", \"" + VarType.getAsString() + "\"})")
             .setArguments(VarName)
             .apply();
       }
@@ -117,7 +135,8 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
     bool FoundCodeAvailCallingFunction = false;
     DynTypedNode ParentIterNode = DynTypedNode::create<>(*DRE);
     do {
-      const DynTypedNodeList ParentNodeList = ParentMapContext(*Context).getParents(ParentIterNode);
+      const DynTypedNodeList ParentNodeList =
+          ParentMapContext(*Context).getParents(ParentIterNode);
       if (ParentNodeList.empty())
         break;
 
@@ -129,7 +148,8 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       if (CallingFunction) {
         FoundCallingFunction = true;
 
-        if (func_code_avail::hasFuncAvailCode(CallingFunction->getDirectCallee())) {
+        if (func_code_avail::hasFuncAvailCode(
+                CallingFunction->getDirectCallee())) {
           // return entire object - goes by reference
           // equals 'do nothing with code'
           FoundCodeAvailCallingFunction = true;
@@ -146,7 +166,9 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       SubstitutionASTWrapper(Context)
           .setLoc(DRE->getBeginLoc())
           .setPrior(SubstPriorityKind::Deep)
-          .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "({__FILE__, __LINE__, \"" + VarName +
+          .setFormats("#@", "@." +
+                                UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME +
+                                "({__FILE__, __LINE__, \"" + VarName +
                                 "\", \"" + VarType.getAsString() + "\"})")
           .setArguments(VarName)
           .apply();
@@ -155,11 +177,14 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
 
     if (!FoundCallingFunction) {
       // as for ref v1, giving out all references is ignored
-      // ? for ref v2: maybe do nothing, since such reference can only be used to init another?
+      // ? for ref v2: maybe do nothing, since such reference can only be used
+      // to init another?
       SubstitutionASTWrapper(Context)
           .setLoc(DRE->getBeginLoc())
           .setPrior(SubstPriorityKind::Deep)
-          .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME + "({__FILE__, __LINE__, " + VarName + ", " +
+          .setFormats("#@", "@." +
+                                UB_UninitSafeTypeConsts::GETIGNOREMETHOD_NAME +
+                                "({__FILE__, __LINE__, " + VarName + ", " +
                                 VarType.getAsString() + "})")
           .setArguments(VarName)
           .apply();
@@ -176,13 +201,15 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
 
   QualType BinOpLHSType = BinOp->getLHS()->getType();
   if (BinOp->isAssignmentOp() && BinOpLHSType->isFundamentalType() &&
-      isDREToLocalVarOrParmOrMember(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
+      isDREToLocalVarOrParmOrMember(
+          dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
 
     if (!BinOp->isCompoundAssignmentOp()) {
       SubstitutionASTWrapper(Context)
           .setLoc(BinOp->getBeginLoc())
           .setPrior(SubstPriorityKind::Shallow)
-          .setFormats("@#@", "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
+          .setFormats("@#@",
+                      "@." + UB_UninitSafeTypeConsts::INITMETHOD_NAME + "(@)")
           .setArguments(BinOp->getLHS(), BinOp->getRHS())
           .apply();
     } else {
@@ -191,7 +218,8 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
       SubstitutionASTWrapper(Context)
           .setLoc(BinOp->getBeginLoc())
           .setPrior(SubstPriorityKind::Shallow)
-          .setFormats("@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "({__FILE__, __LINE__, \"" + BinOpLHSAsString +
+          .setFormats("@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME +
+                               "({__FILE__, __LINE__, \"" + BinOpLHSAsString +
                                "\", \"" + BinOpLHSType.getAsString() + "\"})")
           .setArguments(BinOp->getLHS())
           .apply();
@@ -205,12 +233,14 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* UnOp) {
   if (!Context->getSourceManager().isInMainFile(UnOp->getBeginLoc()))
     return true;
   QualType UnOpExprType = UnOp->getSubExpr()->getType();
-  if (UnOp->getSubExpr()->getType()->isFundamentalType() && (UnOp->isIncrementDecrementOp())) {
+  if (UnOp->getSubExpr()->getType()->isFundamentalType() &&
+      (UnOp->isIncrementDecrementOp())) {
     std::string UnOpExprAsString = getExprAsString(UnOp->getSubExpr(), Context);
     SubstitutionASTWrapper(Context)
         .setLoc(UnOp->getBeginLoc())
         .setPrior(SubstPriorityKind::Shallow)
-        .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "({__FILE__, __LINE__, \"" + UnOpExprAsString +
+        .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME +
+                              "({__FILE__, __LINE__, \"" + UnOpExprAsString +
                               "\", \"" + UnOpExprType.getAsString() + "\"})")
         .setArguments(UnOp->getSubExpr())
         .apply();
@@ -221,9 +251,11 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* UnOp) {
 // Consumer implementation
 
 AssertUninitVarsConsumer::AssertUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context), SafeTypeOperatorsVisitor(Context) {}
+    : FundamentalTypeVarDeclVisitor(Context), SafeTypeAccessesVisitor(Context),
+      SafeTypeOperatorsVisitor(Context) {}
 
-void AssertUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
+void AssertUninitVarsConsumer::HandleTranslationUnit(
+    clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeOperatorsVisitor.TraverseDecl(Context.getTranslationUnitDecl());
   SafeTypeAccessesVisitor.TraverseDecl(Context.getTranslationUnitDecl());

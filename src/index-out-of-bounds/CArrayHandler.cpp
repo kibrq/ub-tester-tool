@@ -1,40 +1,39 @@
-#include "clang/Basic/SourceManager.h"
-#include "clang/Lex/Lexer.h"
-
+#include "index-out-of-bounds/CArrayHandler.h"
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
-#include "index-out-of-bounds/CArrayHandler.h"
 #include "index-out-of-bounds/IOBStringView.h"
-
+#include "clang/Basic/SourceManager.h"
+#include "clang/Lex/Lexer.h"
 #include <optional>
 #include <sstream>
-#include <stdio.h>
 
 // TODO Handle templates instations
 // TODO Handle taking address of array
 
 using namespace clang;
+using namespace ub_tester::code_injector;
+using namespace ub_tester::code_injector::wrapper;
 
 namespace ub_tester {
 
-void CArrayHandler::ArrayInfo_t::reset() {
+void CArrayVisitor::ArrayInfo_t::reset() {
   Init_ = std::nullopt;
-  shouldVisitNodes_ = isIncompleteType_ = false;
-  shouldVisitImplicitCode_ = false;
+  ShouldVisitNodes_ = IsIncompleteType_ = false;
+  ShouldVisitImplicitCode_ = false;
   Dimension_ = 0;
   Sizes_.clear();
 }
 
-CArrayHandler::CArrayHandler(ASTContext* Contex_) : Context_(Contex_) {
+CArrayVisitor::CArrayVisitor(ASTContext* Context) : Context_(Context) {
   Array_.reset();
 }
 
-bool CArrayHandler::shouldVisitImplicitCode() {
-  return Array_.shouldVisitImplicitCode_;
+bool CArrayVisitor::shouldVisitImplicitCode() {
+  return Array_.ShouldVisitImplicitCode_;
 }
 
-bool CArrayHandler::VisitConstantArrayType(ConstantArrayType* Type) {
-  if (Array_.shouldVisitNodes_) {
+bool CArrayVisitor::VisitConstantArrayType(ConstantArrayType* Type) {
+  if (Array_.ShouldVisitNodes_) {
     int StdBase = 10;
     Array_.Sizes_.push_back(
         Type->getSize().toString(StdBase, false)); // llvm::APInt demands base
@@ -42,37 +41,35 @@ bool CArrayHandler::VisitConstantArrayType(ConstantArrayType* Type) {
   return true;
 }
 
-bool CArrayHandler::VisitVariableArrayType(VariableArrayType* Type) {
-  if (Array_.shouldVisitNodes_)
+bool CArrayVisitor::VisitVariableArrayType(VariableArrayType* Type) {
+  if (Array_.ShouldVisitNodes_)
     Array_.Sizes_.push_back(getExprAsString(Type->getSizeExpr(), Context_));
   return true;
 }
 
-bool CArrayHandler::VisitIncompleteArrayType(IncompleteArrayType* Type) {
-  if (Array_.shouldVisitNodes_) {
-    Array_.isIncompleteType_ = true;
-  }
+bool CArrayVisitor::VisitIncompleteArrayType(IncompleteArrayType* Type) {
+  if (Array_.ShouldVisitNodes_)
+    Array_.IsIncompleteType_ = true;
   return true;
 }
 
-bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
-  Array_.shouldVisitImplicitCode_ = true;
-  if (not Context_->getSourceManager().isWrittenInMainFile(List->getBeginLoc()))
+bool CArrayVisitor::VisitInitListExpr(InitListExpr* List) {
+  Array_.ShouldVisitImplicitCode_ = true;
+  if (!Context_->getSourceManager().isWrittenInMainFile(List->getBeginLoc()))
     return true;
 
-  if (List->isSemanticForm() && List->isSyntacticForm()) {
+  if (List->isSemanticForm() && List->isSyntacticForm())
     SubstitutionASTWrapper(Context_)
         .setLoc(List->getBeginLoc())
         .setFormats("@", "{@}")
         .setArguments(List)
         .apply();
-  }
 
-  if (Array_.shouldVisitNodes_) {
-    if (Array_.isIncompleteType_) {
+  if (Array_.ShouldVisitNodes_) {
+    if (Array_.IsIncompleteType_) {
       Array_.Sizes_.insert(Array_.Sizes_.begin(),
                            std::to_string(List->getNumInits()));
-      Array_.isIncompleteType_ = false;
+      Array_.IsIncompleteType_ = false;
     }
 
     // Cause of inner InitLists and StringLiterals
@@ -82,8 +79,8 @@ bool CArrayHandler::VisitInitListExpr(InitListExpr* List) {
   return true;
 }
 
-bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
-  if (Array_.shouldVisitNodes_ && Array_.isIncompleteType_) {
+bool CArrayVisitor::VisitStringLiteral(StringLiteral* Literal) {
+  if (Array_.ShouldVisitNodes_ && Array_.IsIncompleteType_) {
     Array_.Sizes_.insert(Array_.Sizes_.begin(),
                          std::to_string(Literal->getLength() + 1));
     Array_.Init_ = getExprAsString(Literal, Context_);
@@ -91,20 +88,20 @@ bool CArrayHandler::VisitStringLiteral(StringLiteral* Literal) {
   return true;
 }
 
-std::pair<std::string, std::string> CArrayHandler::getCtorFormats() {
+std::pair<std::string, std::string> CArrayVisitor::getCtorFormats() {
   std::string SourceFormat = Array_.Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
   OutputFormat << "("
-               << iob::view::generateSafeArrayCtor(Array_.Sizes_,
-                                                   Array_.Init_.has_value()
-                                                       ? std::optional("@")
-                                                       : std::nullopt)
+               << iob::names_to_inject::generateSafeArrayCtor(
+                      Array_.Sizes_, Array_.Init_.has_value()
+                                         ? std::optional("@")
+                                         : std::nullopt)
                << ")";
   return {SourceFormat, OutputFormat.str()};
 }
 
-void CArrayHandler::executeSubstitutionOfCtor(VarDecl* D) {
-  SourceLocation Loc = getAfterNameLoc(D, Context_);
+void CArrayVisitor::executeSubstitutionOfCtor(VarDecl* VDecl) {
+  SourceLocation Loc = getAfterNameLoc(VDecl, Context_);
   std::pair<std::string, std::string> Formats = getCtorFormats();
   SubstitutionASTWrapper(Context_)
       .setLoc(Loc)
@@ -113,25 +110,24 @@ void CArrayHandler::executeSubstitutionOfCtor(VarDecl* D) {
       .apply();
 }
 
-bool CArrayHandler::TraverseVarDecl(VarDecl* D) {
-  if (!Context_->getSourceManager().isWrittenInMainFile(D->getBeginLoc()))
+bool CArrayVisitor::TraverseVarDecl(VarDecl* VDecl) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
     return true;
-
-  Array_.shouldVisitNodes_ =
-      !isa<ParmVarDecl>(D) && D->getType().getTypePtr()->isArrayType();
-  RecursiveASTVisitor<CArrayHandler>::TraverseVarDecl(D);
-  if (Array_.shouldVisitNodes_) {
-    executeSubstitutionOfCtor(D);
+  Array_.ShouldVisitNodes_ =
+      !isa<ParmVarDecl>(VDecl) && VDecl->getType()->isArrayType();
+  RecursiveASTVisitor<CArrayVisitor>::TraverseVarDecl(VDecl);
+  if (Array_.ShouldVisitNodes_) {
+    executeSubstitutionOfCtor(VDecl);
   }
   Array_.reset();
   return true;
 }
 
-std::pair<std::string, std::string> CArrayHandler::getSubscriptFormats() {
-  return {"@[@]", iob::view::generateIOBChecker("@", "@")};
+std::pair<std::string, std::string> CArrayVisitor::getSubscriptFormats() {
+  return {"@[@]", iob::names_to_inject::generateIOBAssertName("@", "@")};
 }
 
-void CArrayHandler::executeSubstitutionOfSubscript(
+void CArrayVisitor::executeSubstitutionOfSubscript(
     ArraySubscriptExpr* SubscriptExpr) {
   SourceLocation BeginLoc = SubscriptExpr->getBeginLoc();
   std::pair<std::string, std::string> Formats = getSubscriptFormats();
@@ -142,12 +138,11 @@ void CArrayHandler::executeSubstitutionOfSubscript(
       .apply();
 }
 
-bool CArrayHandler::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
-
-  if (Context_->getSourceManager().isWrittenInMainFile(
-          SubscriptExpr->getBeginLoc())) {
-    executeSubstitutionOfSubscript(SubscriptExpr);
-  }
+bool CArrayVisitor::VisitArraySubscriptExpr(ArraySubscriptExpr* SubscriptExpr) {
+  if (!Context_->getSourceManager().isWrittenInMainFile(
+          SubscriptExpr->getBeginLoc()))
+    return true;
+  executeSubstitutionOfSubscript(SubscriptExpr);
   return true;
 }
 

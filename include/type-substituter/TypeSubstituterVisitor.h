@@ -1,10 +1,10 @@
 #pragma once
 
 #include "clang/AST/RecursiveASTVisitor.h"
-
 #include <sstream>
 
 namespace ub_tester {
+
 class TypeSubstituterVisitor
     : public clang::RecursiveASTVisitor<TypeSubstituterVisitor> {
 public:
@@ -24,7 +24,6 @@ public:
   bool TraverseTemplateTypeParmType(clang::TemplateTypeParmType*);
   bool TraverseTemplateSpecializationType(clang::TemplateSpecializationType*);
   bool TraverseType(clang::QualType);
-
   bool TraverseDeclStmt(clang::DeclStmt*, DataRecursionQueue* = nullptr);
 
   bool VisitParmVarDecl(clang::ParmVarDecl*);
@@ -37,10 +36,9 @@ public:
   // bool TraverseDecl(clang::Decl*);
 
 private:
-  bool HelperTraverseArrayType(clang::ArrayType*);
-  bool HelperVisitDeclaratorDecl(clang::DeclaratorDecl*);
+  bool TraverseArrayTypeHelper(clang::ArrayType*);
+  bool VisitDeclaratorDeclHelper(clang::DeclaratorDecl*);
 
-private:
   void substituteTypeOfTypedef(clang::TypedefNameDecl*);
   void substituteTypeOfVariable(clang::DeclaratorDecl*);
   void substituteTypeOfReturn(clang::FunctionDecl*);
@@ -61,13 +59,13 @@ private:
   private:
     std::stringstream Buffer_;
     std::optional<std::string> PrevQual_;
-    bool shouldVisitTypes_{false};
-    bool isInited_{false};
+    bool ShouldVisitTypes_{false};
+    bool IsInited_{false};
   };
 
 private:
-  bool isDeclStmtParent_{false};
-  bool needSubstitution_{false};
+  bool IsDeclStmtParent_{false};
+  bool NeedSubstitution_{false};
   TypeInfo_t Type_;
   clang::ASTContext* Context_;
 };

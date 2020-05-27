@@ -19,6 +19,8 @@
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
+using namespace ub_tester::code_injector;
+using namespace ub_tester::code_injector::wrapper;
 
 static llvm::cl::OptionCategory MyToolCategory("my-tool options");
 static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
@@ -27,7 +29,8 @@ static cl::extrahelp MoreHelp("\nMore help text...\n");
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
     InjectorASTWrapper::getInstance().addFile(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
@@ -54,7 +57,8 @@ public:
 
 class UBTesterUtilityAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
     return std::make_unique<UtilityConsumer>(&Compiler.getASTContext());
   }
 };
@@ -64,19 +68,22 @@ public:
 int main(int argc, const char** argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
 
-  ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+  ClangTool Tool(OptionsParser.getCompilations(),
+                 OptionsParser.getSourcePathList());
 
-  int UtilityReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
+  int UtilityReturnCode = Tool.run(
+      newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
   if (UtilityReturnCode) {
     std::cerr << "File(s) preprocessing failed\n";
     exit(1);
   }
 
-  int ReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
+  int ReturnCode =
+      Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
 
   if (!ReturnCode) {
-    ub_tester::InjectorASTWrapper::getInstance().substituteIncludePaths(
+    InjectorASTWrapper::getInstance().substituteIncludePaths(
         OptionsParser.getSourcePathList());
-    ub_tester::InjectorASTWrapper::getInstance().applySubstitutions();
+    InjectorASTWrapper::getInstance().applySubstitutions();
   }
 }

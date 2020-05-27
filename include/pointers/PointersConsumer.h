@@ -1,6 +1,7 @@
-#include "clang/AST/ASTConsumer.h"
+#pragma once
 
 #include "pointers/PointerHandler.h"
+#include "clang/AST/ASTConsumer.h"
 
 namespace ub_tester {
 
@@ -10,7 +11,7 @@ public:
   virtual void HandleTranslationUnit(clang::ASTContext& Context);
 
 private:
-  PointerHandler PointerHandler_;
+  PointerVisitor PointerVisitor_;
 };
 
 } // namespace ub_tester

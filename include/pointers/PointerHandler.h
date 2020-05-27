@@ -1,7 +1,6 @@
 #pragma once
 
 #include "clang/AST/RecursiveASTVisitor.h"
-
 #include <optional>
 #include <sstream>
 #include <string>
@@ -10,9 +9,9 @@
 
 namespace ub_tester {
 
-class PointerHandler : public clang::RecursiveASTVisitor<PointerHandler> {
+class PointerVisitor : public clang::RecursiveASTVisitor<PointerVisitor> {
 public:
-  explicit PointerHandler(clang::ASTContext*);
+  explicit PointerVisitor(clang::ASTContext*);
 
   bool VisitCallExpr(clang::CallExpr*);
   bool VisitCXXNewExpr(clang::CXXNewExpr*);
@@ -38,8 +37,8 @@ private:
     std::optional<std::string> Init_{std::nullopt};
     std::string PointeeType_;
     std::stringstream Size_;
-    bool shouldVisitNodes_;
-    bool hasSize_{false};
+    bool ShouldVisitNodes_;
+    bool HasSize_{false};
   };
 
 private:
