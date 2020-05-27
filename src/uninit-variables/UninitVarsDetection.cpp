@@ -41,21 +41,42 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VariableDecl) {
   return true;
 }
 
-bool isDREToLocalVarOrParm(DeclRefExpr* DRE) {
+bool isDREToLocalVarOrParmOrMember(DeclRefExpr* DRE) {
   if (!DRE)
     return false;
   VarDecl* VD = dyn_cast_or_null<VarDecl>(DRE->getDecl());
-  return VD && VD->isLocalVarDeclOrParm();
+  MemberExpr* ME = dyn_cast_or_null<MemberExpr>(DRE->getExprStmt());
+  return (VD && VD->isLocalVarDeclOrParm()) || (ME);
 }
 
 // detect variable usage; substutute with get OR getIgnore
 bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
-  if (!Context->getSourceManager().isInMainFile(DRE->getBeginLoc()))
+  if (!Context->getSourceManager().isWrittenInMainFile(DRE->getBeginLoc()))
     return true;
 
-  if (DRE->getDecl()->getType().getNonReferenceType()->isFundamentalType() && isDREToLocalVarOrParm(DRE)) {
+  QualType VarType;
+
+  // check if thereis a suitable MemberExpr
+  // just a single step up or processing time gets extremely long
+  bool FoundCorrespME = false;
+  DynTypedNode DREParentIterNode = DynTypedNode::create<>(*DRE);
+  const MemberExpr* ME = nullptr;
+  const DynTypedNodeList DREParentNodeList = ParentMapContext(*Context).getParents(DREParentIterNode);
+  DREParentIterNode = DREParentNodeList[0];
+  ME = DREParentIterNode.get<MemberExpr>();
+  if (ME && dyn_cast<DeclRefExpr>(ME->getBase()) == DRE)
+    FoundCorrespME = true;
+
+  if (FoundCorrespME)
+    VarType = ME->getType();
+  else
+    VarType = DRE->getDecl()->getType();
+
+  if (VarType.getNonReferenceType()->isFundamentalType() && isDREToLocalVarOrParmOrMember(DRE)) {
 
     std::string VarName = DRE->getNameInfo().getName().getAsString();
+    if (FoundCorrespME)
+      VarName += ("." + ME->getMemberNameInfo().getAsString()); // does not support nested classes' members
 
     // check if value access
     bool FoundCorrespICE = false;
@@ -69,8 +90,7 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
       const ImplicitCastExpr* ICE = DREParentIterNode.get<ImplicitCastExpr>();
 
       if (ICE &&
-          ICE->getCastKind() == CastKind::CK_LValueToRValue /*&&
-   ICE->getType().getTypePtr()->isFundamentalType()*/
+          ICE->getCastKind() == CastKind::CK_LValueToRValue
           // ! && dyn_cast<DeclRefExpr>(ICE->getSubExpr()) == DRE) {    // backwards check DISABLED due to CAO
           && ICE->getSubExpr()->getType().getNonReferenceType()->isFundamentalType()) {
         FoundCorrespICE = true;
@@ -78,7 +98,7 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRE) {
         ASTFrontendInjector::getInstance().substitute(Context, DRE->getBeginLoc(), "#@",
                                                       "@." + UB_UninitSafeTypeConsts::GETMETHOD_NAME +
                                                           "({__FILE__, __LINE__, \"" + VarName + "\", \"" +
-                                                          DRE->getDecl()->getType().getAsString() + "\"})",
+                                                          VarType.getAsString() + "\"})",
                                                       VarName);
       }
     } while (!FoundCorrespICE);
@@ -139,7 +159,7 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
     return true;
 
   if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType() &&
-      isDREToLocalVarOrParm(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
+      isDREToLocalVarOrParmOrMember(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
 
     if (!BinOp->isCompoundAssignmentOp()) {
       ASTFrontendInjector::getInstance().substitute(Context, BinOp->getBeginLoc(), "@#=#@",
