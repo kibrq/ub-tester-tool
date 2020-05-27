@@ -174,7 +174,8 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
   if (!Context->getSourceManager().isInMainFile(BinOp->getBeginLoc()))
     return true;
 
-  if (BinOp->isAssignmentOp() && BinOp->getLHS()->getType().getTypePtr()->isFundamentalType() &&
+  QualType BinOpLHSType = BinOp->getLHS()->getType();
+  if (BinOp->isAssignmentOp() && BinOpLHSType->isFundamentalType() &&
       isDREToLocalVarOrParmOrMember(dyn_cast_or_null<DeclRefExpr>(BinOp->getLHS()))) {
 
     if (!BinOp->isCompoundAssignmentOp()) {
@@ -186,10 +187,12 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
           .apply();
     } else {
       // CAOs do not cause LRValue conversion, but still require the value
+      std::string BinOpLHSAsString = getExprAsString(BinOp->getLHS(), Context);
       SubstitutionASTWrapper(Context)
           .setLoc(BinOp->getBeginLoc())
           .setPrior(SubstPriorityKind::Shallow)
-          .setFormats("@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
+          .setFormats("@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "({__FILE__, __LINE__, \"" + BinOpLHSAsString +
+                               "\", \"" + BinOpLHSType.getAsString() + "\"})")
           .setArguments(BinOp->getLHS())
           .apply();
     }
@@ -201,11 +204,14 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* BinOp) {
 bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* UnOp) {
   if (!Context->getSourceManager().isInMainFile(UnOp->getBeginLoc()))
     return true;
+  QualType UnOpExprType = UnOp->getSubExpr()->getType();
   if (UnOp->getSubExpr()->getType()->isFundamentalType() && (UnOp->isIncrementDecrementOp())) {
+    std::string UnOpExprAsString = getExprAsString(UnOp->getSubExpr(), Context);
     SubstitutionASTWrapper(Context)
         .setLoc(UnOp->getBeginLoc())
         .setPrior(SubstPriorityKind::Shallow)
-        .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "()")
+        .setFormats("#@", "@." + UB_UninitSafeTypeConsts::GETREFMETHOD_NAME + "({__FILE__, __LINE__, \"" + UnOpExprAsString +
+                              "\", \"" + UnOpExprType.getAsString() + "\"})")
         .setArguments(UnOp->getSubExpr())
         .apply();
   } // else there will be LRValue conversion, another case
