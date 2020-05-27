@@ -73,6 +73,21 @@ UBSafePointer<T>& UBSafePointer<T>::setSize(size_t NewSize) {
 }
 
 template <typename T>
+size_t UBSafePointer<T>::getSize() const {
+  return Size_;
+}
+template <typename T>
+PtrStateKind UBSafePointer<T>::getState() const {
+  if (!Inited_) {
+    return PtrStateKind::Uninit;
+  }
+  if (Data_ == nullptr) {
+    return PtrStateKind::Nullptr;
+  }
+  return PtrStateKind::Init;
+}
+
+template <typename T>
 UBSafePointer<T> operator+(const UBSafePointer<T>& P, int Val) {
   UBSafePointer<T> Res{P};
   Res += Val;

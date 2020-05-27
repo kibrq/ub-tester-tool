@@ -10,7 +10,8 @@ UBSafeCArray<T, N>::UBSafeCArray() {
 }
 
 template <typename T, size_t N>
-UBSafeCArray<T, N>::UBSafeCArray(const std::initializer_list<T>& InitList) : Data_{InitList} {
+UBSafeCArray<T, N>::UBSafeCArray(const std::initializer_list<T>& InitList)
+    : Data_{InitList} {
   if (N != 0) {
     setSize(N);
   }
@@ -22,7 +23,8 @@ void UBSafeCArray<T, N>::setSize(size_t Size) {
 }
 
 template <typename T, size_t N>
-void UBSafeCArray<T, N>::setSize(const std::vector<size_t>& Sizes, int CurDepth) {
+void UBSafeCArray<T, N>::setSize(const std::vector<size_t>& Sizes,
+                                 int CurDepth) {
   setSize(Sizes[CurDepth]);
 }
 
@@ -37,7 +39,8 @@ UBSafeCArray<T, N>::UBSafeCArray(const std::vector<size_t>& Sizes) {
 }
 
 template <typename T, size_t N>
-UBSafeCArray<T, N>::UBSafeCArray(std::vector<size_t> Sizes, const std::initializer_list<T>& Args)
+UBSafeCArray<T, N>::UBSafeCArray(std::vector<size_t> Sizes,
+                                 const std::initializer_list<T>& Args)
     : UBSafeCArray(Args) {
   setSize(Sizes);
 }
@@ -74,7 +77,8 @@ void UBSafeCArray<UBSafeCArray<T, N>, M>::setSize(size_t Size) {
 }
 
 template <typename T, size_t N, size_t M>
-void UBSafeCArray<UBSafeCArray<T, N>, M>::setSize(const std::vector<size_t>& Sizes, int CurDepth) {
+void UBSafeCArray<UBSafeCArray<T, N>, M>::setSize(
+    const std::vector<size_t>& Sizes, int CurDepth) {
   setSize(Sizes[CurDepth]);
   for (auto& Arr : Data_) {
     Arr.setSize(Sizes, CurDepth + 1);
@@ -87,19 +91,22 @@ size_t UBSafeCArray<UBSafeCArray<T, N>, M>::getSize() const {
 }
 
 template <typename T, size_t N, size_t M>
-UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(const std::vector<size_t>& Sizes) {
+UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(
+    const std::vector<size_t>& Sizes) {
   setSize(Sizes);
 }
 
 template <typename T, size_t N, size_t M>
 UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(
-    std::vector<size_t> Sizes, const std::initializer_list<UBSafeCArray<T, N>>& Args)
+    std::vector<size_t> Sizes,
+    const std::initializer_list<UBSafeCArray<T, N>>& Args)
     : Data_{Args} {
   setSize(Sizes);
 }
 
 template <typename T, size_t N, size_t M>
-const UBSafeCArray<T, N>& UBSafeCArray<UBSafeCArray<T, N>, M>::operator[](int Index) const {
+const UBSafeCArray<T, N>&
+UBSafeCArray<UBSafeCArray<T, N>, M>::operator[](int Index) const {
   return Data_.at(Index);
 }
 
@@ -116,7 +123,8 @@ UBSafeCArray<char, N>::UBSafeCArray() {
 }
 
 template <size_t N>
-UBSafeCArray<char, N>::UBSafeCArray(const std::initializer_list<char>& InitList) : Data_{InitList} {
+UBSafeCArray<char, N>::UBSafeCArray(const std::initializer_list<char>& InitList)
+    : Data_{InitList} {
   if (N != 0) {
     setSize(N);
   }
@@ -128,7 +136,8 @@ void UBSafeCArray<char, N>::setSize(size_t Size) {
 }
 
 template <size_t N>
-void UBSafeCArray<char, N>::setSize(const std::vector<size_t>& Sizes, int CurDepth) {
+void UBSafeCArray<char, N>::setSize(const std::vector<size_t>& Sizes,
+                                    int CurDepth) {
   setSize(Sizes[CurDepth]);
 }
 
@@ -143,14 +152,15 @@ UBSafeCArray<char, N>::UBSafeCArray(const std::vector<size_t>& Sizes) {
 }
 
 template <size_t N>
-UBSafeCArray<char, N>::UBSafeCArray(
-    std::vector<size_t> Sizes, const std::initializer_list<char>& Args)
+UBSafeCArray<char, N>::UBSafeCArray(std::vector<size_t> Sizes,
+                                    const std::initializer_list<char>& Args)
     : UBSafeCArray(Args) {
   setSize(Sizes);
 }
 
 template <size_t N>
-UBSafeCArray<char, N>::UBSafeCArray(std::vector<size_t> Sizes, const char* StringLiteral)
+UBSafeCArray<char, N>::UBSafeCArray(std::vector<size_t> Sizes,
+                                    const char* StringLiteral)
     : UBSafeCArray(StringLiteral) {
   setSize(Sizes);
 }

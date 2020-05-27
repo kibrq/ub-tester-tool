@@ -4,6 +4,8 @@
 
 namespace ub_tester {
 
+enum PtrStateKind { Uninit, Nullptr, Init };
+
 template <typename T>
 class UBSafePointer {
 public:
@@ -26,6 +28,8 @@ public:
   operator T*();
 
   UBSafePointer<T>& setSize(size_t NewSize);
+  size_t getSize() const;
+  PtrStateKind getState() const;
 
 private:
   T* Data_{nullptr};

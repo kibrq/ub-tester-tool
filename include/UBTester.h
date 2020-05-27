@@ -1,11 +1,11 @@
 #ifndef UBTESTER_INCLUDE_H_
 #define UBTESTER_INCLUDE_H_
 
-#include "index-out-of-bounds/IOBAsserts.h"
+#include "ub-safe-containers/IOBAsserts.h"
 #include "ub-safe-containers/UBSafeCArray.h"
 #include "ub-safe-containers/UBSafePointer.h"
 
-#include "pointers/PointersAsserts.h"
+#include "ub-safe-containers/PointersAsserts.h"
 
 #include "arithmetic-overflow/ArithmeticUBAsserts.h"
 

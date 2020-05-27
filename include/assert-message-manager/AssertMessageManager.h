@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -25,7 +26,7 @@ constexpr bool SUPRESS_UNSAFE_CONV_WARNING = false;
 constexpr bool SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING = false;
 
 constexpr bool SUPRESS_UNINIT_VARS_WARNINGS = false;
-// constexpr bool SUPRESS_IOB_WARNINGS = false;
+constexpr bool SUPRESS_PTR_WARNINGS = false;
 
 constexpr bool SUPRESS_IMPL_DEFINED_WARNING = false;
 constexpr bool SUPRESS_NOT_CONSIDERED_WARNING = false;
@@ -41,6 +42,10 @@ enum class AssertFailCode { // error code > 0, warning code < 0
   UNDEFINED_BITSHIFT_LEFT_ERROR = 4,
   UNDEFINED_BITSHIFT_RIGHT_ERROR = 5,
   UNINIT_VAR_ACCESS_ERROR = 20,
+  INDEX_OUT_OF_BOUNDS_ERROR = 10,
+  INVALID_SIZE_ERROR = 11,
+  NULLPTR_DEREF_ERROR = 12,
+  UNININT_DEREF_ERROR = 13,
 
   UNSIGNED_OVERFLOW_WARNING = -1,
   OVERFLOW_IN_BITSHIFT_CXX20_WARNING = -2,
@@ -48,7 +53,9 @@ enum class AssertFailCode { // error code > 0, warning code < 0
   UNSAFE_CONV_WARNING = -4,
   IMPL_DEFINED_UNSAFE_CONV_WARNING = -5,
   NOT_CONSIDERED_WARNING = -6,
-  UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING = -20
+  UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING = -20,
+  UNTRACKED_PTR_WARNING = -10
+
 };
 
 struct AssertMessage final {
@@ -80,6 +87,15 @@ bool checkIfMessageIsSupressed(AssertFailCode FailCode) {
   // uninit-vars error
   case AssertFailCode::UNINIT_VAR_ACCESS_ERROR:
     return false;
+  // iob error
+  case AssertFailCode::INDEX_OUT_OF_BOUNDS_ERROR:
+    return false;
+  case AssertFailCode::INVALID_SIZE_ERROR:
+    return false;
+  case AssertFailCode::NULLPTR_DEREF_ERROR:
+    return false;
+  case AssertFailCode::UNININT_DEREF_ERROR:
+    return false;
   // arithm warnings
   case AssertFailCode::UNSIGNED_OVERFLOW_WARNING:
     return SUPRESS_UNSIGNED_OVERFLOW_WARNING || SUPRESS_ARITHM_WARNINGS;
@@ -97,6 +113,8 @@ bool checkIfMessageIsSupressed(AssertFailCode FailCode) {
   // uninit-vars warning
   case AssertFailCode::UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING:
     return SUPRESS_UNINIT_VARS_WARNINGS;
+  case AssertFailCode::UNTRACKED_PTR_WARNING:
+    return SUPRESS_PTR_WARNINGS;
   }
   assert(0 && "Undefined AssertFailCode");
 }

@@ -12,7 +12,8 @@ public:
   explicit UBSafeCArray();
   UBSafeCArray(const std::initializer_list<T>&);
   UBSafeCArray(const std::vector<size_t>& Sizes);
-  UBSafeCArray(const std::vector<size_t> Sizes, const std::initializer_list<T>&);
+  UBSafeCArray(const std::vector<size_t> Sizes,
+               const std::initializer_list<T>&);
 
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
@@ -34,7 +35,8 @@ public:
   explicit UBSafeCArray();
   UBSafeCArray(const std::initializer_list<UBSafeCArray<T, N>>&);
   UBSafeCArray(const std::vector<size_t>& Sizes);
-  UBSafeCArray(const std::vector<size_t> Sizes, const std::initializer_list<UBSafeCArray<T, N>>&);
+  UBSafeCArray(const std::vector<size_t> Sizes,
+               const std::initializer_list<UBSafeCArray<T, N>>&);
 
   void setSize(size_t Size);
   void setSize(const std::vector<size_t>& Sizes, int CurDepth = 0);
@@ -56,7 +58,8 @@ public:
   UBSafeCArray(const char* StringLiteral);
   UBSafeCArray(const std::initializer_list<char>&);
   UBSafeCArray(const std::vector<size_t>& Sizes);
-  UBSafeCArray(const std::vector<size_t> Sizes, const std::initializer_list<char>&);
+  UBSafeCArray(const std::vector<size_t> Sizes,
+               const std::initializer_list<char>&);
   UBSafeCArray(const std::vector<size_t> Sizes, const char* StringLiteral);
 
   void setSize(size_t Size);
