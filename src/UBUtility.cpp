@@ -1,21 +1,25 @@
+#include "UBUtility.h"
 #include "clang/AST/TypeLoc.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
-
-#include "UBUtility.h"
-
 #include <algorithm>
 #include <cassert>
 #include <sstream>
 
 using namespace clang;
 
-namespace ub_tester {
+namespace ub_tester::util {
 
-std::string getExprAsString(const Expr* Ex, const ASTContext* Context) { return getRangeAsString(Ex->getSourceRange(), Context); }
+std::string getExprAsString(const Expr* Ex, const ASTContext* Context) {
+  return getRangeAsString(Ex->getSourceRange(), Context);
+}
 
-std::string getRangeAsString(const SourceRange& Range, const ASTContext* Context) {
-  return Lexer::getSourceText(CharSourceRange::getTokenRange(Range), Context->getSourceManager(), Context->getLangOpts()).str();
+std::string getRangeAsString(const SourceRange& Range,
+                             const ASTContext* Context) {
+  return Lexer::getSourceText(CharSourceRange::getTokenRange(Range),
+                              Context->getSourceManager(),
+                              Context->getLangOpts())
+      .str();
 }
 
 std::string getExprLineNCol(const Expr* Expression, const ASTContext* Context) {
@@ -23,7 +27,8 @@ std::string getExprLineNCol(const Expr* Expression, const ASTContext* Context) {
   std::stringstream res;
   if (!FullLocation.isValid())
     return "invalid location";
-  res << FullLocation.getSpellingLineNumber() << ":" << FullLocation.getSpellingColumnNumber();
+  res << FullLocation.getSpellingLineNumber() << ":"
+      << FullLocation.getSpellingColumnNumber();
   return res.str();
 }
 
@@ -39,7 +44,9 @@ QualType getLowestLevelPointeeType(QualType QT) {
 
 namespace {
 
-SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc, std::string_view VarName, const SourceManager& SM,
+SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc,
+                                std::string_view VarName,
+                                const SourceManager& SM,
                                 const LangOptions& LO) {
   while (SM.isBeforeInTranslationUnit(BeginLoc, EndLoc)) {
     auto Tok = Lexer::findNextToken(BeginLoc, SM, LO);
@@ -55,12 +62,14 @@ SourceLocation getBeforeNameLoc(SourceLocation BeginLoc, SourceLocation EndLoc, 
 
 } // namespace
 
-SourceLocation getNameLastLoc(const DeclaratorDecl* Decl, const ASTContext* Context) {
+SourceLocation getNameLastLoc(const DeclaratorDecl* Decl,
+                              const ASTContext* Context) {
   SourceLocation BeginLoc, EndLoc;
   const auto& SM = Context->getSourceManager();
   const auto& LO = Context->getLangOpts();
-  SourceLocation Res = getBeforeNameLoc(BeginLoc = Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
-                                        EndLoc = Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
+  SourceLocation Res = getBeforeNameLoc(
+      BeginLoc = Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
+      EndLoc = Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
   if (SM.isBeforeInTranslationUnit(Res, EndLoc)) {
     return Lexer::findNextToken(Res, SM, LO)->getLastLoc();
   } else {
@@ -68,12 +77,14 @@ SourceLocation getNameLastLoc(const DeclaratorDecl* Decl, const ASTContext* Cont
   }
 }
 
-SourceLocation getAfterNameLoc(const DeclaratorDecl* Decl, const ASTContext* Context) {
+SourceLocation getAfterNameLoc(const DeclaratorDecl* Decl,
+                               const ASTContext* Context) {
   SourceLocation BeginLoc, EndLoc;
   const auto& SM = Context->getSourceManager();
   const auto& LO = Context->getLangOpts();
-  SourceLocation Res = getBeforeNameLoc(BeginLoc = Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
-                                        EndLoc = Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
+  SourceLocation Res = getBeforeNameLoc(
+      BeginLoc = Decl->getTypeSourceInfo()->getTypeLoc().getEndLoc(),
+      EndLoc = Decl->getEndLoc(), Decl->getNameAsString(), SM, LO);
   if (SM.isBeforeInTranslationUnit(Res, EndLoc)) {
     return Lexer::findNextToken(Res, SM, LO)->getEndLoc();
   } else {
@@ -96,11 +107,32 @@ std::unordered_set<std::string> FuncsWithAvailCode;
 bool hasFuncAvailCode(const clang::FunctionDecl* FuncDecl) {
   if (!FuncDecl)
     return false;
-  return FuncsWithAvailCode.find(getFuncNameWithArgsAsString(FuncDecl)) != FuncsWithAvailCode.end();
+  return FuncsWithAvailCode.find(getFuncNameWithArgsAsString(FuncDecl)) !=
+         FuncsWithAvailCode.end();
 }
 
-void setHasFuncAvailCode(const clang::FunctionDecl* FuncDecl) { FuncsWithAvailCode.insert(getFuncNameWithArgsAsString(FuncDecl)); }
+void setHasFuncAvailCode(const clang::FunctionDecl* FuncDecl) {
+  FuncsWithAvailCode.insert(getFuncNameWithArgsAsString(FuncDecl));
+}
+
+GetFuncCodeAvailVisitor::GetFuncCodeAvailVisitor(clang::ASTContext* Context)
+    : Context(Context) {}
+
+bool GetFuncCodeAvailVisitor::VisitFunctionDecl(FunctionDecl* FuncDecl) {
+  if (!Context->getSourceManager().isInMainFile(FuncDecl->getBeginLoc()))
+    return true;
+
+  if (FuncDecl->doesThisDeclarationHaveABody())
+    func_code_avail::setHasFuncAvailCode(FuncDecl);
+  return true;
+}
+
+UtilityConsumer::UtilityConsumer(clang::ASTContext* Context)
+    : FuncCodeAvailVisitor(Context) {}
+
+void UtilityConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
+  FuncCodeAvailVisitor.TraverseDecl(Context.getTranslationUnitDecl());
+}
 
 } // namespace func_code_avail
-
-} // namespace ub_tester
+} // namespace ub_tester::util

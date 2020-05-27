@@ -11,39 +11,46 @@ using namespace ub_tester::code_injector::wrapper;
 namespace ub_tester {
 
 FindArithmeticUBVisitor::FindArithmeticUBVisitor(ASTContext* Context)
-    : Context(Context) {}
+    : Context_(Context) {}
 
 bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
-  if (!Context->getSourceManager().isWrittenInMainFile(Binop->getBeginLoc()))
+  if (!Context_->getSourceManager().isWrittenInMainFile(Binop->getBeginLoc()))
     return true;
 
   QualType BinopType = Binop->getType();
-  const Type* BinopTypePtr = BinopType.getTypePtr();
-  if (BinopTypePtr->isDependentType())
+  if (BinopType->isDependentType())
     return true; // templates are not supported yet
-  if (BinopTypePtr->isFloatingType())
+  if (BinopType->isFloatingType())
     return true; // floating point types are not supported yet
-  if (!BinopTypePtr->isFundamentalType())
+  if (!BinopType->isFundamentalType())
     return true; // only fundamental type arithmetic is supported
 
-  std::string BinopName = Binop->getOpcodeStr().str();
   std::string OperationName = "undefined";
-  if (BinopName == "+")
+  switch (Binop->getOpcode()) {
+  case BinaryOperator::Opcode::BO_Add:
     OperationName = "Sum";
-  else if (BinopName == "-")
+    break;
+  case BinaryOperator::Opcode::BO_Sub:
     OperationName = "Diff";
-  else if (BinopName == "*")
+    break;
+  case BinaryOperator::Opcode::BO_Mul:
     OperationName = "Mul";
-  else if (BinopName == "/")
+    break;
+  case BinaryOperator::Opcode::BO_Div:
     OperationName = "Div";
-  else if (BinopName == "%")
+    break;
+  case BinaryOperator::Opcode::BO_Rem:
     OperationName = "Mod";
-  else if (BinopName == "<<")
+    break;
+  case BinaryOperator::Opcode::BO_Shl:
     OperationName = "BitShiftLeft";
-  else if (BinopName == ">>")
+    break;
+  case BinaryOperator::Opcode::BO_Shr:
     OperationName = "BitShiftRight";
-  else
+    break;
+  default:
     return true;
+  }
 
   // check BinopType assumption
   assert(!BinopType.hasQualifiers());
@@ -55,21 +62,19 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   QualType LhsType = Lhs->getType().getUnqualifiedType().getCanonicalType();
   QualType RhsType = Rhs->getType().getUnqualifiedType().getCanonicalType();
   // only fundamental type arithmetic is supported
-  if (!(LhsType.getTypePtr()->isFundamentalType() &&
-        RhsType.getTypePtr()->isFundamentalType()))
+  if (!(LhsType->isFundamentalType() && RhsType->isFundamentalType()))
     return true; // some operations can make BinopType fundamental
                  // though lhs or rhs are pointer type
 
   assert(LhsType == BinopType);
   // lhs and rhs of bitshift operators can have different integer types
-  assert(BinopName == "<<" || BinopName == ">>" || LhsType == RhsType);
+  assert(Binop->isShiftOp() || LhsType == RhsType);
 
   // in binary operators integer promotion is always applied on bool;
   // so _Bool (bool C-type-alias) won't occur
-  assert((!LhsType.getTypePtr()->isBooleanType()) &&
-         (!RhsType.getTypePtr()->isBooleanType()));
+  assert((!LhsType->isBooleanType()) && (!RhsType->isBooleanType()));
 
-  SubstitutionASTWrapper(Context)
+  SubstitutionASTWrapper(Context_)
       .setLoc(Binop->getBeginLoc())
       .setPrior(SubstPriorityKind::Shallow)
       .setFormats("@#@", "ASSERT_BINOP(" + OperationName + ", @, @, " +
@@ -82,32 +87,38 @@ bool FindArithmeticUBVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
 }
 
 bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
-  if (!Context->getSourceManager().isWrittenInMainFile(Unop->getBeginLoc()))
+  if (!Context_->getSourceManager().isWrittenInMainFile(Unop->getBeginLoc()))
     return true;
-  /*if (!Unop->canOverflow()) // char c = CHAR_MAX; c++; cannot overflow?
+  /*if (!Unop->canOverflow())
     return true;*/ // can't use canOverflow(), it causes ignored warnings
 
   QualType UnopType = Unop->getType();
-  const Type* UnopTypePtr = UnopType.getTypePtr();
-  if (UnopTypePtr->isDependentType())
+  if (UnopType->isDependentType())
     return true; // templates are not supported yet
-  if (UnopTypePtr->isFloatingType())
+  if (UnopType->isFloatingType())
     return true; // floating point types are not supported yet
-  if (!UnopTypePtr->isFundamentalType())
+  if (!UnopType->isFundamentalType())
     return true; // only fundamental type arithmetic is supported
 
   std::string UnopName = UnaryOperator::getOpcodeStr(Unop->getOpcode()).str();
   std::string OperationName = "undefined";
-  bool IsPrefixOperator = true;
-  if (UnopName == "-") {
+  switch (Unop->getOpcode()) {
+  case UnaryOperator::Opcode::UO_Minus:
     OperationName = "UnaryNeg";
-  } else if (UnopName == "++") {
-    IsPrefixOperator = Unop->isPrefix();
-    OperationName = IsPrefixOperator ? "PrefixIncr" : "PostfixIncr";
-  } else if (UnopName == "--") {
-    IsPrefixOperator = Unop->isPrefix();
-    OperationName = IsPrefixOperator ? "PrefixDecr" : "PostfixDecr";
-  } else {
+    break;
+  case UnaryOperator::Opcode::UO_PreInc:
+    OperationName = "PrefixIncr";
+    break;
+  case UnaryOperator::Opcode::UO_PostInc:
+    OperationName = "PostfixIncr";
+    break;
+  case UnaryOperator::Opcode::UO_PreDec:
+    OperationName = "PrefixDecr";
+    break;
+  case UnaryOperator::Opcode::UO_PostDec:
+    OperationName = "PostfixDecr";
+    break;
+  default:
     if (Unop->canOverflow())
       llvm_unreachable("Not known unary operator can overflow");
     return true;
@@ -125,23 +136,23 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
 
   // in binary operators integer promotion is always applied on bool;
   // so _Bool (bool C-type-alias) won't occur
-  assert(!UnopType.getTypePtr()->isBooleanType());
+  assert(!UnopType->isBooleanType());
 
-  SubstitutionASTWrapper(Context)
+  SubstitutionASTWrapper(Context_)
       .setLoc(Unop->getBeginLoc())
       .setPrior(SubstPriorityKind::Shallow)
-      .setFormats(IsPrefixOperator ? UnopName + "#@" : "@#" + UnopName,
+      .setFormats(Unop->isPrefix() ? UnopName + "#@" : "@#" + UnopName,
                   "ASSERT_UNOP(" + OperationName + ", @, " +
                       UnopType.getAsString() + ")")
       .setArguments(SubExpr)
       .apply();
 
   return true;
-}
+} // namespace ub_tester
 
 bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
     CompoundAssignOperator* CompAssignOp) {
-  if (!Context->getSourceManager().isWrittenInMainFile(
+  if (!Context_->getSourceManager().isWrittenInMainFile(
           CompAssignOp->getBeginLoc()))
     return true;
 
@@ -156,44 +167,54 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
 
   QualType CompAssignOpType = CompAssignOp->getType();
   QualType LhsComputationType = CompAssignOp->getComputationLHSType();
-  const Type* CompAssignOpTypePtr = CompAssignOpType.getTypePtr();
-  const Type* LhsComputationTypePtr = LhsComputationType.getTypePtr();
 
-  if (CompAssignOpTypePtr->isDependentType())
+  if (CompAssignOpType->isDependentType())
     return true; // templates are not supported yet
-  if (CompAssignOpTypePtr->isFloatingType())
+  if (CompAssignOpType->isFloatingType())
     return true; // floating point types are not supported yet
-  if (!CompAssignOpTypePtr->isFundamentalType())
+  if (!CompAssignOpType->isFundamentalType())
     return true; // only fundamental type arithmetic is supported
   // should be automatically true for LhsComputationType too
-  assert(!LhsComputationTypePtr->isDependentType());
-  assert(!LhsComputationTypePtr->isFloatingType());
-  assert(LhsComputationTypePtr->isFundamentalType());
+  assert(!LhsComputationType->isDependentType());
+  assert(!LhsComputationType->isFloatingType());
+  assert(LhsComputationType->isFundamentalType());
 
   std::string CompAssignOpName = CompAssignOp->getOpcodeStr().str();
   std::string OperationName = "undefined";
-  if (CompAssignOpName == "+=")
+  switch (CompAssignOp->getOpcode()) {
+  case BinaryOperator::Opcode::BO_AddAssign:
     OperationName = "Sum";
-  else if (CompAssignOpName == "-=")
+    break;
+  case BinaryOperator::Opcode::BO_SubAssign:
     OperationName = "Diff";
-  else if (CompAssignOpName == "*=")
+    break;
+  case BinaryOperator::Opcode::BO_MulAssign:
     OperationName = "Mul";
-  else if (CompAssignOpName == "/=")
+    break;
+  case BinaryOperator::Opcode::BO_DivAssign:
     OperationName = "Div";
-  else if (CompAssignOpName == "%=")
+    break;
+  case BinaryOperator::Opcode::BO_RemAssign:
     OperationName = "Mod";
-  else if (CompAssignOpName == "<<=")
+    break;
+  case BinaryOperator::Opcode::BO_ShlAssign:
     OperationName = "BitShiftLeft";
-  else if (CompAssignOpName == ">>=")
+    break;
+  case BinaryOperator::Opcode::BO_ShrAssign:
     OperationName = "BitShiftRight";
-  else if (CompAssignOpName == "&=")
+    break;
+  case BinaryOperator::Opcode::BO_AndAssign:
     OperationName = "LogicAnd";
-  else if (CompAssignOpName == "|=")
+    break;
+  case BinaryOperator::Opcode::BO_OrAssign:
     OperationName = "LogicOr";
-  else if (CompAssignOpName == "^=")
+    break;
+  case BinaryOperator::Opcode::BO_XorAssign:
     OperationName = "LogicXor";
-  else
+    break;
+  default:
     return true;
+  }
 
   // check CompAssignOpType and LhsComputationType assumption
   assert(!CompAssignOpType.hasQualifiers());
@@ -212,17 +233,16 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
   assert(LhsComputationType ==
          CompAssignOp->getComputationResultType().getCanonicalType());
   // should be automatically true because LhsComputationType is fundamental
-  assert(RhsType.getTypePtr()->isFundamentalType());
+  assert(RhsType->isFundamentalType());
   // lhs and rhs of bitshift operators can have different integer types
-  assert(CompAssignOpName == "<<=" || CompAssignOpName == ">>=" ||
-         LhsComputationType == RhsType);
+  assert(CompAssignOp->isShiftAssignOp() || LhsComputationType == RhsType);
 
   // to prevent _Bool instead of bool type
   std::string LhsTypeName =
-      LhsType.getTypePtr()->isBooleanType() ? "bool" : LhsType.getAsString();
+      LhsType->isBooleanType() ? "bool" : LhsType.getAsString();
   // other C-type-alias conflicting with C++17 haven't been found yet
 
-  SubstitutionASTWrapper(Context)
+  SubstitutionASTWrapper(Context_)
       .setLoc(CompAssignOp->getBeginLoc())
       .setPrior(SubstPriorityKind::Shallow)
       .setFormats("@#@", "ASSERT_COMPASSIGNOP(" + OperationName + ", @, @, " +
@@ -236,7 +256,7 @@ bool FindArithmeticUBVisitor::VisitCompoundAssignOperator(
 
 bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
     ImplicitCastExpr* ImplicitCast) {
-  if (!Context->getSourceManager().isWrittenInMainFile(
+  if (!Context_->getSourceManager().isWrittenInMainFile(
           ImplicitCast->getBeginLoc()))
     return true;
 
@@ -254,12 +274,11 @@ bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
     return true; // explicit cast is considered separately
 
   QualType ImplicitCastType = ImplicitCast->getType();
-  const Type* ImplicitCastTypePtr = ImplicitCastType.getTypePtr();
-  if (ImplicitCastTypePtr->isDependentType())
+  if (ImplicitCastType->isDependentType())
     return true; // templates are not supported yet
-  if (ImplicitCastTypePtr->isFloatingType())
+  if (ImplicitCastType->isFloatingType())
     return true; // floating point types are not supported yet
-  if (!ImplicitCastTypePtr->isFundamentalType())
+  if (!ImplicitCastType->isFundamentalType())
     return true; // only fundamental type conversion is supported
 
   // check ImplicitCastType assumption
@@ -274,21 +293,20 @@ bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
   assert(SubExprType != ImplicitCastType);
 
   // check heuristic assumption about string-representation
-  assert(getExprAsString(ImplicitCast, Context) ==
-         getExprAsString(SubExprAsWritten, Context));
+  assert(getExprAsString(ImplicitCast, Context_) ==
+         getExprAsString(SubExprAsWritten, Context_));
   // check begin location assumption
   assert(ImplicitCast->getBeginLoc() == SubExprAsWritten->getBeginLoc());
 
   // to prevent _Bool instead of bool type
-  std::string ImplicitCastTypeAsString = ImplicitCastTypePtr->isBooleanType()
+  std::string ImplicitCastTypeAsString = ImplicitCastType->isBooleanType()
                                              ? "bool"
                                              : ImplicitCastType.getAsString();
-  std::string SubExprTypeAsString = SubExprType.getTypePtr()->isBooleanType()
-                                        ? "bool"
-                                        : SubExprType.getAsString();
+  std::string SubExprTypeAsString =
+      SubExprType->isBooleanType() ? "bool" : SubExprType.getAsString();
   // other C-type-alias conflicting with C++17 haven't been found yet
 
-  SubstitutionASTWrapper(Context)
+  SubstitutionASTWrapper(Context_)
       .setLoc(ImplicitCast->getBeginLoc())
       .setPrior(SubstPriorityKind::Shallow)
       .setFormats("#@", "IMPLICIT_CAST(@, " + SubExprTypeAsString + ", " +

@@ -6,6 +6,8 @@
 
 namespace ub_tester::code_injector::wrapper {
 
+using namespace util;
+
 namespace {
 
 inline std::string getArgAsString(std::string String,

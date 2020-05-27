@@ -14,7 +14,6 @@
 #include "pointers/PointersConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
-#include "utility/UtilityConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -59,7 +58,8 @@ class UBTesterUtilityAction : public ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
-    return std::make_unique<UtilityConsumer>(&Compiler.getASTContext());
+    return std::make_unique<util::func_code_avail::UtilityConsumer>(
+        &Compiler.getASTContext());
   }
 };
 

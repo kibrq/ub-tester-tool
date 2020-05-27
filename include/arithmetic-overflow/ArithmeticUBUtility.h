@@ -8,8 +8,7 @@
   static_assert(std::numeric_limits<Type1>::is_signed ==                       \
                 std::numeric_limits<Type2>::is_signed)
 
-namespace ub_tester {
-namespace arithm_ut {
+namespace ub_tester::arithm_util {
 
 template <typename T>
 constexpr size_t getTypeSizeInBits() {
@@ -85,5 +84,4 @@ constexpr const char* getIntTypeAsString<__int128>() {
 #endif
 
 } // namespace tmp_functions
-} // namespace arithm_ut
-} // namespace ub_tester
+} // namespace ub_tester::arithm_util

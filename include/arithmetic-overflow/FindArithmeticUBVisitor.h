@@ -1,4 +1,5 @@
 #pragma once
+
 #include "clang/AST/RecursiveASTVisitor.h"
 
 namespace ub_tester {
@@ -14,7 +15,7 @@ public:
   bool VisitImplicitCastExpr(clang::ImplicitCastExpr* ImplicitCast);
 
 private:
-  clang::ASTContext* Context;
+  clang::ASTContext* Context_;
 };
 
 } // namespace ub_tester

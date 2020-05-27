@@ -123,7 +123,7 @@ ArithmCheckRes checkBitShiftLeft(LhsType Lhs, RhsType Rhs) {
 
   if (Rhs < 0)
     return ArithmCheckRes::BITSHIFT_NEGATIVE_RHS;
-  if (Rhs >= static_cast<RhsType>(arithm_ut::getTypeSizeInBits<LhsType>()))
+  if (Rhs >= static_cast<RhsType>(arithm_util::getTypeSizeInBits<LhsType>()))
     return ArithmCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS;
 
 // since C++20 behaviour in other cases is well-defined
@@ -145,7 +145,7 @@ ArithmCheckRes checkBitShiftLeft(LhsType Lhs, RhsType Rhs) {
     return ArithmCheckRes::BITSHIFT_LEFT_NEGATIVE_LHS;
 
   // check if Lhs * (1 << Rhs) is representable in unsigned Lhs type
-  typedef typename std::make_unsigned<LhsType>::type UnsignedLhsType;
+  using UnsignedLhsType = typename std::make_unsigned<LhsType>::type;
   if (checkMul<UnsignedLhsType>(static_cast<UnsignedLhsType>(Lhs),
                                 static_cast<UnsignedLhsType>(1) << Rhs) !=
       ArithmCheckRes::SAFE_OPERATION) {
@@ -165,7 +165,7 @@ ArithmCheckRes checkBitShiftRight(LhsType Lhs, RhsType Rhs) {
 
   if (Rhs < 0)
     return ArithmCheckRes::BITSHIFT_NEGATIVE_RHS;
-  if (Rhs >= static_cast<RhsType>(arithm_ut::getTypeSizeInBits<LhsType>()))
+  if (Rhs >= static_cast<RhsType>(arithm_util::getTypeSizeInBits<LhsType>()))
     return ArithmCheckRes::BITSHIFT_RHS_GEQ_LHSTYPE_IN_BITS;
 
 // since C++20 all other cases are SAFE_OPERATION

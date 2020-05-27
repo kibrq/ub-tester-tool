@@ -1,3 +1,5 @@
+#pragma once
+
 #include "arithmetic-overflow/FindArithmeticUBVisitor.h"
 #include "clang/AST/ASTConsumer.h"
 
@@ -9,7 +11,7 @@ public:
   virtual void HandleTranslationUnit(clang::ASTContext& Context);
 
 private:
-  FindArithmeticUBVisitor Visitor;
+  FindArithmeticUBVisitor Visitor_;
 };
 
 } // namespace ub_tester

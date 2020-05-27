@@ -2,8 +2,7 @@
 
 #include "ArithmeticUBUtility.h"
 
-namespace ub_tester {
-namespace type_conv {
+namespace ub_tester::type_conv {
 
 enum class TyCoCheckRes {
   SAFE_CONVERSION,
@@ -59,28 +58,27 @@ struct Conversions final {
     static_assert(std::numeric_limits<FromType>::is_integer);
     static_assert(std::numeric_limits<ToType>::is_integer);
 
-    bool FromTypeIsSigned = std::numeric_limits<FromType>::is_signed;
-    bool ToTypeIsSigned = std::numeric_limits<ToType>::is_signed;
+    constexpr bool FromTypeIsSigned = std::numeric_limits<FromType>::is_signed;
+    constexpr bool ToTypeIsSigned = std::numeric_limits<ToType>::is_signed;
 
     if (FromTypeIsSigned && (!ToTypeIsSigned) && Expr < 0)
       return TyCoCheckRes::NEG_VALUE_TO_UNSIGNED_TYPE_CONVERSION;
 
     using support::checkIfExprFitsInTypeLimits;
     // compare expr with ToType limits, using the widest signed common type
-    if (FromTypeIsSigned && ToTypeIsSigned) {
+    if constexpr (FromTypeIsSigned && ToTypeIsSigned) {
       // make_signed is needed to prevent unwanted template instantation
-      typedef typename std::make_signed<FromType>::type SFromType;
-      typedef typename std::make_signed<ToType>::type SToType;
-      if (arithm_ut::checkIfFirstTypeIsWider<SFromType, SToType>())
-        return checkIfExprFitsInTypeLimits<SFromType, ToType>(
-            static_cast<SFromType>(Expr));
-      return checkIfExprFitsInTypeLimits<SToType, ToType>(
-          static_cast<SToType>(Expr));
+      if (arithm_util::checkIfFirstTypeIsWider<FromType, ToType>())
+        return checkIfExprFitsInTypeLimits<FromType, ToType>(
+            static_cast<FromType>(Expr));
+      return checkIfExprFitsInTypeLimits<ToType, ToType>(
+          static_cast<ToType>(Expr));
     }
     // compare expr with ToType limits, using the widest unsigned common type
-    typedef typename std::make_unsigned<FromType>::type UnsignedFromType;
-    typedef typename std::make_unsigned<ToType>::type UnsignedToType;
-    if (arithm_ut::checkIfFirstTypeIsWider<UnsignedFromType, UnsignedToType>())
+    using UnsignedFromType = typename std::make_unsigned<FromType>::type;
+    using UnsignedToType = typename std::make_unsigned<ToType>::type;
+    if (arithm_util::checkIfFirstTypeIsWider<UnsignedFromType,
+                                             UnsignedToType>())
       return checkIfExprFitsInTypeLimits<UnsignedFromType, ToType>(
           static_cast<UnsignedFromType>(Expr));
     return checkIfExprFitsInTypeLimits<UnsignedToType, ToType>(
@@ -109,5 +107,4 @@ struct Conversions<bool, bool> final {
   }
 };
 
-} // namespace type_conv
-} // namespace ub_tester
+} // namespace ub_tester::type_conv

@@ -6,7 +6,6 @@ add_subdirectory("arithmetic-overflow")
 add_subdirectory("uninit-variables")
 add_subdirectory("index-out-of-bounds")
 add_subdirectory("type-substituter")
-add_subdirectory("utility")
 add_subdirectory("pointers")
 
 # Insert your subdirectories here 
