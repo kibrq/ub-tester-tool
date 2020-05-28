@@ -5,13 +5,12 @@
 #include <string>
 #include <vector>
 
-#define PUSH_ERROR(FailCode, Message)                                          \
-  AssertMessageManager::pushMessage(                                           \
-      AssertMessage((Message), AssertFailCode::FailCode));                     \
+#define PUSH_ERROR(FailCode, Message)                                                                                            \
+  std::cerr << (Message) << ' ' << static_cast<int>(AssertFailCode::FailCode) << std::endl;                                      \
+  AssertMessageManager::pushMessage(AssertMessage((Message), AssertFailCode::FailCode));                                         \
   assert(0 && "Assert detected error but manager didn't handle it")
-#define PUSH_WARNING(FailCode, Message)                                        \
-  AssertMessageManager::pushMessage(                                           \
-      AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
+#define PUSH_WARNING(FailCode, Message)                                                                                          \
+  AssertMessageManager::pushMessage(AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
 
 namespace ub_tester::assert_message_manager::supress_messages_mode {
 
@@ -52,8 +51,7 @@ enum class AssertFailCode { // error code > 0, warning code < 0
 };
 
 struct AssertMessage final {
-  AssertMessage(std::string Message, AssertFailCode FailCode)
-      : Message_{Message}, FailCode_{FailCode} {}
+  AssertMessage(std::string Message, AssertFailCode FailCode) : Message_{Message}, FailCode_{FailCode} {}
   std::string Message_;
   AssertFailCode FailCode_;
 };
@@ -84,8 +82,7 @@ bool checkIfMessageIsSupressed(AssertFailCode FailCode) {
   case AssertFailCode::UNSIGNED_OVERFLOW_WARNING:
     return SUPRESS_UNSIGNED_OVERFLOW_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::OVERFLOW_IN_BITSHIFT_CXX20_WARNING:
-    return SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING ||
-           SUPRESS_ARITHM_WARNINGS;
+    return SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::IMPL_DEFINED_WARNING:
     return SUPRESS_IMPL_DEFINED_WARNING || SUPRESS_ARITHM_WARNINGS;
   case AssertFailCode::UNSAFE_CONV_WARNING:
@@ -129,21 +126,17 @@ public:
 
   static AssertMessageManager& getInstance() {
     if (!ManagerPtr_)
-      ManagerPtr_ =
-          std::unique_ptr<AssertMessageManager>(new AssertMessageManager{});
+      ManagerPtr_ = std::unique_ptr<AssertMessageManager>(new AssertMessageManager{});
     return *ManagerPtr_;
   }
 
-  static void pushMessage(AssertMessage Message) {
-    AssertMessageManager::getInstance().handleMessage(std::move(Message));
-  }
+  static void pushMessage(AssertMessage Message) { AssertMessageManager::getInstance().handleMessage(std::move(Message)); }
 
 private:
   static std::unique_ptr<AssertMessageManager> ManagerPtr_;
   std::vector<AssertMessage> Messages_{};
 };
 
-inline std::unique_ptr<AssertMessageManager> AssertMessageManager::ManagerPtr_ =
-    nullptr;
+inline std::unique_ptr<AssertMessageManager> AssertMessageManager::ManagerPtr_ = nullptr;
 
 } // namespace ub_tester::assert_message_manager

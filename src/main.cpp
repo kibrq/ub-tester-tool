@@ -28,20 +28,14 @@ static cl::extrahelp MoreHelp("\nMore help text...\n");
 namespace ub_tester {
 class UBTesterAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer>
-  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
     InjectorASTWrapper::getInstance().addFile(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
-        std::make_unique<IOBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> UninitVarsConsumer =
-        std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
-        std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> TypeSubstituter =
-        std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> PointerConsumer =
-        std::make_unique<PointersConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer = std::make_unique<IOBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<FindUninitVarsConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer = std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> TypeSubstituter = std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> PointerConsumer = std::make_unique<PointersConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.emplace_back(std::move(OutOfBoundsConsumer));
@@ -56,10 +50,8 @@ public:
 
 class UBTesterUtilityAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer>
-  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
-    return std::make_unique<util::func_code_avail::UtilityConsumer>(
-        &Compiler.getASTContext());
+  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+    return std::make_unique<util::func_code_avail::UtilityConsumer>(&Compiler.getASTContext());
   }
 };
 
@@ -68,22 +60,18 @@ public:
 int main(int argc, const char** argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
 
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
+  ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-  int UtilityReturnCode = Tool.run(
-      newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
+  int UtilityReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
   if (UtilityReturnCode) {
     std::cerr << "File(s) preprocessing failed\n";
     exit(1);
   }
 
-  int ReturnCode =
-      Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
+  int ReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
 
   if (!ReturnCode) {
-    InjectorASTWrapper::getInstance().substituteIncludePaths(
-        OptionsParser.getSourcePathList());
+    InjectorASTWrapper::getInstance().substituteIncludePaths(OptionsParser.getSourcePathList());
     InjectorASTWrapper::getInstance().applySubstitutions();
   }
 }
