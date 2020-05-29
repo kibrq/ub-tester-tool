@@ -167,7 +167,7 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
     return true;
   // else there will be LRValue conversion, other cases
   SubstitutionASTWrapper(Context_)
-      .setLoc(Unop->getBeginLoc())
+      .setLoc(Unop->getSubExpr()->getBeginLoc())
       .setPrior(SubstPriorityKind::Deep)
       .setFormats("$@", "ASSERT_GET_REF(@)")
       .setArguments(Unop->getSubExpr())
