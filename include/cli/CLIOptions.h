@@ -5,9 +5,10 @@
 namespace ub_tester::clio {
 
 extern bool SuppressWarnings;
-extern bool runOOB;
-extern bool runArithm;
-extern bool runUninit;
+extern bool RunOOB;
+extern bool RunArithm;
+extern bool RunUninit;
+extern bool Silent;
 
 namespace internal {
 enum ApplyOnly { OOB, Arithm, Uninit, All };
@@ -18,27 +19,27 @@ inline void processFlags() {
   using namespace internal;
   switch (internal::AO) {
   case OOB: {
-    runOOB = true;
-    runArithm = false;
-    runUninit = false;
+    RunOOB = true;
+    RunArithm = false;
+    RunUninit = false;
     break;
   }
   case Arithm: {
-    runOOB = false;
-    runArithm = true;
-    runUninit = false;
+    RunOOB = false;
+    RunArithm = true;
+    RunUninit = false;
     break;
   }
   case Uninit: {
-    runOOB = false;
-    runArithm = false;
-    runUninit = true;
+    RunOOB = false;
+    RunArithm = false;
+    RunUninit = true;
     break;
   }
   default: {
-    runOOB = true;
-    runArithm = true;
-    runUninit = true;
+    RunOOB = true;
+    RunArithm = true;
+    RunUninit = true;
   }
   }
 }

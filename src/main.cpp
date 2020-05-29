@@ -10,7 +10,7 @@
 #include "arithmetic-overflow/ArithmeticUBAsserts.h"
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
 #include "cli/CLIOptions.h"
-#include "code-injector/ASTFrontendInjector.h"
+#include "code-injector/InjectorASTWrapper.h"
 #include "index-out-of-bounds/IOBConsumer.h"
 #include "pointers/PointersConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
@@ -30,23 +30,26 @@ namespace ub_tester {
 
 namespace clio {
 
-bool runOOB;
-bool runArithm;
-bool runUninit;
+bool RunOOB;
+bool RunArithm;
+bool RunUninit;
 bool SuppressWarnings;
+bool Silent;
 
 namespace internal {
 ApplyOnly AO;
 
-static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"),
-                                                cl::location(ub_tester::clio::SuppressWarnings), cl::init(false),
-                                                cl::cat(UBTesterOptionsCategory));
+static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"), cl::location(SuppressWarnings),
+                                                cl::init(false), cl::cat(UBTesterOptionsCategory));
 static cl::opt<ApplyOnly, true>
     ApplyOnlyOption("apply-only", cl::desc("Only apply specified checks"),
                     cl::values(clEnumValN(ApplyOnly::OOB, "oob", "Arrays and pointers out of bounds checks"),
                                clEnumValN(ApplyOnly::Arithm, "arithm", "Arithmetic operations checks"),
                                clEnumValN(ApplyOnly::Uninit, "uninit", "Uninitialized variables checks")),
                     cl::location(AO), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
+
+static cl::opt<bool, true> SilentFlag("silent", cl::desc("Disable all output, exit program on error"), cl::location(Silent),
+                                      cl::init(false), cl::cat(UBTesterOptionsCategory));
 } // namespace internal
 } // namespace clio
 
@@ -62,11 +65,11 @@ public:
     std::unique_ptr<ASTConsumer> PointerConsumer = std::make_unique<PointersConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    if (clio::runOOB)
+    if (clio::RunOOB)
       consumers.emplace_back(std::move(OutOfBoundsConsumer));
-    if (clio::runUninit)
+    if (clio::RunUninit)
       consumers.emplace_back(std::move(UninitVarsConsumer));
-    if (clio::runArithm)
+    if (clio::RunArithm)
       consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
     consumers.emplace_back(std::move(PointerConsumer));
@@ -85,7 +88,12 @@ public:
 } // namespace ub_tester
 
 void UBTesterVersionPrinter(raw_ostream& ostr) {
-  ostr << "ub-tester tool\n\nVersion: b0.9\n\nAuthors: https://github.com/KirillBrilliantov, https://github.com/GlebSolovev, "
+  ostr << "ub-tester tool\n"
+          "Change input programs so that they exit before some cases of UB to prevent it\n"
+          "\n"
+          "Version: b1.0\n"
+          "\n"
+          "Authors: https://github.com/KirillBrilliantov, https://github.com/GlebSolovev, "
           "https://github.com/DLochmelis33\n";
 }
 
