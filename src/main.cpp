@@ -6,12 +6,12 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
+#include <iostream>
 
-#include "arithmetic-overflow/ArithmeticUBAsserts.h"
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
 #include "code-injector/InjectorASTWrapper.h"
-#include "index-out-of-bounds/IOBConsumer.h"
-#include "pointers/PointersConsumer.h"
+#include "index-out-of-bounds/FindIOBConsumer.h"
+#include "pointers/FindPointerUBConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 
@@ -32,23 +32,23 @@ public:
   CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
     InjectorASTWrapper::getInstance().addFile(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> OutOfBoundsConsumer =
-        std::make_unique<IOBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> IOBConsumer =
+        std::make_unique<FindIOBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> UninitVarsConsumer =
         std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
         std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> TypeSubstituter =
         std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> PointerConsumer =
-        std::make_unique<PointersConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> PointerUBConsumer =
+        std::make_unique<FindPointerUBConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    consumers.emplace_back(std::move(OutOfBoundsConsumer));
-    consumers.emplace_back(std::move(UninitVarsConsumer));
+    consumers.emplace_back(std::move(IOBConsumer));
+    // consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
-    consumers.emplace_back(std::move(PointerConsumer));
+    consumers.emplace_back(std::move(PointerUBConsumer));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }

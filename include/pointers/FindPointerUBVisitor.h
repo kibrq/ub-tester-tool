@@ -9,9 +9,10 @@
 
 namespace ub_tester {
 
-class PointerVisitor : public clang::RecursiveASTVisitor<PointerVisitor> {
+class FindPointerUBVisitor
+    : public clang::RecursiveASTVisitor<FindPointerUBVisitor> {
 public:
-  explicit PointerVisitor(clang::ASTContext*);
+  explicit FindPointerUBVisitor(clang::ASTContext*);
 
   bool VisitCallExpr(clang::CallExpr*);
   bool VisitCXXNewExpr(clang::CXXNewExpr*);

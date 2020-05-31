@@ -1,7 +1,7 @@
 #include "type-substituter/TypeSubstituterVisitor.h"
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
-#include "type-substituter/SafeTypesView.h"
+#include "type-substituter/SafeTypesNames.h"
 #include "clang/Basic/SourceManager.h"
 
 // TODO templates

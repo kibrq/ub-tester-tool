@@ -1,7 +1,7 @@
-#include "pointers/PointerHandler.h"
+#include "pointers/FindPointerUBVisitor.h"
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
-#include "pointers/PointersAssertsView.h"
+#include "pointers/PointerUBAssertNames.h"
 #include "clang/Basic/SourceManager.h"
 #include <unordered_map>
 
@@ -13,23 +13,24 @@ using namespace ub_tester::code_injector::wrapper;
 
 namespace ub_tester {
 
-PointerVisitor::PointerInfo_t::PointerInfo_t(bool ShouldVisitNodes)
+FindPointerUBVisitor::PointerInfo_t::PointerInfo_t(bool ShouldVisitNodes)
     : ShouldVisitNodes_{ShouldVisitNodes} {}
 
-PointerVisitor::PointerInfo_t& PointerVisitor::backPointer() {
+FindPointerUBVisitor::PointerInfo_t& FindPointerUBVisitor::backPointer() {
   return Pointers_.back();
 }
 
-bool PointerVisitor::shouldVisitNodes() {
+bool FindPointerUBVisitor::shouldVisitNodes() {
   return !Pointers_.empty() && backPointer().ShouldVisitNodes_;
 }
 
-void PointerVisitor::reset() {
+void FindPointerUBVisitor::reset() {
   if (!Pointers_.empty())
     Pointers_.pop_back();
 }
 
-PointerVisitor::PointerVisitor(ASTContext* Context) : Context_{Context} {}
+FindPointerUBVisitor::FindPointerUBVisitor(ASTContext* Context)
+    : Context_{Context} {}
 
 namespace {
 
@@ -56,7 +57,7 @@ getSizeCalculationFunc(const std::string& FunctionName) {
 
 } // namespace
 
-bool PointerVisitor::VisitCallExpr(CallExpr* CE) {
+bool FindPointerUBVisitor::VisitCallExpr(CallExpr* CE) {
   if (shouldVisitNodes() && CE->getDirectCallee()) {
     auto Calculator = getSizeCalculationFunc(
         CE->getDirectCallee()->getNameInfo().getAsString());
@@ -69,7 +70,7 @@ bool PointerVisitor::VisitCallExpr(CallExpr* CE) {
   return true;
 }
 
-bool PointerVisitor::VisitCXXNewExpr(CXXNewExpr* CNE) {
+bool FindPointerUBVisitor::VisitCXXNewExpr(CXXNewExpr* CNE) {
   if (shouldVisitNodes()) {
     backPointer().HasSize_ = true;
     if (!CNE->isArray())
@@ -81,7 +82,7 @@ bool PointerVisitor::VisitCXXNewExpr(CXXNewExpr* CNE) {
   return true;
 }
 
-std::pair<std::string, std::string> PointerVisitor::getCtorFormats() {
+std::pair<std::string, std::string> FindPointerUBVisitor::getCtorFormats() {
   std::string SourceFormat = backPointer().Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
   OutputFormat << "(" << (backPointer().Init_.has_value() ? "@" : "")
@@ -91,7 +92,7 @@ std::pair<std::string, std::string> PointerVisitor::getCtorFormats() {
   return {SourceFormat, OutputFormat.str()};
 }
 
-void PointerVisitor::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
+void FindPointerUBVisitor::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
   SourceLocation Loc = getAfterNameLoc(VDecl, Context_);
   auto Formats = getCtorFormats();
   SubstitutionASTWrapper(Context_)
@@ -101,7 +102,7 @@ void PointerVisitor::executeSubstitutionOfPointerCtor(VarDecl* VDecl) {
       .apply();
 }
 
-bool PointerVisitor::TraverseVarDecl(clang::VarDecl* VDecl) {
+bool FindPointerUBVisitor::TraverseVarDecl(clang::VarDecl* VDecl) {
   if (!Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
     return true;
 
@@ -112,7 +113,7 @@ bool PointerVisitor::TraverseVarDecl(clang::VarDecl* VDecl) {
             ->getPointeeType()
             .getAsString();
 
-  RecursiveASTVisitor<PointerVisitor>::TraverseVarDecl(VDecl);
+  RecursiveASTVisitor<FindPointerUBVisitor>::TraverseVarDecl(VDecl);
   if (shouldVisitNodes()) {
     if (VDecl->hasInit())
       backPointer().Init_ = getExprAsString(VDecl->getInit(), Context_);
@@ -122,14 +123,14 @@ bool PointerVisitor::TraverseVarDecl(clang::VarDecl* VDecl) {
   return true;
 }
 
-std::pair<std::string, std::string> PointerVisitor::getAssignFormats() {
+std::pair<std::string, std::string> FindPointerUBVisitor::getAssignFormats() {
   std::string SourceFormat = "@";
   std::stringstream OutputFormat;
   OutputFormat << "(@).setSize(" << backPointer().Size_.str() << ")";
   return {SourceFormat, OutputFormat.str()};
 }
 
-void PointerVisitor::executeSubstitutionOfPointerAssignment(
+void FindPointerUBVisitor::executeSubstitutionOfPointerAssignment(
     BinaryOperator* Binop) {
   SourceLocation Loc = Binop->getBeginLoc();
   auto Formats = getAssignFormats();
@@ -140,8 +141,8 @@ void PointerVisitor::executeSubstitutionOfPointerAssignment(
       .apply();
 }
 
-bool PointerVisitor::TraverseBinAssign(BinaryOperator* Binop,
-                                       DataRecursionQueue* Queue) {
+bool FindPointerUBVisitor::TraverseBinAssign(BinaryOperator* Binop,
+                                             DataRecursionQueue* Queue) {
   if (!Context_->getSourceManager().isWrittenInMainFile(Binop->getBeginLoc()))
     return true;
 
@@ -153,15 +154,16 @@ bool PointerVisitor::TraverseBinAssign(BinaryOperator* Binop,
             .getAsString();
   }
 
-  RecursiveASTVisitor<PointerVisitor>::TraverseStmt(Binop->getLHS());
-  RecursiveASTVisitor<PointerVisitor>::TraverseStmt(Binop->getRHS());
+  RecursiveASTVisitor<FindPointerUBVisitor>::TraverseStmt(Binop->getLHS());
+  RecursiveASTVisitor<FindPointerUBVisitor>::TraverseStmt(Binop->getRHS());
   if (shouldVisitNodes())
     executeSubstitutionOfPointerAssignment(Binop);
   reset();
   return true;
 }
 
-void PointerVisitor::executeSubstitutionOfStarOperator(UnaryOperator* Unop) {
+void FindPointerUBVisitor::executeSubstitutionOfStarOperator(
+    UnaryOperator* Unop) {
   SourceLocation Loc = Unop->getBeginLoc();
   std::string SourceFormat = "*@";
   std::string OutputFormat =
@@ -174,7 +176,7 @@ void PointerVisitor::executeSubstitutionOfStarOperator(UnaryOperator* Unop) {
       .apply();
 }
 
-bool PointerVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
+bool FindPointerUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   if (!Context_->getSourceManager().isWrittenInMainFile(Unop->getBeginLoc()))
     return true;
   if (Unop->getOpcode() == UnaryOperator::Opcode::UO_Deref &&
@@ -183,7 +185,8 @@ bool PointerVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   return true;
 }
 
-void PointerVisitor::executeSubstitutionOfMemberExpr(MemberExpr* MembExpr) {
+void FindPointerUBVisitor::executeSubstitutionOfMemberExpr(
+    MemberExpr* MembExpr) {
   SourceLocation Loc = MembExpr->getBeginLoc();
   std::string SourceFormat = "@#@";
   std::string OutputFormat =
@@ -197,7 +200,7 @@ void PointerVisitor::executeSubstitutionOfMemberExpr(MemberExpr* MembExpr) {
       .apply();
 }
 
-bool PointerVisitor::VisitMemberExpr(MemberExpr* MembExpr) {
+bool FindPointerUBVisitor::VisitMemberExpr(MemberExpr* MembExpr) {
   if (!Context_->getSourceManager().isWrittenInMainFile(
           MembExpr->getBeginLoc()))
     return true;

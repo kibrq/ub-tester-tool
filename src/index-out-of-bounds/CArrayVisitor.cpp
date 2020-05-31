@@ -1,7 +1,7 @@
-#include "index-out-of-bounds/CArrayHandler.h"
+#include "index-out-of-bounds/CArrayVisitor.h"
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
-#include "index-out-of-bounds/IOBStringView.h"
+#include "index-out-of-bounds/IOBAssertNames.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
 #include <optional>
