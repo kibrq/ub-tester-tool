@@ -6,6 +6,10 @@
 #include <cstring>
 #include <sstream>
 
+#if __cplusplus < 201703L
+#error At least C++17 is required
+#endif
+
 // Lhs and Rhs can be put in Assert-functions as strings to improve error-log
 /* Binary operations usually have equal Lhs and Rhs types, but there are some
  * exceptions like bitshift operators (can have different integer types).
