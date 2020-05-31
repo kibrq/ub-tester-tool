@@ -1,6 +1,6 @@
 #pragma once
 
-#include "arithmetic-overflow/FindArithmeticUBVisitor.h"
+#include "arithmetic-ub/FindArithmeticUBVisitor.h"
 #include "clang/AST/ASTConsumer.h"
 
 namespace ub_tester {

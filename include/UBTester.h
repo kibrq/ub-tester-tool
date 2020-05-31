@@ -7,7 +7,7 @@
 
 #include "ub-safe-containers/PointersAsserts.h"
 
-#include "arithmetic-overflow/ArithmeticUBAsserts.h"
+#include "arithmetic-ub/ArithmeticUBAsserts.h"
 
 #include "uninit-variables/UB_UninitSafeType.h"
 

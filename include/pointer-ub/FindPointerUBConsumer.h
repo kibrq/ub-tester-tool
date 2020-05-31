@@ -1,6 +1,6 @@
 #pragma once
 
-#include "pointers/FindPointerUBVisitor.h"
+#include "pointer-ub/FindPointerUBVisitor.h"
 #include "clang/AST/ASTConsumer.h"
 
 namespace ub_tester {

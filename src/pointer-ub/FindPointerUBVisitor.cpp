@@ -1,7 +1,7 @@
-#include "pointers/FindPointerUBVisitor.h"
+#include "pointer-ub/FindPointerUBVisitor.h"
 #include "UBUtility.h"
 #include "code-injector/InjectorASTWrapper.h"
-#include "pointers/PointerUBAssertNames.h"
+#include "pointer-ub/PointerUBAssertNames.h"
 #include "clang/Basic/SourceManager.h"
 #include <unordered_map>
 

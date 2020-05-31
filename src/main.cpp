@@ -8,10 +8,10 @@
 #include "llvm/Support/CommandLine.h"
 #include <iostream>
 
-#include "arithmetic-overflow/FindArithmeticUBConsumer.h"
+#include "arithmetic-ub/FindArithmeticUBConsumer.h"
 #include "code-injector/InjectorASTWrapper.h"
 #include "index-out-of-bounds/FindIOBConsumer.h"
-#include "pointers/FindPointerUBConsumer.h"
+#include "pointer-ub/FindPointerUBConsumer.h"
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 

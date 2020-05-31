@@ -1,4 +1,4 @@
-#include "arithmetic-overflow/FindArithmeticUBConsumer.h"
+#include "arithmetic-ub/FindArithmeticUBConsumer.h"
 #include "clang/AST/ASTConsumer.h"
 
 using namespace clang;

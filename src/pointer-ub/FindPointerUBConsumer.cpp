@@ -1,4 +1,4 @@
-#include "pointers/FindPointerUBConsumer.h"
+#include "pointer-ub/FindPointerUBConsumer.h"
 #include "clang/AST/ASTConsumer.h"
 
 using namespace clang;
