@@ -45,7 +45,7 @@ void TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes(bool Value) { ShouldVi
 bool TypeSubstituterVisitor::TypeInfo_t::shouldVisitTypes() { return ShouldVisitTypes_; }
 
 bool TypeSubstituterVisitor::TraverseArrayTypeHelper(ArrayType* ArrType) {
-  if (clio::RunOOB) {
+  if (clio::RunIOB) {
     Type_ << SafeArrayName << "<";
     RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(ArrType->getElementType());
     Type_ << ">";
@@ -59,7 +59,7 @@ bool TypeSubstituterVisitor::TraverseVariableArrayType(VariableArrayType* VarArr
 }
 
 bool TypeSubstituterVisitor::TraverseDependentSizedArrayType(DependentSizedArrayType* DepSizedArrType) {
-  if (clio::RunOOB) {
+  if (clio::RunIOB) {
     Type_ << SafeArrayName << "<";
     RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseDependentSizedArrayType(DepSizedArrType);
     if (DepSizedArrType->getSizeExpr())
@@ -78,7 +78,7 @@ bool TypeSubstituterVisitor::TraverseIncompleteArrayType(IncompleteArrayType* In
 }
 
 bool TypeSubstituterVisitor::TraverseConstantArrayType(ConstantArrayType* ConstArrType) {
-  if (clio::RunOOB) {
+  if (clio::RunIOB) {
     Type_ << SafeArrayName << "<";
     RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseConstantArrayType(ConstArrType);
     Type_ << ", " << ConstArrType->getSize().toString(10, false) << ">";
@@ -102,7 +102,7 @@ bool TypeSubstituterVisitor::TraverseLValueReferenceType(LValueReferenceType* LV
 }
 
 bool TypeSubstituterVisitor::TraversePointerType(PointerType* PtrType) {
-  if (clio::RunOOB) {
+  if (clio::RunIOB) {
     Type_ << SafePointerName << "<";
     RecursiveASTVisitor<TypeSubstituterVisitor>::TraversePointerType(PtrType);
     Type_ << ">";

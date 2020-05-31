@@ -1,13 +1,12 @@
 #pragma once
 
+#include ".UBConfig.h"
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
-#include "UBConfig.h"
 
 #define PUSH_ERROR(FailCode, Message)                                                                                            \
-  std::cerr << (Message) << ' ' << static_cast<int>(AssertFailCode::FailCode) << std::endl;                                      \
   AssertMessageManager::pushMessage(AssertMessage((Message), AssertFailCode::FailCode));                                         \
   assert(0 && "Assert detected error but manager didn't handle it")
 #define PUSH_WARNING(FailCode, Message)                                                                                          \
@@ -15,8 +14,8 @@
 
 namespace ub_tester::assert_message_manager::supress_messages_mode {
 
-constexpr bool SUPRESS_ALL;
-constexpr bool SUPRESS_WARNINGS;
+// constexpr bool SUPRESS_ALL;
+// constexpr bool SUPRESS_WARNINGS;
 
 constexpr bool SUPRESS_ARITHM_WARNINGS = false;
 constexpr bool SUPRESS_UNSIGNED_OVERFLOW_WARNING = false;

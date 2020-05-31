@@ -1,20 +1,20 @@
 #pragma once
 
-#include "AssertMessageManagerInString.h"
+#include "ConfigInString.h"
 #include <fstream>
 #include <string>
 
 namespace ub_tester::clio {
 
 extern bool SuppressWarnings;
-extern bool RunOOB;
+extern bool RunIOB;
 extern bool RunArithm;
 extern bool RunUninit;
 extern bool SuppressAllOutput;
 
 namespace internal {
 
-enum ApplyOnly { OOB, Arithm, Uninit, All };
+enum ApplyOnly { IOB, Arithm, Uninit, All };
 extern ApplyOnly AO;
 
 } // namespace internal
@@ -22,38 +22,38 @@ extern ApplyOnly AO;
 inline void processFlags() {
   using namespace internal;
   switch (internal::AO) {
-  case OOB: {
-    RunOOB = true;
+  case IOB: {
+    RunIOB = true;
     RunArithm = false;
     RunUninit = false;
     break;
   }
   case Arithm: {
-    RunOOB = false;
+    RunIOB = false;
     RunArithm = true;
     RunUninit = false;
     break;
   }
   case Uninit: {
-    RunOOB = false;
+    RunIOB = false;
     RunArithm = false;
     RunUninit = true;
     break;
   }
   default: {
-    RunOOB = true;
+    RunIOB = true;
     RunArithm = true;
     RunUninit = true;
   }
   }
   // generate manager header
   using namespace internal::consts;
-  std::ofstream ManagerOStream(ManagerName, std::ios::out);
-  ManagerOStream << ManagerInStringBeforeFlags << ManagerSuppressAllOutputFlagVariable << " = "
-                 << (SuppressAllOutput ? "true" : "false") << ";\n"
-                 << ManagerSuppressWarningsFlagVariable << " = " << (SuppressWarnings ? "true" : "false") << ";\n"
-                 << ManagerInStringAfterArgs;
-  ManagerOStream.close();
+  std::ofstream ConfigOStream(ConfigName, std::ios::out);
+  ConfigOStream << "#pragma once\n\n#define UBCONFIG_H_\n\n" << ConfigFlagsNamespace << " {\n";
+  ConfigOStream << ConfigSuppressAllOutputFlagVariable << " = " << (SuppressAllOutput ? "true" : "false") << ";\n";
+  ConfigOStream << ConfigSuppressWarningsFlagVariable << " = " << (SuppressWarnings ? "true" : "false") << ";\n";
+  ConfigOStream << "} // " << ConfigFlagsNamespace;
+  ConfigOStream.close();
 }
 
 } // namespace ub_tester::clio

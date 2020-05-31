@@ -29,7 +29,7 @@ namespace ub_tester {
 
 namespace clio {
 
-bool RunOOB;
+bool RunIOB;
 bool RunArithm;
 bool RunUninit;
 bool SuppressWarnings;
@@ -44,7 +44,7 @@ static cl::alias SuppressWarningsFlagAlias("w", cl::desc("Alias for -no-warn"), 
                                            cl::cat(UBTesterOptionsCategory));
 static cl::opt<ApplyOnly, true>
     ApplyOnlyOption("apply-only", cl::desc("Only apply specified checks"),
-                    cl::values(clEnumValN(ApplyOnly::OOB, "oob", "Arrays and pointers out of bounds checks"),
+                    cl::values(clEnumValN(ApplyOnly::IOB, "iob", "Index out of bounds checks"),
                                clEnumValN(ApplyOnly::Arithm, "arithm", "Arithmetic operations checks"),
                                clEnumValN(ApplyOnly::Uninit, "uninit", "Uninitialized variables checks")),
                     cl::location(AO), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
@@ -55,6 +55,7 @@ static cl::opt<bool, true> SuppressAllOutputFlag("quiet", cl::desc("Disable all 
 static cl::alias SuppressAllOutputFlagAlias("q", cl::desc("Alias for -quiet"), cl::aliasopt(SuppressAllOutputFlag),
                                             cl::cat(UBTesterOptionsCategory));
 } // namespace internal
+
 } // namespace clio
 
 class UBTesterAction : public ASTFrontendAction {
@@ -69,7 +70,7 @@ public:
     std::unique_ptr<ASTConsumer> PointerConsumer = std::make_unique<PointersConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    if (clio::RunOOB)
+    if (clio::RunIOB)
       consumers.emplace_back(std::move(OutOfBoundsConsumer));
     if (clio::RunUninit)
       consumers.emplace_back(std::move(UninitVarsConsumer));
