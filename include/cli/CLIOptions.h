@@ -1,6 +1,8 @@
 #pragma once
 
-// extern int DInt;
+#include "AssertMessageManagerInString.h"
+#include <fstream>
+#include <string>
 
 namespace ub_tester::clio {
 
@@ -8,11 +10,13 @@ extern bool SuppressWarnings;
 extern bool RunOOB;
 extern bool RunArithm;
 extern bool RunUninit;
-extern bool Silent;
+extern bool SuppressAllOutput;
 
 namespace internal {
+
 enum ApplyOnly { OOB, Arithm, Uninit, All };
 extern ApplyOnly AO;
+
 } // namespace internal
 
 inline void processFlags() {
@@ -42,6 +46,14 @@ inline void processFlags() {
     RunUninit = true;
   }
   }
+  // generate manager header
+  using namespace internal::consts;
+  std::ofstream ManagerOStream(ManagerName, std::ios::out);
+  ManagerOStream << ManagerInStringBeforeFlags << ManagerSuppressAllOutputFlagVariable << " = "
+                 << (SuppressAllOutput ? "true" : "false") << ";\n"
+                 << ManagerSuppressWarningsFlagVariable << " = " << (SuppressWarnings ? "true" : "false") << ";\n"
+                 << ManagerInStringAfterArgs;
+  ManagerOStream.close();
 }
 
 } // namespace ub_tester::clio

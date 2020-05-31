@@ -7,7 +7,6 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
-#include "arithmetic-overflow/ArithmeticUBAsserts.h"
 #include "arithmetic-overflow/FindArithmeticUBConsumer.h"
 #include "cli/CLIOptions.h"
 #include "code-injector/InjectorASTWrapper.h"
@@ -16,6 +15,8 @@
 #include "type-substituter/TypeSubstituterConsumer.h"
 #include "uninit-variables/UninitVarsDetection.h"
 
+#include <iostream>
+
 using namespace clang;
 using namespace clang::tooling;
 using namespace llvm;
@@ -23,8 +24,6 @@ using namespace ub_tester::code_injector;
 using namespace ub_tester::code_injector::wrapper;
 
 static llvm::cl::OptionCategory UBTesterOptionsCategory("ub-tester options");
-// static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
-// static cl::extrahelp MoreHelp("\nMore help text...\n");
 
 namespace ub_tester {
 
@@ -34,13 +33,15 @@ bool RunOOB;
 bool RunArithm;
 bool RunUninit;
 bool SuppressWarnings;
-bool Silent;
+bool SuppressAllOutput;
 
 namespace internal {
 ApplyOnly AO;
 
 static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"), cl::location(SuppressWarnings),
                                                 cl::init(false), cl::cat(UBTesterOptionsCategory));
+static cl::alias SuppressWarningsFlagAlias("w", cl::desc("Alias for -no-warn"), cl::aliasopt(SuppressWarningsFlag),
+                                           cl::cat(UBTesterOptionsCategory));
 static cl::opt<ApplyOnly, true>
     ApplyOnlyOption("apply-only", cl::desc("Only apply specified checks"),
                     cl::values(clEnumValN(ApplyOnly::OOB, "oob", "Arrays and pointers out of bounds checks"),
@@ -48,8 +49,11 @@ static cl::opt<ApplyOnly, true>
                                clEnumValN(ApplyOnly::Uninit, "uninit", "Uninitialized variables checks")),
                     cl::location(AO), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
 
-static cl::opt<bool, true> SilentFlag("silent", cl::desc("Disable all output, exit program on error"), cl::location(Silent),
-                                      cl::init(false), cl::cat(UBTesterOptionsCategory));
+static cl::opt<bool, true> SuppressAllOutputFlag("quiet", cl::desc("Disable all output, exit program on error"),
+                                                 cl::location(SuppressAllOutput), cl::init(false),
+                                                 cl::cat(UBTesterOptionsCategory));
+static cl::alias SuppressAllOutputFlagAlias("q", cl::desc("Alias for -quiet"), cl::aliasopt(SuppressAllOutputFlag),
+                                            cl::cat(UBTesterOptionsCategory));
 } // namespace internal
 } // namespace clio
 

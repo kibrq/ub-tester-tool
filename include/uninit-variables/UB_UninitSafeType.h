@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assert-message-manager/AssertMessageManager.h"
+#include "AssertMessageManager.h"
 #include <string>
 
 #define ASSERT_SET_VALUE(Variable, SetExpr) Variable.setValue(#SetExpr)
