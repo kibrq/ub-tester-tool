@@ -1,5 +1,7 @@
 #pragma once
 
+namespace ub_tester {
+
 template <typename T>
 UBSafePointer<T>::UBSafePointer(std::nullptr_t) : Inited_{true} {}
 
@@ -78,25 +80,25 @@ size_t UBSafePointer<T>::getSize() const {
 }
 template <typename T>
 PtrStateKind UBSafePointer<T>::getState() const {
-  if (!Inited_) {
+  if (!Inited_)
     return PtrStateKind::Uninit;
-  }
-  if (Data_ == nullptr) {
+  if (Data_ == nullptr)
     return PtrStateKind::Nullptr;
-  }
   return PtrStateKind::Init;
 }
 
 template <typename T>
-UBSafePointer<T> operator+(const UBSafePointer<T>& P, int Val) {
-  UBSafePointer<T> Res{P};
+UBSafePointer<T> operator+(const UBSafePointer<T>& SafePtr, int Val) {
+  UBSafePointer<T> Res{SafePointer};
   Res += Val;
   return Res;
 }
 
 template <typename T>
-UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& P) {
-  UBSafePointer<T> Res{P};
+UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& SafePtr) {
+  UBSafePointer<T> Res{SafePtr};
   Res += Val;
   return Res;
 }
+
+} // namespace ub_tester

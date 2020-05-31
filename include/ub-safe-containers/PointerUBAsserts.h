@@ -1,5 +1,4 @@
-#ifndef UB_POINTERS_ASSERTS_INCLUDE_H_
-#define UB_POINTERS_ASSERTS_INCLUDE_H_
+#pragma once
 
 #include "../assert-message-manager/AssertMessageManager.h"
 #include "UBSafePointer.h"
@@ -102,5 +101,3 @@ const T*& checkMemberExpr(const T*& Pointer, const char* Filename,
 }
 
 } // namespace ub_tester::ptr::checkers
-
-#endif

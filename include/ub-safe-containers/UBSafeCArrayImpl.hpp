@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cassert>
 #include <cstring>
 
@@ -12,9 +13,8 @@ UBSafeCArray<T, N>::UBSafeCArray() {
 template <typename T, size_t N>
 UBSafeCArray<T, N>::UBSafeCArray(const std::initializer_list<T>& InitList)
     : Data_{InitList} {
-  if (N != 0) {
+  if (N != 0)
     setSize(N);
-  }
 }
 
 template <typename T, size_t N>
@@ -66,9 +66,8 @@ template <typename T, size_t N, size_t M>
 UBSafeCArray<UBSafeCArray<T, N>, M>::UBSafeCArray(
     const std::initializer_list<UBSafeCArray<T, N>>& InitList)
     : Data_{InitList} {
-  if (M != 0) {
+  if (M != 0)
     setSize(M);
-  }
 }
 
 template <typename T, size_t N, size_t M>
@@ -80,9 +79,8 @@ template <typename T, size_t N, size_t M>
 void UBSafeCArray<UBSafeCArray<T, N>, M>::setSize(
     const std::vector<size_t>& Sizes, int CurDepth) {
   setSize(Sizes[CurDepth]);
-  for (auto& Arr : Data_) {
+  for (auto& Arr : Data_)
     Arr.setSize(Sizes, CurDepth + 1);
-  }
 }
 
 template <typename T, size_t N, size_t M>
@@ -125,9 +123,8 @@ UBSafeCArray<char, N>::UBSafeCArray() {
 template <size_t N>
 UBSafeCArray<char, N>::UBSafeCArray(const std::initializer_list<char>& InitList)
     : Data_{InitList} {
-  if (N != 0) {
+  if (N != 0)
     setSize(N);
-  }
 }
 
 template <size_t N>
@@ -169,9 +166,8 @@ template <size_t N>
 UBSafeCArray<char, N>::UBSafeCArray(const char* StringLiteral) {
   setSize(strlen(StringLiteral) + 1);
   size_t i = 0;
-  while (*StringLiteral != '\0') {
+  while (*StringLiteral != '\0')
     Data_[i++] = *StringLiteral;
-  }
 }
 
 template <size_t N>

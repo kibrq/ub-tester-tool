@@ -16,20 +16,20 @@
 
 namespace ub_tester::assert_message_manager::supress_messages_mode {
 
-constexpr bool SUPRESS_ALL = false;
-constexpr bool SUPRESS_WARNINGS = false;
+constexpr bool SUPPRESS_ALL = false;
+constexpr bool SUPPRESS_WARNINGS = false;
 
-constexpr bool SUPRESS_ARITHM_WARNINGS = false;
-constexpr bool SUPRESS_UNSIGNED_OVERFLOW_WARNING = false;
-constexpr bool SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING = false;
-constexpr bool SUPRESS_UNSAFE_CONV_WARNING = false;
-constexpr bool SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING = false;
+constexpr bool SUPPRESS_ARITHM_WARNINGS = false;
+constexpr bool SUPPRESS_UNSIGNED_OVERFLOW_WARNING = false;
+constexpr bool SUPPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING = false;
+constexpr bool SUPPRESS_UNSAFE_CONV_WARNING = false;
+constexpr bool SUPPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING = false;
 
-constexpr bool SUPRESS_UNINIT_VARS_WARNINGS = false;
-constexpr bool SUPRESS_PTR_WARNINGS = false;
+constexpr bool SUPPRESS_UNINIT_VARS_WARNINGS = false;
+constexpr bool SUPPRESS_PTR_WARNINGS = false;
 
-constexpr bool SUPRESS_IMPL_DEFINED_WARNING = false;
-constexpr bool SUPRESS_NOT_CONSIDERED_WARNING = false;
+constexpr bool SUPPRESS_IMPL_DEFINED_WARNING = false;
+constexpr bool SUPPRESS_NOT_CONSIDERED_WARNING = false;
 
 }; // namespace ub_tester::assert_message_manager::supress_messages_mode
 
@@ -43,9 +43,9 @@ enum class AssertFailCode { // error code > 0, warning code < 0
   UNDEFINED_BITSHIFT_RIGHT_ERROR = 5,
   UNINIT_VAR_ACCESS_ERROR = 20,
   INDEX_OUT_OF_BOUNDS_ERROR = 10,
-  INVALID_SIZE_ERROR = 11,
+  INVALID_SIZE_OF_ARRAY_ERROR = 11,
   NULLPTR_DEREF_ERROR = 12,
-  UNININT_DEREF_ERROR = 13,
+  UNINIT_PTR_DEREF_ERROR = 13,
 
   UNSIGNED_OVERFLOW_WARNING = -1,
   OVERFLOW_IN_BITSHIFT_CXX20_WARNING = -2,
@@ -53,9 +53,8 @@ enum class AssertFailCode { // error code > 0, warning code < 0
   UNSAFE_CONV_WARNING = -4,
   IMPL_DEFINED_UNSAFE_CONV_WARNING = -5,
   NOT_CONSIDERED_WARNING = -6,
-  UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING = -20,
-  UNTRACKED_PTR_WARNING = -10
-
+  UNTRACKED_PTR_WARNING = -10,
+  UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING = -20
 };
 
 struct AssertMessage final {
@@ -67,9 +66,9 @@ struct AssertMessage final {
 
 bool checkIfMessageIsSupressed(AssertFailCode FailCode) {
   using namespace supress_messages_mode;
-  if (SUPRESS_ALL)
+  if (SUPPRESS_ALL)
     return true;
-  if (SUPRESS_WARNINGS && static_cast<int>(FailCode) < 0)
+  if (SUPPRESS_WARNINGS && static_cast<int>(FailCode) < 0)
     return true;
 
   switch (FailCode) {
@@ -90,31 +89,33 @@ bool checkIfMessageIsSupressed(AssertFailCode FailCode) {
   // iob error
   case AssertFailCode::INDEX_OUT_OF_BOUNDS_ERROR:
     return false;
-  case AssertFailCode::INVALID_SIZE_ERROR:
+  case AssertFailCode::INVALID_SIZE_OF_ARRAY_ERROR:
     return false;
   case AssertFailCode::NULLPTR_DEREF_ERROR:
     return false;
-  case AssertFailCode::UNININT_DEREF_ERROR:
+  case AssertFailCode::UNINIT_PTR_DEREF_ERROR:
     return false;
   // arithm warnings
   case AssertFailCode::UNSIGNED_OVERFLOW_WARNING:
-    return SUPRESS_UNSIGNED_OVERFLOW_WARNING || SUPRESS_ARITHM_WARNINGS;
+    return SUPPRESS_UNSIGNED_OVERFLOW_WARNING || SUPPRESS_ARITHM_WARNINGS;
   case AssertFailCode::OVERFLOW_IN_BITSHIFT_CXX20_WARNING:
-    return SUPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING ||
-           SUPRESS_ARITHM_WARNINGS;
+    return SUPPRESS_OVERFLOW_IN_BITSHIFT_CXX20_WARNING ||
+           SUPPRESS_ARITHM_WARNINGS;
   case AssertFailCode::IMPL_DEFINED_WARNING:
-    return SUPRESS_IMPL_DEFINED_WARNING || SUPRESS_ARITHM_WARNINGS;
+    return SUPPRESS_IMPL_DEFINED_WARNING || SUPPRESS_ARITHM_WARNINGS;
   case AssertFailCode::UNSAFE_CONV_WARNING:
-    return SUPRESS_UNSAFE_CONV_WARNING || SUPRESS_ARITHM_WARNINGS;
+    return SUPPRESS_UNSAFE_CONV_WARNING || SUPPRESS_ARITHM_WARNINGS;
   case AssertFailCode::IMPL_DEFINED_UNSAFE_CONV_WARNING:
-    return SUPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING || SUPRESS_ARITHM_WARNINGS;
+    return SUPPRESS_IMPL_DEFINED_UNSAFE_CONV_WARNING ||
+           SUPPRESS_ARITHM_WARNINGS;
   case AssertFailCode::NOT_CONSIDERED_WARNING:
-    return SUPRESS_NOT_CONSIDERED_WARNING || SUPRESS_ARITHM_WARNINGS;
+    return SUPPRESS_NOT_CONSIDERED_WARNING || SUPPRESS_ARITHM_WARNINGS;
   // uninit-vars warning
   case AssertFailCode::UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING:
-    return SUPRESS_UNINIT_VARS_WARNINGS;
+    return SUPPRESS_UNINIT_VARS_WARNINGS;
+  // iob warnings
   case AssertFailCode::UNTRACKED_PTR_WARNING:
-    return SUPRESS_PTR_WARNINGS;
+    return SUPPRESS_PTR_WARNINGS;
   }
   assert(0 && "Undefined AssertFailCode");
 }
@@ -134,7 +135,7 @@ private:
     for (const auto& Message : Messages_)
       std::cerr << Message.Message_ << "\n";
     Messages_.clear();
-    if (!supress_messages_mode::SUPRESS_ALL)
+    if (!supress_messages_mode::SUPPRESS_ALL)
       std::cerr << "error detected, aborting\n\n";
     exit(static_cast<int>(FailCode));
   }

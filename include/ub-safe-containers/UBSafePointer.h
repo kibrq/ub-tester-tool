@@ -36,11 +36,13 @@ private:
   size_t Size_{0};
   bool Inited_{false};
 };
-template <typename T>
-UBSafePointer<T> operator+(const UBSafePointer<T>& P, int Val);
 
 template <typename T>
-UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& P);
+UBSafePointer<T> operator+(const UBSafePointer<T>& SafePtr, int Val);
+
+template <typename T>
+UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& SafePtr);
+
+} // namespace ub_tester
 
 #include "UBSafePointerImpl.hpp"
-} // namespace ub_tester

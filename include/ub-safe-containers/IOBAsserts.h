@@ -25,6 +25,7 @@ using assert_message_manager::AssertMessageManager;
   ub_tester::iob::checkers::checkInvalidSize(Sizes, __FILE__, __LINE__)
 
 namespace {
+
 void generateAssertIOBMessage(const char* Filename, size_t Line, int Index,
                               size_t Size) {
   std::stringstream SStream;
@@ -34,6 +35,7 @@ void generateAssertIOBMessage(const char* Filename, size_t Line, int Index,
   SStream << "Requesting index " << Index << ", while size is " << Size << '\n';
   PUSH_ERROR(INDEX_OUT_OF_BOUNDS_ERROR, SStream.str());
 }
+
 void generateAssertInvalidSizeMessage(const char* Filename, size_t Line,
                                       int InvalidDim) {
   std::stringstream SStream;
@@ -43,34 +45,36 @@ void generateAssertInvalidSizeMessage(const char* Filename, size_t Line,
   SStream << "Trying to create "
              "an array of size "
           << InvalidDim << '\n';
-  PUSH_ERROR(INVALID_SIZE_ERROR, SStream.str());
+  PUSH_ERROR(INVALID_SIZE_OF_ARRAY_ERROR, SStream.str());
 }
+
 void generateUntrackedPtrMessage(const char* Filename, size_t Line) {
   std::stringstream SStream;
   SStream << "Untracked pointer "
           << " in file " << Filename << " on line " << Line << ".\n";
   PUSH_WARNING(UNTRACKED_PTR_WARNING, SStream.str());
 }
+
 } // namespace
 
 template <typename T>
-T& checkIOB(UBSafeCArray<T>& Array, int Index, const char* Filename,
+T& checkIOB(UBSafeCArray<T>& SafeArray, int Index, const char* Filename,
             size_t Line) {
   try {
-    return Array[Index];
+    return SafeArray[Index];
   } catch (const std::out_of_range& e) {
-    generateAssertIOBMessage(Filename, Line, Index, Array.getSize());
+    generateAssertIOBMessage(Filename, Line, Index, SafeArray.getSize());
   }
-  return Array[Index];
+  return SafeArray[Index];
 }
 
 template <typename T>
-const T& checkIOB(const UBSafeCArray<T>& Array, int Index, const char* Filename,
-                  size_t Line) {
+const T& checkIOB(const UBSafeCArray<T>& SafeArray, int Index,
+                  const char* Filename, size_t Line) {
   try {
-    return Array[Index];
+    return SafeArray[Index];
   } catch (const std::out_of_range& e) {
-    generateAssertIOBMessage(Filename, Line, Index, Array.getSize());
+    generateAssertIOBMessage(Filename, Line, Index, SafeArray.getSize());
   }
 }
 
@@ -100,18 +104,16 @@ const T& checkIOB(int Index, const T*& Array, const char* Filename,
 
 template <typename T, size_t N>
 T& checkIOB(T (&Array)[N], int Index, const char* Filename, size_t Line) {
-  if (Index < 0 || Index >= N) {
+  if (Index < 0 || Index >= N)
     generateAssertIOBMessage(Filename, Line, Index, N);
-  }
   return Array[Index];
 }
 
 template <typename T, size_t N>
 const T& checkIOB(const T (&Array)[N], int Index, const char* Filename,
                   size_t Line) {
-  if (Index < 0 || Index >= N) {
+  if (Index < 0 || Index >= N)
     generateAssertIOBMessage(Filename, Line, Index, N);
-  }
   return Array[Index];
 }
 
@@ -127,35 +129,31 @@ const T& checkIOB(int Index, const T (&Array)[N], const char* Filename,
 }
 
 template <typename T>
-T& checkIOB(UBSafePointer<T>& Pointer, int Index, const char* Filename,
+T& checkIOB(UBSafePointer<T>& SafePtr, int Index, const char* Filename,
             size_t Line) {
-  if (Index < 0 || Index >= Pointer.getSize()) {
-    generateAssertIOBMessage(Filename, Line, Index, Pointer.getSize());
-  }
-  return Pointer[Index];
+  if (Index < 0 || Index >= SafePtr.getSize())
+    generateAssertIOBMessage(Filename, Line, Index, SafePtr.getSize());
+  return SafePtr[Index];
 }
 
 template <typename T>
-const T& checkIOB(const UBSafePointer<T>& Pointer, int Index,
+const T& checkIOB(const UBSafePointer<T>& SafePtr, int Index,
                   const char* Filename, size_t Line) {
-  if (Index < 0 || Index >= Pointer.getSize()) {
-    generateAssertIOBMessage(Filename, Line, Index, Pointer.getSize());
+  if (Index < 0 || Index >= SafePtr.getSize()) {
+    generateAssertIOBMessage(Filename, Line, Index, SafePtr.getSize());
   }
-  return Pointer[Index];
+  return SafePtr[Index];
 }
 
 inline std::vector<size_t> checkInvalidSize(const std::vector<int>& Sizes,
                                             const char* Filename, size_t Line) {
   std::vector<size_t> Res;
-  for (const auto& Size : Sizes) {
-    if (Size < 0 || Size >= SIZE_MAX) {
+  for (const auto& Size : Sizes)
+    if (Size < 0 || Size >= SIZE_MAX)
       generateAssertInvalidSizeMessage(Filename, Line, Size);
-    } else {
+    else
       Res.emplace_back(Size);
-    }
-  }
   return Res;
 }
+
 } // namespace ub_tester::iob::checkers
-  // ub_tester::iob::checkers
-  // ub_tester::iob::checkers
