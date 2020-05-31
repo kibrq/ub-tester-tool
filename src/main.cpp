@@ -24,6 +24,8 @@ using namespace ub_tester::code_injector;
 using namespace ub_tester::code_injector::wrapper;
 
 static llvm::cl::OptionCategory UBTesterOptionsCategory("ub-tester options");
+// static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+// static cl::extrahelp MoreHelp("\nMore help text...\n");
 
 namespace ub_tester {
 
