@@ -72,14 +72,15 @@ public:
     std::unique_ptr<ASTConsumer> PointerConsumer = std::make_unique<PointersConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    if (clio::RunIOB)
+    if (clio::RunIOB){
       consumers.emplace_back(std::move(OutOfBoundsConsumer));
+      consumers.emplace_back(std::move(PointerConsumer));
+    }
     if (clio::RunUninit)
       consumers.emplace_back(std::move(UninitVarsConsumer));
     if (clio::RunArithm)
       consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
-    consumers.emplace_back(std::move(PointerConsumer));
 
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }

@@ -18,14 +18,13 @@ inline std::string appendInfo(std::string msg, const char* Filename, int Line) {
   return msg + " in file \"" + Filename + "\" at line \"" + std::to_string(Line) + "\"";
 }
 
-// TODO: require <string> or change to c-like string
 template <typename T> class UBSafeType final {
 public:
   UBSafeType() : value{}, isInit{false}, isIgnored{false} {}
 
   UBSafeType(T t) : value{t}, isInit{true}, isIgnored{false} {}
 
-  UBSafeType(const UBSafeType<T>& t) : value{t.assertGetValue()}, isInit{true}, isIgnored{false} {}
+  UBSafeType(const UBSafeType<T>& t) : value{t.assertGetValue("unknown", -1)}, isInit{true}, isIgnored{false} {}
 
   T assertGetValue(const char* Filename, int Line) const {
     if (!isIgnored && !isInit) {
@@ -56,14 +55,12 @@ public:
   }
 
   T& setValue(const UBSafeType<T>& t) {
-    value = t.assertGetValue("unknown", -1); // TODO: avoid line mismatch
+    value = t.assertGetValue("unknown", -1);
     isInit = true;
     return value;
   }
 
   operator T() const {
-    // TODO: receive const char* Filename, int Lineurn assertGetValue({}); // TODO:
-    // avoid line mismatch
     return assertGetValue("unknown", -1);
   }
 
@@ -71,7 +68,7 @@ public:
   T& operator++() { return ++value; }
 
   T operator++(int) {
-    T res = assertGetValue("unknown", -1); // TODO: line mismatch
+    T res = assertGetValue("unknown", -1);
     value++;
     return res;
   }
@@ -79,7 +76,7 @@ public:
   T& operator--() { --value; }
 
   T operator--(int) {
-    T res = assertGetValue("unknown", -1); // TODO: line mismatch
+    T res = assertGetValue("unknown", -1); 
     value--;
     return res;
   }

@@ -53,11 +53,12 @@ bool isDeclRefExprToLocalVarOrParmOrMember(DeclRefExpr* DRExpr) {
 } // namespace
 
 bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRExpr) {
+  assert(DRExpr);
   if (!Context_->getSourceManager().isWrittenInMainFile(DRExpr->getBeginLoc()))
     return true;
 
   // check if there is a suitable MemberExpr
-  // just a single step up or processing time gets extremely long
+  // just a single step up, or processing time gets extremely long
   DynTypedNode DRExprParentIterNode = DynTypedNode::create<>(*DRExpr);
   const DynTypedNodeList DRExprParentNodeList = ParentMapContext(*Context_).getParents(DRExprParentIterNode);
   DRExprParentIterNode = DRExprParentNodeList[0];
@@ -67,6 +68,7 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRExpr) {
     FoundCorrespMembExpr = true;
 
   QualType VarType = FoundCorrespMembExpr ? MembExpr->getType() : DRExpr->getDecl()->getType();
+  assert(VarType.getTypePtr());
   if (!(VarType.getNonReferenceType()->isFundamentalType() && isDeclRefExprToLocalVarOrParmOrMember(DRExpr)))
     return true;
   std::string VarName = DRExpr->getNameInfo().getName().getAsString();
