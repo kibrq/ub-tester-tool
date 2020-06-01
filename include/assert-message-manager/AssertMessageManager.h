@@ -15,11 +15,11 @@
 #define PUSH_WARNING(FailCode, Message)                                                                                          \
   AssertMessageManager::pushMessage(AssertMessage("warning! " + (Message), AssertFailCode::FailCode))
 
-namespace ub_tester::assert_message_manager::supress_messages_mode {
+namespace ub_tester::assert_message_manager::suppress_messages_mode {
 
 #ifndef UB_TESTER
-constexpr bool SUPRESS_ALL = false;
-constexpr bool SUPRESS_WARNINGS = false;
+constexpr bool SUPPRESS_ALL = false;
+constexpr bool SUPPRESS_WARNINGS = false;
 #endif
 
 constexpr bool SUPPRESS_ARITHM_WARNINGS = false;
@@ -34,7 +34,7 @@ constexpr bool SUPPRESS_PTR_WARNINGS = false;
 constexpr bool SUPPRESS_IMPL_DEFINED_WARNING = false;
 constexpr bool SUPPRESS_NOT_CONSIDERED_WARNING = false;
 
-}; // namespace ub_tester::assert_message_manager::supress_messages_mode
+}; // namespace ub_tester::assert_message_manager::suppress_messages_mode
 
 namespace ub_tester::assert_message_manager {
 
@@ -66,8 +66,8 @@ struct AssertMessage final {
   AssertFailCode FailCode_;
 };
 
-bool checkIfMessageIsSupressed(AssertFailCode FailCode) {
-  using namespace supress_messages_mode;
+bool checkIfMessageIsSuppressed(AssertFailCode FailCode) {
+  using namespace suppress_messages_mode;
   if (SUPPRESS_ALL)
     return true;
   if (SUPPRESS_WARNINGS && static_cast<int>(FailCode) < 0)
@@ -125,7 +125,7 @@ private:
   AssertMessageManager() = default;
 
   void handleMessage(AssertMessage Message) {
-    if (!checkIfMessageIsSupressed(Message.FailCode_))
+    if (!checkIfMessageIsSuppressed(Message.FailCode_))
       Messages_.push_back(std::move(Message));
     if (static_cast<int>(Message.FailCode_) > 0) // if error
       printMessagesNTerminate(Message.FailCode_);
@@ -135,7 +135,7 @@ private:
     for (const auto& Message : Messages_)
       std::cerr << Message.Message_ << "\n";
     Messages_.clear();
-    if (!supress_messages_mode::SUPPRESS_ALL)
+    if (!suppress_messages_mode::SUPPRESS_ALL)
       std::cerr << "error detected, aborting\n\n";
     exit(static_cast<int>(FailCode));
   }

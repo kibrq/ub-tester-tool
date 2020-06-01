@@ -68,7 +68,7 @@ public:
 
     InjectorASTWrapper::getInstance().addFile(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> IOBConsumer = std::make_unique<FindIOBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<AssertUninitVarsConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<FindUninitVarsConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> ArithmeticUBConsumer = std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> TypeSubstituter = std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
     std::unique_ptr<ASTConsumer> PointerUBConsumer = std::make_unique<FindPointerUBConsumer>(&Compiler.getASTContext());
