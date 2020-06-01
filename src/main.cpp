@@ -109,7 +109,7 @@ void UBTesterVersionPrinter(raw_ostream& OStream) {
 
 int main(int argc, const char** argv) {
   cl::SetVersionPrinter(UBTesterVersionPrinter);
-  CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::Optional);
+  CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::ZeroOrMore);
   ub_tester::cli::processFlags();
 
   ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
