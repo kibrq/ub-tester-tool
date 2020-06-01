@@ -4,6 +4,6 @@ namespace ub_tester::typenames_to_inject {
 
 constexpr char SafeArrayName[] = "UBSafeCArray";
 constexpr char SafePointerName[] = "UBSafePointer";
-constexpr char SafeBuiltinVarName[] = "UB_UninitSafeType";
+constexpr char SafeBuiltinVarName[] = "UBSafeType";
 
 } // namespace ub_tester::typenames_to_inject

@@ -11,6 +11,8 @@
 
 #include "uninit-variables/UB_UninitSafeType.h"
 
-using namespace ub_tester;
+using ub_tester::UBSafeCArray;
+using ub_tester::UBSafePointer;
+using ub_tester::uninit_vars::UBSafeType;
 
 #endif

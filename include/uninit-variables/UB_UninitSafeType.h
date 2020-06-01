@@ -1,123 +1,100 @@
-#include "../assert-message-manager/AssertMessageManager.h"
+#pragma once
 
-#include <stdexcept>
+#include "assert-message-manager/AssertMessageManager.h"
 #include <string>
 
-// this only needs to be included in target file; no other use
-// TODO: require <string> or change to c-like string
-template <typename T>
-class UB_UninitSafeType {
+#define ASSERT_SET_VALUE(Variable, SetExpr) Variable.setValue(SetExpr)
+#define ASSERT_GET_VALUE(Variable) Variable.assertGetValue(__FILE__, __LINE__)
+#define ASSERT_GET_REF(Variable) Variable.assertGetRef(__FILE__, __LINE__)
+#define ASSERT_GET_REF_IGNORE(Variable) Variable.assertGetRefIgnore(__FILE__, __LINE__)
+
+namespace ub_tester::uninit_vars {
+
+using assert_message_manager::AssertFailCode;
+using assert_message_manager::AssertMessage;
+using assert_message_manager::AssertMessageManager;
+
+inline std::string appendInfo(std::string msg, const char* Filename, int Line) {
+  return msg + " in file \"" + Filename + "\" at line \"" + std::to_string(Line) + "\"";
+}
+
+template <typename T> class UBSafeType final {
 public:
-  UB_UninitSafeType() : value{}, isInit{false}, isIgnored{false} {}
-  UB_UninitSafeType(T t) : value{t}, isInit{true}, isIgnored{false} {}
-  UB_UninitSafeType(const UB_UninitSafeType<T>& t)
-      : value{t.getValue()}, isInit{true}, isIgnored{false} {}
+  UBSafeType() : value{}, isInit{false}, isIgnored{false} {}
 
-  struct CallInfo {
-    const std::string file = "";
-    size_t line = 0;
-    const std::string varName = "";
-    const std::string varType = "";
-  };
+  UBSafeType(T t) : value{t}, isInit{true}, isIgnored{false} {}
 
-  T getValue(CallInfo varInfo) const {
-    check(varInfo);
-    return value;
-  }
-  T& getRefCheck(CallInfo varInfo) {
-    check(varInfo);
-    return value;
-  }
-  T& getRefIgnore(CallInfo varInfo) {
-    isIgnored = true;
-    if (!isInit) {
-      // TODO: warning if not init yet
-      using namespace ub_tester;
-      using assert_message_manager::AssertFailCode;
-      using assert_message_manager::AssertMessage;
-      using assert_message_manager::AssertMessageManager;
-      std::string warningMessage = "releasing an uninit variable";
-      appendInfo(warningMessage, varInfo);
-      PUSH_WARNING(UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING, warningMessage);
+  UBSafeType(const UBSafeType<T>& t) : value{t.assertGetValue("unknown", -1)}, isInit{true}, isIgnored{false} {}
+
+  T assertGetValue(const char* Filename, int Line) const {
+    if (!isIgnored && !isInit) {
+      PUSH_ERROR(UNINIT_VAR_ACCESS_ERROR, appendInfo("access to value of uninitialized variable", Filename, Line));
     }
     return value;
   }
+
+  T& assertGetRef(const char* Filename, int Line) {
+    if (!isIgnored && !isInit) {
+      PUSH_ERROR(UNINIT_VAR_ACCESS_ERROR, appendInfo("access to value of uninitialized variable", Filename, Line));
+    }
+    return value;
+  }
+
+  T& assertGetRefIgnore(const char* Filename, int Line) {
+    if (!isIgnored && !isInit) 
+      PUSH_WARNING(UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING, appendInfo("releasing an uninit variable", Filename, Line));
+    isIgnored = true;
+    return value;
+  }
+
   T& setValue(T t) {
     value = t;
     isInit = true;
     return value;
   }
-  T& setValue(const UB_UninitSafeType<T>& t) {
-    value = t.getValue({}); // TODO: avoid line mismatch
-    // ? need to pass CallInfo, but how to in T() or operator&() ?
+
+  T& setValue(const UBSafeType<T>& t) {
+    value = t.assertGetValue("unknown", -1);
     isInit = true;
     return value;
   }
+
   operator T() const {
-    // TODO: receive CallInfo
-    return getValue({}); // TODO: avoid line mismatch
+    return assertGetValue("unknown", -1);
   }
-  // the following unary operators DO NOT cause lvalue to rvalue cast
-  // yet they DO cause UB with uninit vars
+
+  // the following operators DO NOT cause lvalue to rvalue cast, but need the value
   T& operator++() { return ++value; }
+
   T operator++(int) {
-    // ? TODO: send a disclaimer?
-    T res = getValue({}); // TODO: line mismatch
+    T res = assertGetValue("unknown", -1);
     value++;
     return res;
   }
+
   T& operator--() { --value; }
+
   T operator--(int) {
-    // ? TODO: disclaimer?
-    T res = getValue({}); // TODO: line mismatch
+    T res = assertGetValue("unknown", -1); 
     value--;
     return res;
   }
+
   T* operator&() { // ! not const
     if (!isInit) {
       isIgnored = true;
-      // TODO: send warning
+      PUSH_WARNING(UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING, appendInfo("releasing an uninit variable", "unknown", -1));
     }
     return &value;
   }
-  // also all compound operators
-  // ! redundant since now explicitly checked
-  // template <typename U = T> auto& operator+=(U u) { return value += u; }
-  // template <typename U = T> auto& operator-=(U u) { return value -= u; }
-  // template <typename U = T> auto& operator*=(U u) { return value *= u; }
-  // template <typename U = T> auto& operator/=(U u) { return value /= u; }
-  // template <typename U = T> auto& operator%=(U u) { return value %= u; }
-  // template <typename U = T> auto& operator&=(U u) { return value &= u; }
-  // template <typename U = T> auto& operator|=(U u) { return value |= u; }
-  // template <typename U = T> auto& operator^=(U u) { return value ^= u; }
-  // template <typename U = T> auto& operator<<=(U u) { return value ^= u; }
-  // template <typename U = T> auto& operator>>=(U u) { return value ^= u; }
+
+private:
+  void check(const char* Filename, int Line) const {}
 
 private:
   T value;
   bool isInit;
   bool isIgnored;
-
-  static void appendInfo(std::string& msg, CallInfo varInfo) {
-    if (varInfo.varName != "")
-      msg += (" named \'" + varInfo.varName + "\'");
-    if (varInfo.varType != "")
-      msg += (" of type \'" + varInfo.varType + "\'");
-    if (varInfo.file != "")
-      msg += (" in file " + varInfo.file);
-    if (varInfo.line)
-      msg += (" at line " + std::to_string(varInfo.line));
-  }
-
-  void check(CallInfo varInfo) const {
-    using namespace ub_tester;
-    using assert_message_manager::AssertFailCode;
-    using assert_message_manager::AssertMessage;
-    using assert_message_manager::AssertMessageManager;
-    if (!isIgnored && !isInit) {
-      std::string errorMessage{"access to value of uninitialized variable"};
-      appendInfo(errorMessage, varInfo);
-      PUSH_WARNING(UNINIT_VAR_ACCESS_ERROR, errorMessage);
-    }
-  }
 };
+
+} // namespace ub_tester::uninit_vars

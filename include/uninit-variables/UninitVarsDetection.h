@@ -8,47 +8,40 @@ namespace ub_tester {
 class FindFundTypeVarDeclVisitor : public clang::RecursiveASTVisitor<FindFundTypeVarDeclVisitor> {
 public:
   explicit FindFundTypeVarDeclVisitor(clang::ASTContext* Context);
-
-  // substitute types to safe_type template
-  bool VisitVarDecl(clang::VarDecl* varDecl);
+  bool VisitVarDecl(clang::VarDecl* VDecl);
 
 private:
-  clang::ASTContext* Context;
+  clang::ASTContext* Context_;
 };
 
 class FindSafeTypeAccessesVisitor : public clang::RecursiveASTVisitor<FindSafeTypeAccessesVisitor> {
 public:
   explicit FindSafeTypeAccessesVisitor(clang::ASTContext* Context);
-
-  // detect variable usage
-  bool VisitDeclRefExpr(clang::DeclRefExpr* DRE);
+  bool VisitDeclRefExpr(clang::DeclRefExpr* DRExpr);
 
 private:
-  clang::ASTContext* Context;
+  clang::ASTContext* Context_;
 };
 
 class FindSafeTypeOperatorsVisitor : public clang::RecursiveASTVisitor<FindSafeTypeOperatorsVisitor> {
 public:
   explicit FindSafeTypeOperatorsVisitor(clang::ASTContext* Context);
-
-  // detect variable assignment and more
-  bool VisitBinaryOperator(clang::BinaryOperator* BinOp);
-  bool VisitUnaryOperator(clang::UnaryOperator* UnOp);
+  bool VisitBinaryOperator(clang::BinaryOperator* Binop);
+  bool VisitUnaryOperator(clang::UnaryOperator* Unop);
 
 private:
-  clang::ASTContext* Context;
+  clang::ASTContext* Context_;
 };
 
-class AssertUninitVarsConsumer : public clang::ASTConsumer {
+class FindUninitVarsConsumer : public clang::ASTConsumer {
 public:
-  explicit AssertUninitVarsConsumer(clang::ASTContext* Context);
-
+  explicit FindUninitVarsConsumer(clang::ASTContext* Context);
   virtual void HandleTranslationUnit(clang::ASTContext& Context);
 
 private:
-  FindFundTypeVarDeclVisitor FundamentalTypeVarDeclVisitor;
-  FindSafeTypeAccessesVisitor SafeTypeAccessesVisitor;
-  FindSafeTypeOperatorsVisitor SafeTypeOperatorsVisitor;
+  FindFundTypeVarDeclVisitor FundamentalTypeVarDeclVisitor_;
+  FindSafeTypeAccessesVisitor SafeTypeAccessesVisitor_;
+  FindSafeTypeOperatorsVisitor SafeTypeOperatorsVisitor_;
 };
 
 } // namespace ub_tester
