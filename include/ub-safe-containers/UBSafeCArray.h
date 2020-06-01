@@ -4,7 +4,7 @@
 #include <initializer_list>
 #include <vector>
 
-namespace ub_tester {
+namespace ub_tester::ub_safe_carray {
 
 template <typename T, size_t N = 0>
 class UBSafeCArray {
@@ -73,6 +73,6 @@ private:
   std::vector<char> Data_;
 };
 
-} // namespace ub_tester
+} // namespace ub_tester::ub_safe_carray
 
 #include "UBSafeCArrayImpl.hpp"

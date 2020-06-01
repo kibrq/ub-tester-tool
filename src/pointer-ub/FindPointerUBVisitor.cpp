@@ -85,10 +85,10 @@ bool FindPointerUBVisitor::VisitCXXNewExpr(CXXNewExpr* CNE) {
 std::pair<std::string, std::string> FindPointerUBVisitor::getCtorFormats() {
   std::string SourceFormat = backPointer().Init_.has_value() ? "#@" : "";
   std::stringstream OutputFormat;
-  OutputFormat << "(" << (backPointer().Init_.has_value() ? "@" : "")
+  OutputFormat << "{" << (backPointer().Init_.has_value() ? "@" : "")
                << (backPointer().HasSize_ ? ", " : "")
                << (backPointer().HasSize_ > 0 ? backPointer().Size_.str() : "")
-               << ")";
+               << "}";
   return {SourceFormat, OutputFormat.str()};
 }
 

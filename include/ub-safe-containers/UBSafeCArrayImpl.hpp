@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstring>
 
-namespace ub_tester {
+namespace ub_tester::ub_safe_carray {
 
 template <typename T, size_t N>
 UBSafeCArray<T, N>::UBSafeCArray() {
@@ -180,4 +180,4 @@ char& UBSafeCArray<char, N>::operator[](int Index) {
   return Data_.at(Index);
 }
 
-} // namespace ub_tester
+} // namespace ub_tester::ub_safe_carray
