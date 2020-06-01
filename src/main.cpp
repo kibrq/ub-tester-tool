@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include "arithmetic-ub/FindArithmeticUBConsumer.h"
-#include "cli/CLIOptions.h"
+#include "cli/CLI.h"
 #include "code-injector/InjectorASTWrapper.h"
 #include "index-out-of-bounds/FindIOBConsumer.h"
 #include "pointer-ub/FindPointerUBConsumer.h"
@@ -31,7 +31,7 @@ static llvm::cl::OptionCategory UBTesterOptionsCategory("ub-tester options");
 
 namespace ub_tester {
 
-namespace clio {
+namespace cli {
 
 bool RunIOB;
 bool RunArithm;
@@ -40,7 +40,8 @@ bool SuppressWarnings;
 bool SuppressAllOutput;
 
 namespace internal {
-ApplyOnly AO;
+
+ApplyOnly CheckToApply;
 
 static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"), cl::location(SuppressWarnings),
                                                 cl::init(false), cl::cat(UBTesterOptionsCategory));
@@ -51,7 +52,7 @@ static cl::opt<ApplyOnly, true>
                     cl::values(clEnumValN(ApplyOnly::IOB, "iob", "Index out of bounds checks"),
                                clEnumValN(ApplyOnly::Arithm, "arithm", "Arithmetic operations checks"),
                                clEnumValN(ApplyOnly::Uninit, "uninit", "Uninitialized variables checks")),
-                    cl::location(AO), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
+                    cl::location(CheckToApply), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
 
 static cl::opt<bool, true> SuppressAllOutputFlag("quiet", cl::desc("Disable all output, exit program on error"),
                                                  cl::location(SuppressAllOutput), cl::init(false),
@@ -59,8 +60,7 @@ static cl::opt<bool, true> SuppressAllOutputFlag("quiet", cl::desc("Disable all 
 static cl::alias SuppressAllOutputFlagAlias("q", cl::desc("Alias for -quiet"), cl::aliasopt(SuppressAllOutputFlag),
                                             cl::cat(UBTesterOptionsCategory));
 } // namespace internal
-
-} // namespace clio
+} // namespace cli
 
 class UBTesterAction : public ASTFrontendAction {
 public:
@@ -74,13 +74,13 @@ public:
     std::unique_ptr<ASTConsumer> PointerUBConsumer = std::make_unique<FindPointerUBConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    if (clio::RunIOB) {
+    if (cli::RunIOB) {
       consumers.emplace_back(std::move(IOBConsumer));
       consumers.emplace_back(std::move(PointerUBConsumer));
     }
-    if (clio::RunUninit)
+    if (cli::RunUninit)
       consumers.emplace_back(std::move(UninitVarsConsumer));
-    if (clio::RunArithm)
+    if (cli::RunArithm)
       consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
 
@@ -97,8 +97,8 @@ public:
 
 } // namespace ub_tester
 
-void UBTesterVersionPrinter(raw_ostream& ostr) {
-  ostr << "ub-tester tool\n"
+void UBTesterVersionPrinter(raw_ostream& OStream) {
+  OStream << "ub-tester tool\n"
           "Change input programs so that they exit before some cases of UB to prevent it\n"
           "\n"
           "Version: b1.0\n"
@@ -110,7 +110,7 @@ void UBTesterVersionPrinter(raw_ostream& ostr) {
 int main(int argc, const char** argv) {
   cl::SetVersionPrinter(UBTesterVersionPrinter);
   CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::Optional);
-  ub_tester::clio::processFlags();
+  ub_tester::cli::processFlags();
 
   ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 

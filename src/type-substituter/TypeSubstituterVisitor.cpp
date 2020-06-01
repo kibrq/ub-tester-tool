@@ -1,6 +1,6 @@
 #include "type-substituter/TypeSubstituterVisitor.h"
 #include "UBUtility.h"
-#include "cli/CLIOptions.h"
+#include "cli/CLI.h"
 #include "code-injector/InjectorASTWrapper.h"
 #include "type-substituter/SafeTypesNames.h"
 #include "clang/Basic/SourceManager.h"
@@ -98,10 +98,10 @@ bool TypeSubstituterVisitor::TraversePointerType(PointerType* PtrType) {
 
 bool TypeSubstituterVisitor::TraverseBuiltinType(BuiltinType* BType) {
   bool FirstInit = !Type_.isInited();
-  if (clio::RunUninit && FirstInit)
+  if (cli::RunUninit && FirstInit)
     Type_ << SafeBuiltinVarName << "<";
   Type_ << BType->getName(PrintingPolicy{Context_->getLangOpts()}).str();
-  if (clio::RunUninit && FirstInit)
+  if (cli::RunUninit && FirstInit)
     Type_ << ">";
   return true;
 }
@@ -149,7 +149,7 @@ bool TypeSubstituterVisitor::TraverseType(QualType QType) {
   if (!Type_.shouldVisitTypes())
     return true;
   Type_.addQuals(QType.getLocalQualifiers(), PrintingPolicy{Context_->getLangOpts()});
-  if ((clio::RunUninit && QType.getNonReferenceType()->isBuiltinType()) || (clio::RunIOB))
+  if ((cli::RunUninit && QType.getNonReferenceType()->isBuiltinType()) || (cli::RunIOB))
     RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(QType);
   return true;
 }

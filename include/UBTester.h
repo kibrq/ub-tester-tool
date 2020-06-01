@@ -5,7 +5,7 @@
 
 #include "arithmetic-ub/ArithmeticUBAsserts.h"
 
-#include "uninit-variables/UB_UninitSafeType.h"
+#include "uninit-variables/UBSafeType.h"
 
 using ub_tester::ub_safe_carray::UBSafeCArray;
 using ub_tester::ub_safe_ptr::UBSafePointer;
