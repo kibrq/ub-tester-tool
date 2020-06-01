@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ub_tester {
+namespace ub_tester::ub_safe_ptr {
 
 template <typename T>
 UBSafePointer<T>::UBSafePointer(std::nullptr_t) : Inited_{true} {}
@@ -101,4 +101,4 @@ UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& SafePtr) {
   return Res;
 }
 
-} // namespace ub_tester
+} // namespace ub_tester::ub_safe_ptr

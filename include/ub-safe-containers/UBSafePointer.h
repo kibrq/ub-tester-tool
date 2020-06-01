@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace ub_tester {
+namespace ub_tester::ub_safe_ptr {
 
 enum PtrStateKind { Uninit, Nullptr, Init };
 
@@ -43,6 +43,6 @@ UBSafePointer<T> operator+(const UBSafePointer<T>& SafePtr, int Val);
 template <typename T>
 UBSafePointer<T> operator+(int Val, const UBSafePointer<T>& SafePtr);
 
-} // namespace ub_tester
+} // namespace ub_tester::ub_safe_ptr
 
 #include "UBSafePointerImpl.hpp"
