@@ -5,7 +5,7 @@
 #include "ub-safe-containers/UBSafeCArray.h"
 #include "ub-safe-containers/UBSafePointer.h"
 
-#include "ub-safe-containers/PointersAsserts.h"
+#include "ub-safe-containers/PointerUBAsserts.h"
 
 #include "arithmetic-ub/ArithmeticUBAsserts.h"
 

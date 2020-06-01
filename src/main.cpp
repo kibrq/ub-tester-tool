@@ -45,7 +45,7 @@ public:
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.emplace_back(std::move(IOBConsumer));
-    // consumers.emplace_back(std::move(UninitVarsConsumer));
+    consumers.emplace_back(std::move(UninitVarsConsumer));
     consumers.emplace_back(std::move(ArithmeticUBConsumer));
     consumers.emplace_back(std::move(TypeSubstituter));
     consumers.emplace_back(std::move(PointerUBConsumer));

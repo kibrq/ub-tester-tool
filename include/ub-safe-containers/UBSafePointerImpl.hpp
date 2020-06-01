@@ -89,7 +89,7 @@ PtrStateKind UBSafePointer<T>::getState() const {
 
 template <typename T>
 UBSafePointer<T> operator+(const UBSafePointer<T>& SafePtr, int Val) {
-  UBSafePointer<T> Res{SafePointer};
+  UBSafePointer<T> Res{SafePtr};
   Res += Val;
   return Res;
 }
