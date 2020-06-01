@@ -35,8 +35,8 @@ using assert_message_manager::AssertMessageManager;
 
 namespace {
 
-void generateAssertIOBMessage(const char* Filename, size_t Line, int Index,
-                              size_t Size) {
+inline void generateAssertIOBMessage(const char* Filename, size_t Line,
+                                     int Index, size_t Size) {
   std::stringstream SStream;
   SStream << "Index out of "
              "bounds! "
@@ -45,8 +45,8 @@ void generateAssertIOBMessage(const char* Filename, size_t Line, int Index,
   PUSH_ERROR(INDEX_OUT_OF_BOUNDS_ERROR, SStream.str());
 }
 
-void generateAssertInvalidSizeMessage(const char* Filename, size_t Line,
-                                      int InvalidDim) {
+inline void generateAssertInvalidSizeMessage(const char* Filename, size_t Line,
+                                             int InvalidDim) {
   std::stringstream SStream;
   SStream << "Invalid size "
              "of an array! "
@@ -57,21 +57,21 @@ void generateAssertInvalidSizeMessage(const char* Filename, size_t Line,
   PUSH_ERROR(INVALID_SIZE_OF_ARRAY_ERROR, SStream.str());
 }
 
-void generateAssertNullptrDeref(const char* Filename, size_t Line) {
+inline void generateAssertNullptrDeref(const char* Filename, size_t Line) {
   std::stringstream SStream;
   SStream << "Nullptr derefing "
           << " in file " << Filename << " on line " << Line << ".\n";
   PUSH_ERROR(NULLPTR_DEREF_ERROR, SStream.str());
 }
 
-void generateAssertUninitDeref(const char* Filename, size_t Line) {
+inline void generateAssertUninitDeref(const char* Filename, size_t Line) {
   std::stringstream SStream;
   SStream << "Uninit pointer derefing "
           << " in file " << Filename << " on line " << Line << ".\n";
   PUSH_ERROR(UNINIT_PTR_DEREF_ERROR, SStream.str());
 }
 
-void generateUntrackedPtrMessage(const char* Filename, size_t Line) {
+inline void generateUntrackedPtrMessage(const char* Filename, size_t Line) {
   std::stringstream SStream;
   SStream << "Untracked pointer "
           << " in file " << Filename << " on line " << Line << ".\n";
