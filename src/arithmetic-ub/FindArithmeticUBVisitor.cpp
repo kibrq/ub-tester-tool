@@ -141,7 +141,8 @@ bool FindArithmeticUBVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
   SubstitutionASTWrapper(Context_)
       .setLoc(Unop->getBeginLoc())
       .setPrior(SubstPriorityKind::Shallow)
-      .setFormats(Unop->isPrefix() ? UnopName + "#@" : "@#" + UnopName,
+      .setFormats(Unop->isPrefix() || UnopName == "-" ? UnopName + "#@"
+                                                      : "@#" + UnopName,
                   "ASSERT_UNOP(" + OperationName + ", @, " +
                       UnopType.getAsString() + ")")
       .setArguments(SubExpr)
