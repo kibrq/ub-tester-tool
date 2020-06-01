@@ -3,7 +3,7 @@
 #include "assert-message-manager/AssertMessageManager.h"
 #include <string>
 
-#define ASSERT_SET_VALUE(Variable, SetExpr) Variable.setValue(#SetExpr)
+#define ASSERT_SET_VALUE(Variable, SetExpr) Variable.setValue(SetExpr)
 #define ASSERT_GET_VALUE(Variable) Variable.assertGetValue(__FILE__, __LINE__)
 #define ASSERT_GET_REF(Variable) Variable.assertGetRef(__FILE__, __LINE__)
 #define ASSERT_GET_REF_IGNORE(Variable) Variable.assertGetRefIgnore(__FILE__, __LINE__)
@@ -41,10 +41,9 @@ public:
   }
 
   T& assertGetRefIgnore(const char* Filename, int Line) {
-    isIgnored = true;
-    if (!isInit) {
+    if (!isIgnored && !isInit) 
       PUSH_WARNING(UNINIT_VAR_IS_NOT_TRACKED_ANYMORE_WARNING, appendInfo("releasing an uninit variable", Filename, Line));
-    }
+    isIgnored = true;
     return value;
   }
 

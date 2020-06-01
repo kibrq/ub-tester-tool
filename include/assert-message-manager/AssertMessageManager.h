@@ -1,6 +1,8 @@
 #pragma once
 
-#include ".UBConfig.h"
+#ifdef UB_TESTER
+  #include ".UBConfig.h"
+#endif
 #include <iostream>
 #include <memory>
 #include <string>
@@ -14,8 +16,10 @@
 
 namespace ub_tester::assert_message_manager::supress_messages_mode {
 
-// constexpr bool SUPRESS_ALL;
-// constexpr bool SUPRESS_WARNINGS;
+#ifndef UB_TESTER
+  constexpr bool SUPRESS_ALL = false;
+  constexpr bool SUPRESS_WARNINGS = false;
+#endif
 
 constexpr bool SUPRESS_ARITHM_WARNINGS = false;
 constexpr bool SUPRESS_UNSIGNED_OVERFLOW_WARNING = false;

@@ -1,3 +1,5 @@
+#define UB_TESTER
+
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -16,6 +18,7 @@
 #include "uninit-variables/UninitVarsDetection.h"
 
 #include <iostream>
+#include <vector>
 
 using namespace clang;
 using namespace clang::tooling;
@@ -72,7 +75,7 @@ public:
     std::unique_ptr<ASTConsumer> PointerConsumer = std::make_unique<PointersConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
-    if (clio::RunIOB){
+    if (clio::RunIOB) {
       consumers.emplace_back(std::move(OutOfBoundsConsumer));
       consumers.emplace_back(std::move(PointerConsumer));
     }

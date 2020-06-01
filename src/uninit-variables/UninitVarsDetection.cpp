@@ -24,6 +24,7 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VDecl) {
     return true;
 
   QualType VariableType = VDecl->getType().getUnqualifiedType();
+  assert(VariableType.getTypePtrOrNull());
   if (VariableType.getNonReferenceType()->isFundamentalType() && !(VDecl->isLocalVarDeclOrParm() && !(VDecl->isLocalVarDecl()))) {
     if (VDecl->hasInit()) {
       Expr* InitExpr = dyn_cast_or_null<Expr>(*(VDecl->getInitAddress()));
@@ -68,7 +69,7 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRExpr) {
     FoundCorrespMembExpr = true;
 
   QualType VarType = FoundCorrespMembExpr ? MembExpr->getType() : DRExpr->getDecl()->getType();
-  assert(VarType.getTypePtr());
+  assert(VarType.getTypePtrOrNull());
   if (!(VarType.getNonReferenceType()->isFundamentalType() && isDeclRefExprToLocalVarOrParmOrMember(DRExpr)))
     return true;
   std::string VarName = DRExpr->getNameInfo().getName().getAsString();
@@ -140,6 +141,7 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
     return true;
 
   QualType BinopLHSType = Binop->getLHS()->getType();
+  assert(BinopLHSType.getTypePtrOrNull());
   if (!(Binop->isAssignmentOp() && BinopLHSType->isFundamentalType() &&
         isDeclRefExprToLocalVarOrParmOrMember(dyn_cast_or_null<DeclRefExpr>(Binop->getLHS()))))
     return true;
@@ -165,6 +167,7 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
     return true;
 
   QualType UnopExprType = Unop->getSubExpr()->getType();
+  assert(UnopExprType.getTypePtrOrNull());
   if (!(Unop->getSubExpr()->getType()->isFundamentalType() && (Unop->isIncrementDecrementOp())))
     return true;
   // else there will be LRValue conversion, other cases
