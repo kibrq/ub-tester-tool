@@ -149,7 +149,7 @@ bool TypeSubstituterVisitor::TraverseType(QualType QType) {
   if (!Type_.shouldVisitTypes())
     return true;
   Type_.addQuals(QType.getLocalQualifiers(), PrintingPolicy{Context_->getLangOpts()});
-  if ((clio::RunUninit && QType->isBuiltinType()) || (clio::RunIOB))
+  if ((clio::RunUninit && QType.getNonReferenceType()->isBuiltinType()) || (clio::RunIOB))
     RecursiveASTVisitor<TypeSubstituterVisitor>::TraverseType(QType);
   return true;
 }
