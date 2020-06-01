@@ -11,8 +11,10 @@ mkdir build && cd build
 cmake ..
 make
 ```
-By executing these commands you'll get a file **ub-tester**
+By executing these commands you'll get a file **ub-tester**.
 
 ## Usage
-To use our application, you have to add #include with path to file **UBTester.h** in include folder of our project to the file(-s) which you want to test. Then you can simply run ub_tester on these file(-s). On the output it will give you **IMPROVED_** versions of your files. After that, you can compile IMPORVED_ versions with your project and run on your input data. 
+To use our application, you have to add #include with path to file **UBTester.h** in include folder of our project (if you follow the *Installation* step, the path will be '../UBTester.h') to the file(-s) which you want to test. Then you can run ub_tester on these file(-s). It will generate **IMPROVED_** versions of your files. Now you can compile these new files, but that requires the following flags: '-I. -I[path-to-UBTester.h] -DUB_TESTER -std=c++17'.
+
+
  
