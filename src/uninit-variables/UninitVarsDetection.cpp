@@ -13,11 +13,14 @@ using namespace ub_tester::code_injector::wrapper;
 
 namespace ub_tester {
 
-FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context) : Context_(Context) {}
+FindFundTypeVarDeclVisitor::FindFundTypeVarDeclVisitor(ASTContext* Context)
+    : Context_(Context) {}
 
-FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context) : Context_(Context) {}
+FindSafeTypeAccessesVisitor::FindSafeTypeAccessesVisitor(ASTContext* Context)
+    : Context_(Context) {}
 
-FindSafeTypeOperatorsVisitor::FindSafeTypeOperatorsVisitor(ASTContext* Context) : Context_(Context) {}
+FindSafeTypeOperatorsVisitor::FindSafeTypeOperatorsVisitor(ASTContext* Context)
+    : Context_(Context) {}
 
 bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VDecl) {
   if (!Context_->getSourceManager().isWrittenInMainFile(VDecl->getBeginLoc()))
@@ -25,7 +28,8 @@ bool FindFundTypeVarDeclVisitor::VisitVarDecl(VarDecl* VDecl) {
 
   QualType VariableType = VDecl->getType().getUnqualifiedType();
   assert(VariableType.getTypePtrOrNull());
-  if (VariableType.getNonReferenceType()->isFundamentalType() && !(VDecl->isLocalVarDeclOrParm() && !(VDecl->isLocalVarDecl()))) {
+  if (VariableType.getNonReferenceType()->isFundamentalType() &&
+      !(VDecl->isLocalVarDeclOrParm() && !(VDecl->isLocalVarDecl()))) {
     if (VDecl->hasInit()) {
       Expr* InitExpr = dyn_cast_or_null<Expr>(*(VDecl->getInitAddress()));
       assert(InitExpr);
@@ -61,32 +65,44 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRExpr) {
   // check if there is a suitable MemberExpr
   // just a single step up, or processing time gets extremely long
   DynTypedNode DRExprParentIterNode = DynTypedNode::create<>(*DRExpr);
-  const DynTypedNodeList DRExprParentNodeList = ParentMapContext(*Context_).getParents(DRExprParentIterNode);
+  const DynTypedNodeList DRExprParentNodeList =
+      ParentMapContext(*Context_).getParents(DRExprParentIterNode);
   DRExprParentIterNode = DRExprParentNodeList[0];
   const MemberExpr* MembExpr = DRExprParentIterNode.get<MemberExpr>();
   bool FoundCorrespMembExpr = false;
   if (MembExpr && dyn_cast<DeclRefExpr>(MembExpr->getBase()) == DRExpr)
     FoundCorrespMembExpr = true;
 
-  QualType VarType = FoundCorrespMembExpr ? MembExpr->getType() : DRExpr->getDecl()->getType();
+  QualType VarType =
+      FoundCorrespMembExpr ? MembExpr->getType() : DRExpr->getDecl()->getType();
   assert(VarType.getTypePtrOrNull());
-  if (!(VarType.getNonReferenceType()->isFundamentalType() && isDeclRefExprToLocalVarOrParmOrMember(DRExpr)))
+  if (!(VarType.getNonReferenceType()->isFundamentalType() &&
+        isDeclRefExprToLocalVarOrParmOrMember(DRExpr)))
     return true;
   std::string VarName = DRExpr->getNameInfo().getName().getAsString();
   if (FoundCorrespMembExpr)
-    VarName += ("." + MembExpr->getMemberNameInfo().getAsString()); // does not support nested classes' members
+    VarName +=
+        ("." + MembExpr->getMemberNameInfo()
+                   .getAsString()); // does not support nested classes' members
   // check for value access
   bool FoundCorrespImplicitCast = false;
 
-  for (DRExprParentIterNode = DynTypedNode::create<>(*DRExpr); !FoundCorrespImplicitCast;) {
-    const DynTypedNodeList DRExprParentNodeList = ParentMapContext(*Context_).getParents(DRExprParentIterNode);
+  for (DRExprParentIterNode = DynTypedNode::create<>(*DRExpr);
+       !FoundCorrespImplicitCast;) {
+    const DynTypedNodeList DRExprParentNodeList =
+        ParentMapContext(*Context_).getParents(DRExprParentIterNode);
     if (DRExprParentNodeList.empty())
       break;
     DRExprParentIterNode = DRExprParentNodeList[0];
-    const ImplicitCastExpr* ImplicitCast = DRExprParentIterNode.get<ImplicitCastExpr>();
+    const ImplicitCastExpr* ImplicitCast =
+        DRExprParentIterNode.get<ImplicitCastExpr>();
     // backwards check DISABLED due to CompAssignOp
-    if (ImplicitCast && ImplicitCast->getCastKind() == CastKind::CK_LValueToRValue &&
-        ImplicitCast->getSubExpr()->getType().getNonReferenceType()->isFundamentalType()) {
+    if (ImplicitCast &&
+        ImplicitCast->getCastKind() == CastKind::CK_LValueToRValue &&
+        ImplicitCast->getSubExpr()
+            ->getType()
+            .getNonReferenceType()
+            ->isFundamentalType()) {
       FoundCorrespImplicitCast = true;
       SubstitutionASTWrapper(Context_)
           .setLoc(DRExpr->getBeginLoc())
@@ -103,8 +119,10 @@ bool FindSafeTypeAccessesVisitor::VisitDeclRefExpr(DeclRefExpr* DRExpr) {
   // then reference access
   bool FoundCallingFunction = false;
   bool FoundCodeAvailCallingFunction = false;
-  for (DRExprParentIterNode = DynTypedNode::create<>(*DRExpr); !FoundCallingFunction;) {
-    const DynTypedNodeList ParentNodeList = ParentMapContext(*Context_).getParents(DRExprParentIterNode);
+  for (DRExprParentIterNode = DynTypedNode::create<>(*DRExpr);
+       !FoundCallingFunction;) {
+    const DynTypedNodeList ParentNodeList =
+        ParentMapContext(*Context_).getParents(DRExprParentIterNode);
     if (ParentNodeList.empty())
       break;
     DRExprParentIterNode = ParentNodeList[0];
@@ -143,7 +161,8 @@ bool FindSafeTypeOperatorsVisitor::VisitBinaryOperator(BinaryOperator* Binop) {
   QualType BinopLHSType = Binop->getLHS()->getType();
   assert(BinopLHSType.getTypePtrOrNull());
   if (!(Binop->isAssignmentOp() && BinopLHSType->isFundamentalType() &&
-        isDeclRefExprToLocalVarOrParmOrMember(dyn_cast_or_null<DeclRefExpr>(Binop->getLHS()))))
+        isDeclRefExprToLocalVarOrParmOrMember(
+            dyn_cast_or_null<DeclRefExpr>(Binop->getLHS()))))
     return true;
   if (!Binop->isCompoundAssignmentOp())
     SubstitutionASTWrapper(Context_)
@@ -168,7 +187,8 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
 
   QualType UnopExprType = Unop->getSubExpr()->getType();
   assert(UnopExprType.getTypePtrOrNull());
-  if (!(Unop->getSubExpr()->getType()->isFundamentalType() && (Unop->isIncrementDecrementOp())))
+  if (!(Unop->getSubExpr()->getType()->isFundamentalType() &&
+        (Unop->isIncrementDecrementOp())))
     return true;
   // else there will be LRValue conversion, other cases
   SubstitutionASTWrapper(Context_)
@@ -181,7 +201,8 @@ bool FindSafeTypeOperatorsVisitor::VisitUnaryOperator(UnaryOperator* Unop) {
 }
 
 FindUninitVarsConsumer::FindUninitVarsConsumer(ASTContext* Context)
-    : FundamentalTypeVarDeclVisitor_(Context), SafeTypeAccessesVisitor_(Context), SafeTypeOperatorsVisitor_(Context) {}
+    : FundamentalTypeVarDeclVisitor_(Context),
+      SafeTypeAccessesVisitor_(Context), SafeTypeOperatorsVisitor_(Context) {}
 
 void FindUninitVarsConsumer::HandleTranslationUnit(clang::ASTContext& Context) {
   FundamentalTypeVarDeclVisitor_.TraverseDecl(Context.getTranslationUnitDecl());

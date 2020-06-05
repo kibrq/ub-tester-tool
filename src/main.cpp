@@ -43,35 +43,50 @@ namespace internal {
 
 ApplyOnly CheckToApply;
 
-static cl::opt<bool, true> SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"), cl::location(SuppressWarnings),
-                                                cl::init(false), cl::cat(UBTesterOptionsCategory));
-static cl::alias SuppressWarningsFlagAlias("w", cl::desc("Alias for -no-warn"), cl::aliasopt(SuppressWarningsFlag),
+static cl::opt<bool, true>
+    SuppressWarningsFlag("no-warn", cl::desc("Disable warnings output"),
+                         cl::location(SuppressWarnings), cl::init(false),
+                         cl::cat(UBTesterOptionsCategory));
+static cl::alias SuppressWarningsFlagAlias("w", cl::desc("Alias for -no-warn"),
+                                           cl::aliasopt(SuppressWarningsFlag),
                                            cl::cat(UBTesterOptionsCategory));
-static cl::opt<ApplyOnly, true>
-    ApplyOnlyOption("apply-only", cl::desc("Only apply specified checks"),
-                    cl::values(clEnumValN(ApplyOnly::IOB, "iob", "Index out of bounds checks"),
-                               clEnumValN(ApplyOnly::Arithm, "arithm", "Arithmetic operations checks"),
-                               clEnumValN(ApplyOnly::Uninit, "uninit", "Uninitialized variables checks")),
-                    cl::location(CheckToApply), cl::init(ApplyOnly::All), cl::cat(UBTesterOptionsCategory));
+static cl::opt<ApplyOnly, true> ApplyOnlyOption(
+    "apply-only", cl::desc("Only apply specified checks"),
+    cl::values(clEnumValN(ApplyOnly::IOB, "iob", "Index out of bounds checks"),
+               clEnumValN(ApplyOnly::Arithm, "arithm",
+                          "Arithmetic operations checks"),
+               clEnumValN(ApplyOnly::Uninit, "uninit",
+                          "Uninitialized variables checks")),
+    cl::location(CheckToApply), cl::init(ApplyOnly::All),
+    cl::cat(UBTesterOptionsCategory));
 
-static cl::opt<bool, true> SuppressAllOutputFlag("quiet", cl::desc("Disable all output, exit program on error"),
-                                                 cl::location(SuppressAllOutput), cl::init(false),
-                                                 cl::cat(UBTesterOptionsCategory));
-static cl::alias SuppressAllOutputFlagAlias("q", cl::desc("Alias for -quiet"), cl::aliasopt(SuppressAllOutputFlag),
+static cl::opt<bool, true>
+    SuppressAllOutputFlag("quiet",
+                          cl::desc("Disable all output, exit program on error"),
+                          cl::location(SuppressAllOutput), cl::init(false),
+                          cl::cat(UBTesterOptionsCategory));
+static cl::alias SuppressAllOutputFlagAlias("q", cl::desc("Alias for -quiet"),
+                                            cl::aliasopt(SuppressAllOutputFlag),
                                             cl::cat(UBTesterOptionsCategory));
 } // namespace internal
 } // namespace cli
 
 class UBTesterAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
 
     InjectorASTWrapper::getInstance().addFile(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> IOBConsumer = std::make_unique<FindIOBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> UninitVarsConsumer = std::make_unique<FindUninitVarsConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer = std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> TypeSubstituter = std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
-    std::unique_ptr<ASTConsumer> PointerUBConsumer = std::make_unique<FindPointerUBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> IOBConsumer =
+        std::make_unique<FindIOBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> UninitVarsConsumer =
+        std::make_unique<FindUninitVarsConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> ArithmeticUBConsumer =
+        std::make_unique<FindArithmeticUBConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> TypeSubstituter =
+        std::make_unique<TypeSubstituterConsumer>(&Compiler.getASTContext());
+    std::unique_ptr<ASTConsumer> PointerUBConsumer =
+        std::make_unique<FindPointerUBConsumer>(&Compiler.getASTContext());
 
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     if (cli::RunIOB) {
@@ -90,8 +105,10 @@ public:
 
 class UBTesterUtilityAction : public ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
-    return std::make_unique<util::func_code_avail::UtilityConsumer>(&Compiler.getASTContext());
+  virtual std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) {
+    return std::make_unique<util::func_code_avail::UtilityConsumer>(
+        &Compiler.getASTContext());
   }
 };
 
@@ -99,31 +116,38 @@ public:
 
 void UBTesterVersionPrinter(raw_ostream& OStream) {
   OStream << "ub-tester tool\n"
-          "Change input programs so that they exit before some cases of UB to prevent it\n"
-          "\n"
-          "Version: b1.0\n"
-          "\n"
-          "Authors: https://github.com/KirillBrilliantov, https://github.com/GlebSolovev, "
-          "https://github.com/DLochmelis33\n";
+             "Change input programs so that they exit before some cases of UB "
+             "to prevent it\n"
+             "\n"
+             "Version: b1.0\n"
+             "\n"
+             "Authors: https://github.com/KirillBrilliantov, "
+             "https://github.com/GlebSolovev, "
+             "https://github.com/DLochmelis33\n";
 }
 
 int main(int argc, const char** argv) {
   cl::SetVersionPrinter(UBTesterVersionPrinter);
-  CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory, cl::ZeroOrMore);
+  CommonOptionsParser OptionsParser(argc, argv, UBTesterOptionsCategory,
+                                    cl::ZeroOrMore);
   ub_tester::cli::processFlags();
 
-  ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+  ClangTool Tool(OptionsParser.getCompilations(),
+                 OptionsParser.getSourcePathList());
 
-  int UtilityReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
+  int UtilityReturnCode = Tool.run(
+      newFrontendActionFactory<ub_tester::UBTesterUtilityAction>().get());
   if (UtilityReturnCode) {
     std::cerr << "File(s) preprocessing failed\n";
     exit(1);
   }
 
-  int ReturnCode = Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
+  int ReturnCode =
+      Tool.run(newFrontendActionFactory<ub_tester::UBTesterAction>().get());
 
   if (!ReturnCode) {
-    InjectorASTWrapper::getInstance().substituteIncludePaths(OptionsParser.getSourcePathList());
+    InjectorASTWrapper::getInstance().substituteIncludePaths(
+        OptionsParser.getSourcePathList());
     InjectorASTWrapper::getInstance().applySubstitutions();
   }
 }

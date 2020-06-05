@@ -49,9 +49,12 @@ inline void processFlags() {
   }
   // generate manager header
   std::ofstream ConfigOStream(ConfigName, std::ios::out);
-  ConfigOStream << "#pragma once\n\n#define UBCONFIG_H_\n\n" << ConfigFlagsNamespace << " {\n";
-  ConfigOStream << ConfigSuppressAllOutputFlagVariableName << " = " << (SuppressAllOutput ? "true" : "false") << ";\n";
-  ConfigOStream << ConfigSuppressWarningsFlagVariableName << " = " << (SuppressWarnings ? "true" : "false") << ";\n";
+  ConfigOStream << "#pragma once\n\n#define UBCONFIG_H_\n\n"
+                << ConfigFlagsNamespace << " {\n";
+  ConfigOStream << ConfigSuppressAllOutputFlagVariableName << " = "
+                << (SuppressAllOutput ? "true" : "false") << ";\n";
+  ConfigOStream << ConfigSuppressWarningsFlagVariableName << " = "
+                << (SuppressWarnings ? "true" : "false") << ";\n";
   ConfigOStream << "} // " << ConfigFlagsNamespace;
   ConfigOStream.close();
 }
