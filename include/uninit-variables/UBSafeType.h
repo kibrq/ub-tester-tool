@@ -31,7 +31,7 @@ public:
       : Value_{t.assertGetValue_("unknown", -1)}, IsInit_{true}, IsIgnored_{
                                                                      false} {}
 
-  T assertGetValue_(const char* Filename, int Line) const {
+  T& assertGetValue_(const char* Filename, int Line) {
     if (!IsIgnored_ && !IsInit_) {
       PUSH_ERROR(UNINIT_VAR_ACCESS_ERROR,
                  appendInfo("access to Value_ of uninitialized variable",

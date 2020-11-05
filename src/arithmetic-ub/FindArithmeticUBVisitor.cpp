@@ -283,7 +283,8 @@ bool FindArithmeticUBVisitor::VisitImplicitCastExpr(
     return true; // only fundamental type conversion is supported
 
   // check ImplicitCastType assumption
-  assert(!ImplicitCastType.hasQualifiers());
+  // ! FUCKUP
+  // ! assert(!ImplicitCastType.hasQualifiers());
   // remove any typedefs
   ImplicitCastType = ImplicitCastType.getCanonicalType();
 

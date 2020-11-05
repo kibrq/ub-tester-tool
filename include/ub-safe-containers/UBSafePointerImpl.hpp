@@ -12,6 +12,7 @@ UBSafePointer<T>::UBSafePointer(T* Data, size_t Size)
 template <typename T>
 UBSafePointer<T>& UBSafePointer<T>::operator=(T* Data) {
   Data_ = Data;
+  return *this;
 }
 
 template <typename T>
