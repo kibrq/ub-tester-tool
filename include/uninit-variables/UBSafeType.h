@@ -71,7 +71,7 @@ public:
     return Value_;
   }
 
-  operator T() const { return assertGetValue_("unknown", -1); }
+  operator T() { return assertGetValue_("unknown", -1); }
 
   // the following operators DO NOT cause lValue to rValue cast, but need the
   // Value
