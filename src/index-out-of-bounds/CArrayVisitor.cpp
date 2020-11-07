@@ -124,7 +124,7 @@ bool CArrayVisitor::TraverseVarDecl(VarDecl* VDecl) {
 }
 
 std::pair<std::string, std::string> CArrayVisitor::getSubscriptFormats() {
-  return {"@[@]", iob::names_to_inject::generateIOBAssertName("@", "@")};
+  return {"@[@]", iob::names_to_inject::generateIOBAssertName("@", "(@)")};
 }
 
 void CArrayVisitor::executeSubstitutionOfSubscript(

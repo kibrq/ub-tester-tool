@@ -3,7 +3,7 @@
 #include "assert-message-manager/AssertMessageManager.h"
 #include <string>
 
-#define ASSERT_SET_VALUE(Variable, SetExpr) Variable.setValue_(SetExpr)
+#define ASSERT_SET_VALUE(Variable, SetExpr) Variable.setValue_((SetExpr))
 #define ASSERT_GET_VALUE(Variable) Variable.assertGetValue_(__FILE__, __LINE__)
 #define ASSERT_GET_REF(Variable) Variable.assertGetRef(__FILE__, __LINE__)
 #define ASSERT_GET_REF_IGNORE(Variable)                                        \

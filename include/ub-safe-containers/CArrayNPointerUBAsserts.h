@@ -13,16 +13,17 @@
 #include <vector>
 
 #define ASSERT_IOB(Lhs, Rhs)                                                   \
-  ub_tester::carr_ptr::checkers::checkIOB(Lhs, Rhs, __FILE__, __LINE__)
+  ub_tester::carr_ptr::checkers::checkIOB((Lhs), (Rhs), __FILE__, __LINE__)
 
 #define ASSERT_INVALID_SIZE(Sizes)                                             \
-  ub_tester::carr_ptr::checkers::checkInvalidSize(Sizes, __FILE__, __LINE__)
+  ub_tester::carr_ptr::checkers::checkInvalidSize((Sizes), __FILE__, __LINE__)
 
 #define ASSERT_STAROPERATOR(Pointer)                                           \
-  ub_tester::carr_ptr::checkers::checkStarOperator(Pointer, __FILE__, __LINE__)
+  ub_tester::carr_ptr::checkers::checkStarOperator((Pointer), __FILE__, __LINE__)
+  
 #define ASSERT_MEMBEREXPR(Pointer, Member)                                     \
-  ub_tester::carr_ptr::checkers::checkMemberExpr(Pointer, __FILE__, __LINE__)  \
-      ->Member
+  ub_tester::carr_ptr::checkers::checkMemberExpr((Pointer), __FILE__, __LINE__)  \
+      ->(Member)
 
 namespace ub_tester::carr_ptr::checkers {
 
